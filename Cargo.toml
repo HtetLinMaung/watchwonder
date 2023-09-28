@@ -1,0 +1,21 @@
+[package]
+name = "watchwonder"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-files = "0.6.2"
+actix-multipart = "0.6.1"
+actix-web = "4.4.0"
+bcrypt = "0.15.0"
+chrono = { version = "0.4.31", features = ["serde"] }
+dotenv = "0.15.0"
+futures = "0.3.28"
+jsonwebtoken = "8.3.0"
+regex = "1.9.5"
+serde = { version = "1.0.188", features = ["derive"] }
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-postgres = { version = "0.7.10", features = ["with-chrono-0_4"] }
+uuid = { version = "1.4.1", features = ["v4"] }
