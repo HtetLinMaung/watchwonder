@@ -13,7 +13,7 @@ pub struct UploadResponse {
     pub url: String,
 }
 
-#[post("/api/upload")]
+#[post("/api/image/upload")]
 pub async fn upload(mut payload: Multipart) -> Result<HttpResponse> {
     while let Some(item) = payload.next().await {
         let mut field = item?;

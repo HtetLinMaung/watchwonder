@@ -35,6 +35,66 @@ CREATE TABLE shops
     deleted_at TIMESTAMP DEFAULT null
 );
 
+INSERT INTO shops
+    (
+    name,
+    description,
+    cover_image,
+    address,
+    city,
+    state,
+    postal_code,
+    country,
+    phone,
+    email,
+    website_url,
+    operating_hours,
+    status
+    )
+VALUES
+    ('Timeless Watches',
+        'A shop offering a variety of timeless and classic watch designs.',
+        '/images/timeless_cover.jpg',
+        '123 Watch Street',
+        'Watch City',
+        'Watch State',
+        '12345',
+        'Watchland',
+        '+1234567890',
+        'info@timelesswatches.com',
+        'http://www.timelesswatches.com',
+        'Mon-Fri: 9am-6pm; Sat: 10am-4pm',
+        'Active'),
+
+    ('Modern Timepieces',
+        'Specializing in modern and innovative watch designs for the contemporary individual.',
+        '/images/modern_cover.jpg',
+        '456 Modern Avenue',
+        'Timepiece City',
+        'Modern State',
+        '67890',
+        'Timepiece Country',
+        '+0987654321',
+        'info@moderntimepieces.com',
+        'http://www.moderntimepieces.com',
+        'Mon-Sun: 10am-8pm',
+        'Active'),
+
+    ('Vintage Horology',
+        'A boutique shop offering a curated selection of vintage and antique watches.',
+        '/images/vintage_cover.jpg',
+        '789 Antique Road',
+        'Vintage Town',
+        'Horology State',
+        '11223',
+        'Horology Country',
+        '+1122334455',
+        'info@vintagehorology.com',
+        'http://www.vintagehorology.com',
+        'Tue-Sat: 11am-5pm',
+        'Active');
+
+
 CREATE TABLE categories
 (
     category_id SERIAL PRIMARY KEY,
@@ -45,6 +105,34 @@ CREATE TABLE categories
     deleted_at TIMESTAMP DEFAULT null
 );
 
+INSERT INTO categories
+    (
+    name,
+    description,
+    cover_image
+    )
+VALUES
+    ('Luxury Watches',
+        'High-end watches from renowned brands, showcasing craftsmanship and elegance.',
+        '/images/luxury_category.jpg'),
+
+    ('Sports Watches',
+        'Durable and functional watches designed for active individuals and sports enthusiasts.',
+        '/images/sports_category.jpg'),
+
+    ('Vintage Watches',
+        'Classic timepieces from past eras, offering a nostalgic touch and timeless beauty.',
+        '/images/vintage_category.jpg'),
+
+    ('Smart Watches',
+        'Modern watches integrated with technology to offer features beyond just timekeeping.',
+        '/images/smart_category.jpg'),
+
+    ('Casual Watches',
+        'Everyday watches that combine style and practicality for daily wear.',
+        '/images/casual_category.jpg');
+
+
 CREATE TABLE brands
 (
     brand_id SERIAL PRIMARY KEY,
@@ -54,6 +142,39 @@ CREATE TABLE brands
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
+
+INSERT INTO brands
+    (
+    name,
+    description,
+    logo_url
+    )
+VALUES
+    ('Rolex',
+        'A Swiss luxury watch manufacturer known for its timeless designs and precision.',
+        '/logos/rolex_logo.jpg'),
+
+    ('Omega',
+        'A Swiss luxury watchmaker, renowned for its performance and reliability.',
+        '/logos/omega_logo.jpg'),
+
+    ('Casio',
+        'A Japanese multinational consumer electronics company, famous for its durable and innovative watches.',
+        '/logos/casio_logo.jpg'),
+
+    ('Seiko',
+        'A Japanese company that produces watches, clocks, electronic devices, semiconductors, and optical products.',
+        '/logos/seiko_logo.jpg'),
+
+    ('TAG Heuer',
+        'A Swiss luxury watchmaker known for its sports watches and chronographs.',
+        '/logos/tagheuer_logo.jpg'),
+
+    ('Fossil',
+        'An American fashion designer and manufacturer known for its vintage-inspired watches.',
+        '/logos/fossil_logo.jpg');
+
+
 
 CREATE TABLE product_images
 (
@@ -99,6 +220,45 @@ CREATE TABLE products
 -- dimensions: Dimensions of the watch (e.g., Case Diameter, Thickness).
 -- stock_quantity: Quantity of the watch available in stock.
 -- image_url: URL or path to the image of the watch.
+
+-- Inserting sample data into products table
+INSERT INTO products
+    (
+    shop_id,
+    category_id,
+    brand_id,
+    model,
+    description,
+    color,
+    strap_material,
+    strap_color,
+    case_material,
+    dial_color,
+    movement_type,
+    water_resistance,
+    warranty_period,
+    dimensions,
+    price,
+    stock_quantity,
+    is_top_model
+    )
+VALUES
+    (1, 1, 1, 'Submariner', 'Dive watch with automatic movement and date function.', 'Black', 'Steel', 'Silver', 'Steel', 'Black', 'Automatic', '300m', '5 years', '40mm', 9000.00, 10, TRUE),
+    (2, 2, 2, 'Speedmaster', 'Chronograph watch used in space missions.', 'Black', 'Leather', 'Black', 'Steel', 'Black', 'Manual', '50m', '3 years', '42mm', 5000.00, 5, TRUE);
+
+-- Inserting sample data into product_images table
+INSERT INTO product_images
+    (
+    product_id,
+    image_url
+    )
+VALUES
+    (1, '/images/products/submariner_1.jpg'),
+    (1, '/images/products/submariner_2.jpg'),
+    (1, '/images/products/submariner_3.jpg'),
+    (2, '/images/products/speedmaster_1.jpg'),
+    (2, '/images/products/speedmaster_2.jpg');
+
 
 CREATE TABLE orders
 (

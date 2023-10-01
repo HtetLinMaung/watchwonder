@@ -7,7 +7,7 @@ pub struct User {
     pub user_id: i32,
     pub username: String,
     pub password: String,
-    pub role_name: String,
+    pub role: String,
     pub name: String,
     pub profile_image: String,
 }
@@ -23,15 +23,6 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
 
     // Return whether the user exists
     Ok(row.is_ok())
-}
-
-pub struct NewUser {
-    pub name: String,
-    pub username: String,
-    pub password: String,
-    pub email: String,
-    pub phone: String,
-    pub profile_image: String,
 }
 
 pub async fn create_user(
@@ -59,7 +50,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
     // In a real-world scenario, handle errors gracefully
     let result = client
         .query_one(
-            "select u.user_id, u.username, u.password, r.role_name, u.name, u.profile_image from users u inner join roles r on r.role_id = u.role_id where username = $1 and u.deleted_at is null and r.deleted_at is null",
+            "select user_id, username, password, role, name, profile_image from users where username = $1 and deleted_at is null",
             &[&username],
         )
         .await;
@@ -69,7 +60,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
             user_id: row.get("user_id"),
             username: row.get("username"),
             password: row.get("password"),
-            role_name: row.get("role_name"),
+            role: row.get("role"),
             name: row.get("name"),
             profile_image: row.get("profile_image"),
         }),

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::models::user::{create_user, get_user, user_exists, NewUser};
+use crate::models::user::{create_user, get_user, user_exists};
 use crate::utils::jwt;
 use crate::utils::validator::{validate_email, validate_mobile};
 use actix_web::{post, web, HttpResponse};
@@ -115,7 +115,7 @@ pub async fn login(
                     .expect("Time went backwards")
                     .as_secs() as usize;
                 let token = jwt::sign_token(&jwt::Claims {
-                    sub: format!("{},{}", &user.user_id, &user.role_name),
+                    sub: format!("{},{}", &user.user_id, &user.role),
                     exp: now + (3600 * 24),
                 })
                 .unwrap();

@@ -1,0 +1,123 @@
+use std::sync::Arc;
+
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+use tokio_postgres::Client;
+
+use crate::{
+    models::brand::{self, Brand},
+    utils::jwt::verify_token_and_get_sub,
+};
+
+#[derive(Serialize)]
+pub struct GetBrandsResponse {
+    pub code: u16,
+    pub message: String,
+    pub data: Vec<Brand>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+    pub page_counts: usize,
+}
+
+#[derive(Deserialize)]
+pub struct GetBrandsQuery {
+    pub search: Option<String>,
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+#[get("/api/brands")]
+pub async fn get_brands(
+    req: HttpRequest,
+    client: web::Data<Arc<Client>>,
+    query: web::Query<GetBrandsQuery>,
+) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(GetBrandsResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                    data: vec![],
+                    total: 0,
+                    page: 0,
+                    per_page: 0,
+                    page_counts: 0,
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(GetBrandsResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+                data: vec![],
+                total: 0,
+                page: 0,
+                per_page: 0,
+                page_counts: 0,
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(GetBrandsResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+                data: vec![],
+                total: 0,
+                page: 0,
+                per_page: 0,
+                page_counts: 0,
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(GetBrandsResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+            data: vec![],
+            total: 0,
+            page: 0,
+            per_page: 0,
+            page_counts: 0,
+        });
+    }
+
+    // let user_id: &str = parsed_values[0];
+    // let role_name: &str = parsed_values[1];
+
+    match brand::get_brands(&query.search, &query.page, &query.per_page, &client).await {
+        Ok(item_result) => HttpResponse::Ok().json(GetBrandsResponse {
+            code: 200,
+            message: String::from("Successful."),
+            data: item_result.brands,
+            total: item_result.total,
+            page: item_result.page,
+            per_page: item_result.per_page,
+            page_counts: item_result.page_counts,
+        }),
+        Err(err) => {
+            // Log the error message here
+            println!("Error retrieving brands: {:?}", err);
+            HttpResponse::InternalServerError().json(GetBrandsResponse {
+                code: 500,
+                message: String::from("Error trying to read all brands from database"),
+                data: vec![],
+                total: 0,
+                page: 0,
+                per_page: 0,
+                page_counts: 0,
+            })
+        }
+    }
+}
