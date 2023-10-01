@@ -1,7 +1,6 @@
+use crate::utils::sql::{generate_pagination_query, PaginationOptions};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
-
-use crate::utils::sql::{generate_pagination_query, PaginationOptions};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Product {
@@ -35,14 +34,14 @@ pub struct GetProductsResult {
 }
 
 pub async fn get_products(
-    search: Option<String>,
+    search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
-    brands: Option<Vec<i32>>,
-    models: Option<Vec<String>>,
+    brands: &Option<Vec<i32>>,
+    models: &Option<Vec<String>>,
     from_price: Option<f64>,
     to_price: Option<f64>,
-    role: String,
+    role: &str,
     client: &Client,
 ) -> Result<GetProductsResult, Error> {
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
@@ -86,27 +85,25 @@ pub async fn get_products(
     }
 
     if from_price.is_some() && to_price.is_some() {
-        params.push(Box::new(from_price.unwrap()));
-        params.push(Box::new(to_price.unwrap()));
         base_query = format!(
-            "{base_query} and p.price between ${} and ${}",
-            params.len() - 1,
-            params.len()
+            "{base_query} and p.price between {} and {}",
+            from_price.unwrap(),
+            to_price.unwrap()
         );
     }
 
-    let order_options = match role.as_str() {
-        "user" => "model asc, created_at desc".to_string(),
-        "admin" => "created_at desc".to_string(),
+    let order_options = match role {
+        "user" => "p.model asc, p.created_at desc".to_string(),
+        "admin" => "p.created_at desc".to_string(),
         _ => "".to_string(),
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name".to_string(),
-        base_query,
-        search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"].into_iter().map(String::from).collect(),
-        search,
-        order_options: Some(order_options),
+        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name",
+        base_query: &base_query,
+        search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
         page,
         per_page,
     });
@@ -133,7 +130,7 @@ pub async fn get_products(
         let product_id: i32 = row.get("product_id");
         let image_rows = client
             .query(
-                "select image_url from product_images where product_id = $1 and deleted is null",
+                "select image_url from product_images where product_id = $1 and deleted_at is null",
                 &[&product_id],
             )
             .await?;
@@ -160,7 +157,7 @@ pub async fn get_products(
             stock_quantity: row.get("stock_quantity"),
             is_top_model: row.get("is_top_model"),
             product_images,
-            brand_name: row.get("product_images"),
+            brand_name: row.get("brand_name"),
             category_name: row.get("category_name"),
             shop_name: row.get("shop_name"),
         });

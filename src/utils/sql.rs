@@ -1,9 +1,9 @@
-pub struct PaginationOptions {
-    pub select_columns: String,
-    pub base_query: String,
-    pub search_columns: Vec<String>,
-    pub order_options: Option<String>,
-    pub search: Option<String>,
+pub struct PaginationOptions<'a> {
+    pub select_columns: &'a str,
+    pub base_query: &'a str,
+    pub search_columns: Vec<&'a str>,
+    pub order_options: Option<&'a str>,
+    pub search: Option<&'a str>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
 }
@@ -19,24 +19,26 @@ pub fn generate_pagination_query(options: PaginationOptions) -> PaginationQueryR
     let mut count_query = format!("SELECT COUNT(*) as total {}", options.base_query);
 
     if let Some(s) = options.search {
-        let search_clauses: Vec<String> = options
-            .search_columns
-            .iter()
-            .map(|col| format!("{} LIKE '%{}%'", col, s))
-            .collect();
-        let search_query = search_clauses.join(" OR ");
-        // Check if the query already contains a WHERE clause
-        if query.contains(" WHERE ") || query.contains(" where ") {
-            query = format!("{} AND ({})", query, search_query);
-        } else {
-            query = format!("{} WHERE ({})", query, search_query);
-        }
+        if !s.is_empty() {
+            let search_clauses: Vec<String> = options
+                .search_columns
+                .iter()
+                .map(|col| format!("{} LIKE '%{}%'", col, s))
+                .collect();
+            let search_query = search_clauses.join(" OR ");
+            // Check if the query already contains a WHERE clause
+            if query.contains(" WHERE ") || query.contains(" where ") {
+                query = format!("{} AND ({})", query, search_query);
+            } else {
+                query = format!("{} WHERE ({})", query, search_query);
+            }
 
-        // Check if the count_query already contains a WHERE clause
-        if count_query.contains(" WHERE ") || query.contains(" where ") {
-            count_query = format!("{} AND ({})", count_query, search_query);
-        } else {
-            count_query = format!("{} WHERE ({})", count_query, search_query);
+            // Check if the count_query already contains a WHERE clause
+            if count_query.contains(" WHERE ") || query.contains(" where ") {
+                count_query = format!("{} AND ({})", count_query, search_query);
+            } else {
+                count_query = format!("{} WHERE ({})", count_query, search_query);
+            }
         }
     }
 
