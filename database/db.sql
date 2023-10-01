@@ -296,8 +296,6 @@ CREATE TABLE order_items
     deleted_at TIMESTAMP DEFAULT null
 );
 
-
-
 CREATE TABLE notifications
 (
     notification_id SERIAL PRIMARY KEY,
