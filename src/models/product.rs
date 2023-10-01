@@ -38,10 +38,63 @@ pub async fn get_products(
     search: Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    brands: Option<Vec<i32>>,
+    models: Option<Vec<String>>,
+    from_price: Option<f64>,
+    to_price: Option<f64>,
     role: String,
     client: &Client,
 ) -> Result<GetProductsResult, Error> {
-    let base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
+    let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if let Some(brand_list) = brands {
+        if !brand_list.is_empty() {
+            if brand_list.len() > 1 {
+                let mut placeholders: Vec<String> = vec![];
+                for brand in brand_list {
+                    params.push(Box::new(brand));
+                    placeholders.push(format!("${}", params.len()));
+                }
+                base_query = format!(
+                    "{base_query} and p.brand_id in ({})",
+                    placeholders.join(", ")
+                );
+            } else {
+                let brand = brand_list[0];
+                params.push(Box::new(brand));
+                base_query = format!("{base_query} and p.brand_id = ${}", params.len());
+            }
+        }
+    }
+
+    if let Some(model_list) = models {
+        if !model_list.is_empty() {
+            if model_list.len() > 1 {
+                let mut placeholders: Vec<String> = vec![];
+                for model in model_list {
+                    params.push(Box::new(model));
+                    placeholders.push(format!("${}", params.len()));
+                }
+                base_query = format!("{base_query} and p.model in ({})", placeholders.join(", "));
+            } else {
+                let model = model_list[0].clone();
+                params.push(Box::new(model));
+                base_query = format!("{base_query} and p.model = ${}", params.len());
+            }
+        }
+    }
+
+    if from_price.is_some() && to_price.is_some() {
+        params.push(Box::new(from_price.unwrap()));
+        params.push(Box::new(to_price.unwrap()));
+        base_query = format!(
+            "{base_query} and p.price between ${} and ${}",
+            params.len() - 1,
+            params.len()
+        );
+    }
+
     let order_options = match role.as_str() {
         "user" => "model asc, created_at desc".to_string(),
         "admin" => "created_at desc".to_string(),
@@ -49,7 +102,7 @@ pub async fn get_products(
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, p.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name".to_string(),
+        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name".to_string(),
         base_query,
         search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"].into_iter().map(String::from).collect(),
         search,
@@ -57,7 +110,6 @@ pub async fn get_products(
         page,
         per_page,
     });
-    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
     let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
 
@@ -73,17 +125,46 @@ pub async fn get_products(
         page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
-    let products: Vec<Product> = client
-        .query(&result.query, &params_slice[..])
-        .await?
-        .iter()
-        .map(|row| Product {
-            brand_id: row.get("brand_id"),
-            name: row.get("name"),
+    let rows = client.query(&result.query, &params_slice[..]).await?;
+
+    let mut products: Vec<Product> = Vec::new();
+
+    for row in &rows {
+        let product_id: i32 = row.get("product_id");
+        let image_rows = client
+            .query(
+                "select image_url from product_images where product_id = $1 and deleted is null",
+                &[&product_id],
+            )
+            .await?;
+
+        let product_images: Vec<String> = image_rows.iter().map(|r| r.get("image_url")).collect();
+
+        let price: String = row.get("price");
+        let price: f64 = price.parse().unwrap();
+
+        products.push(Product {
+            product_id: row.get("product_id"),
+            model: row.get("model"),
             description: row.get("description"),
-            logo_url: row.get("logo_url"),
-        })
-        .collect();
+            color: row.get("color"),
+            strap_material: row.get("strap_material"),
+            strap_color: row.get("strap_color"),
+            case_material: row.get("case_material"),
+            dial_color: row.get("dial_color"),
+            movement_type: row.get("movement_type"),
+            water_resistance: row.get("water_resistance"),
+            warranty_period: row.get("warranty_period"),
+            dimensions: row.get("dimensions"),
+            price,
+            stock_quantity: row.get("stock_quantity"),
+            is_top_model: row.get("is_top_model"),
+            product_images,
+            brand_name: row.get("product_images"),
+            category_name: row.get("category_name"),
+            shop_name: row.get("shop_name"),
+        });
+    }
 
     Ok(GetProductsResult {
         products,
