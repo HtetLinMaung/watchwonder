@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::user::{create_user, get_user, user_exists};
+use crate::utils::common_struct::{BaseResponse, DataResponse};
 use crate::utils::jwt;
 use crate::utils::validator::{validate_email, validate_mobile};
 use actix_web::{post, web, HttpResponse};
@@ -19,25 +20,19 @@ pub struct RegisterRequest {
     pub profile_image: String,
 }
 
-#[derive(Serialize)]
-pub struct RegisterResponse {
-    pub code: u16,
-    pub message: String,
-}
-
 #[post("/api/auth/register")]
 pub async fn register(
     client: web::Data<Arc<Client>>,
     body: web::Json<RegisterRequest>,
 ) -> HttpResponse {
     if !validate_email(&body.email) {
-        return HttpResponse::BadRequest().json(RegisterResponse {
+        return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Invalid email!"),
         });
     }
     if !validate_mobile(&body.phone) {
-        return HttpResponse::BadRequest().json(RegisterResponse {
+        return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Invalid phone!"),
         });
@@ -45,7 +40,7 @@ pub async fn register(
     match user_exists(&body.username, &client).await {
         Ok(exists) => {
             if exists {
-                return HttpResponse::BadRequest().json(RegisterResponse {
+                return HttpResponse::BadRequest().json(BaseResponse {
                     code: 400,
                     message: String::from("User already exists!"),
                 });
@@ -61,13 +56,13 @@ pub async fn register(
             )
             .await
             {
-                Ok(()) => HttpResponse::Ok().json(RegisterResponse {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
                     code: 200,
                     message: String::from("Registration successfully"),
                 }),
                 Err(e) => {
                     eprintln!("User registration error: {}", e);
-                    return HttpResponse::InternalServerError().json(RegisterResponse {
+                    return HttpResponse::InternalServerError().json(BaseResponse {
                         code: 500,
                         message: String::from("Error registering user!"),
                     });
@@ -76,7 +71,7 @@ pub async fn register(
         }
         Err(e) => {
             eprintln!("Database error: {}", e);
-            return HttpResponse::InternalServerError().json(RegisterResponse {
+            return HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
                 message: String::from("Something went wrong!"),
             });
@@ -91,9 +86,7 @@ pub struct LoginRequest {
 }
 
 #[derive(Serialize)]
-pub struct LoginResponse {
-    pub code: u16,
-    pub message: String,
+pub struct LoginData {
     pub token: Option<String>,
     pub name: Option<String>,
     pub profile_image: Option<String>,
@@ -120,29 +113,25 @@ pub async fn login(
                 })
                 .unwrap();
                 // let token = create_token(&user.username).unwrap();
-                HttpResponse::Ok().json(LoginResponse {
+                HttpResponse::Ok().json(DataResponse {
                     code: 200,
                     message: String::from("Token generated successfully."),
-                    token: Some(token),
-                    name: Some(user.name),
-                    profile_image: Some(user.profile_image),
+                    data: Some(LoginData {
+                        token: Some(token),
+                        name: Some(user.name),
+                        profile_image: Some(user.profile_image),
+                    }),
                 })
             } else {
-                HttpResponse::Unauthorized().json(LoginResponse {
+                HttpResponse::Unauthorized().json(BaseResponse {
                     code: 401,
                     message: String::from("Invalid password!"),
-                    token: None,
-                    name: None,
-                    profile_image: None,
                 })
             }
         }
-        None => HttpResponse::Unauthorized().json(LoginResponse {
+        None => HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Invalid username!"),
-            token: None,
-            name: None,
-            profile_image: None,
         }),
     }
 }
