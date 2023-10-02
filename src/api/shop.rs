@@ -6,7 +6,7 @@ use tokio_postgres::Client;
 
 use crate::{
     models::shop::{self, Shop},
-    utils::jwt::verify_token_and_get_sub,
+    utils::{common_struct::BaseResponse, jwt::verify_token_and_get_sub},
 };
 
 #[derive(Serialize)]
@@ -40,26 +40,16 @@ pub async fn get_shops(
             if parts.len() == 2 && parts[0] == "Bearer" {
                 parts[1]
             } else {
-                return HttpResponse::BadRequest().json(GetShopsResponse {
+                return HttpResponse::BadRequest().json(BaseResponse {
                     code: 400,
                     message: String::from("Invalid Authorization header format"),
-                    data: vec![],
-                    total: 0,
-                    page: 0,
-                    per_page: 0,
-                    page_counts: 0,
                 });
             }
         }
         None => {
-            return HttpResponse::Unauthorized().json(GetShopsResponse {
+            return HttpResponse::Unauthorized().json(BaseResponse {
                 code: 401,
                 message: String::from("Authorization header missing"),
-                data: vec![],
-                total: 0,
-                page: 0,
-                per_page: 0,
-                page_counts: 0,
             })
         }
     };
@@ -67,14 +57,9 @@ pub async fn get_shops(
     let sub = match verify_token_and_get_sub(token) {
         Some(s) => s,
         None => {
-            return HttpResponse::Unauthorized().json(GetShopsResponse {
+            return HttpResponse::Unauthorized().json(BaseResponse {
                 code: 401,
                 message: String::from("Invalid token"),
-                data: vec![],
-                total: 0,
-                page: 0,
-                per_page: 0,
-                page_counts: 0,
             })
         }
     };
@@ -82,14 +67,9 @@ pub async fn get_shops(
     // Parse the `sub` value
     let parsed_values: Vec<&str> = sub.split(',').collect();
     if parsed_values.len() != 2 {
-        return HttpResponse::InternalServerError().json(GetShopsResponse {
+        return HttpResponse::InternalServerError().json(BaseResponse {
             code: 500,
             message: String::from("Invalid sub format in token"),
-            data: vec![],
-            total: 0,
-            page: 0,
-            per_page: 0,
-            page_counts: 0,
         });
     }
 
@@ -109,14 +89,9 @@ pub async fn get_shops(
         Err(err) => {
             // Log the error message here
             println!("Error retrieving shops: {:?}", err);
-            HttpResponse::InternalServerError().json(GetShopsResponse {
+            HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
                 message: String::from("Error trying to read all shops from database"),
-                data: vec![],
-                total: 0,
-                page: 0,
-                per_page: 0,
-                page_counts: 0,
             })
         }
     }
