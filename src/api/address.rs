@@ -1,34 +1,18 @@
 use std::sync::Arc;
 
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
-use serde::Deserialize;
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 use tokio_postgres::Client;
 
 use crate::{
-    models::product::{self},
+    models::address::{self, Address},
     utils::{
-        common_struct::{BaseResponse, PaginationResponse},
+        common_struct::{BaseResponse, DataResponse},
         jwt::verify_token_and_get_sub,
     },
 };
 
-#[derive(Deserialize)]
-pub struct GetProductsRequestBody {
-    pub search: Option<String>,
-    pub page: Option<usize>,
-    pub per_page: Option<usize>,
-    pub brands: Option<Vec<i32>>,
-    pub models: Option<Vec<String>>,
-    pub from_price: Option<f64>,
-    pub to_price: Option<f64>,
-}
-
-#[post("/api/get-products")]
-pub async fn get_products(
-    req: HttpRequest,
-    client: web::Data<Arc<Client>>,
-    body: web::Json<GetProductsRequestBody>,
-) -> impl Responder {
+#[get("/api/address")]
+pub async fn get_address(req: HttpRequest, client: web::Data<Arc<Client>>) -> impl Responder {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -69,37 +53,29 @@ pub async fn get_products(
         });
     }
 
-    // let user_id: &str = parsed_values[0];
-    let role: &str = parsed_values[1];
-
-    match product::get_products(
-        &body.search,
-        body.page,
-        body.per_page,
-        &body.brands,
-        &body.models,
-        body.from_price,
-        body.to_price,
-        role,
-        &client,
-    )
-    .await
-    {
-        Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
-            code: 200,
-            message: String::from("Successful."),
-            data: item_result.products,
-            total: item_result.total,
-            page: item_result.page,
-            per_page: item_result.per_page,
-            page_counts: item_result.page_counts,
-        }),
+    let user_id: &str = parsed_values[0];
+    let user_id: i32 = user_id.parse().unwrap();
+    match address::get_address(user_id, &client).await {
+        Ok(address) => {
+            if let Some(a) = address {
+                return HttpResponse::Ok().json(DataResponse {
+                    code: 200,
+                    message: String::from("Successful."),
+                    data: Some(a),
+                });
+            }
+            return HttpResponse::NotFound().json(DataResponse::<Address> {
+                code: 404,
+                message: String::from("Address not found!"),
+                data: None,
+            });
+        }
         Err(err) => {
             // Log the error message here
-            println!("Error retrieving products: {:?}", err);
+            println!("Error retrieving address: {:?}", err);
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
-                message: String::from("Error trying to read all products from database"),
+                message: String::from("Error trying to read address from database"),
             })
         }
     }

@@ -10,3 +10,16 @@ pub struct PaginationResponse<T> {
     pub per_page: usize,
     pub page_counts: usize,
 }
+
+#[derive(Serialize, Debug)]
+pub struct BaseResponse {
+    pub code: u16,
+    pub message: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct DataResponse<T> {
+    pub code: u16,
+    pub message: String,
+    pub data: Option<T>,
+}

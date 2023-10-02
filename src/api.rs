@@ -1,3 +1,4 @@
+mod address;
 mod auth;
 mod brand;
 mod category;
@@ -16,4 +17,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(category::get_categories);
     cfg.service(brand::get_brands);
     cfg.service(product::get_products);
+    cfg.service(address::get_address);
 }
