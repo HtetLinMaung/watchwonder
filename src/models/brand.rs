@@ -70,3 +70,19 @@ pub async fn get_brands(
         page_counts,
     })
 }
+
+pub async fn add_brands(
+    name: &str,
+    description: &str,
+    logo_url: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Insert the new brands into the database
+    client
+        .execute(
+            "INSERT INTO brands (name, description, logo_url) VALUES ($1, $2, $3)",
+            &[&name, &description, &logo_url],
+        )
+        .await?;
+    Ok(())
+}
