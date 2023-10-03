@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use tokio_postgres::Client;
 
@@ -92,7 +92,7 @@ pub async fn get_products(
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
-            data: item_result.products,
+            data: item_result.data,
             total: item_result.total,
             page: item_result.page,
             per_page: item_result.per_page,
@@ -104,6 +104,71 @@ pub async fn get_products(
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
                 message: String::from("Error trying to read all products from database"),
+            })
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct GetModelsQuery {
+    pub search: Option<String>,
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
+}
+
+#[get("/api/models")]
+pub async fn get_models(
+    req: HttpRequest,
+    query: web::Query<GetModelsQuery>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    match product::get_models(&query.search, query.page, query.per_page, &client).await {
+        Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
+            code: 200,
+            message: String::from("Successful."),
+            data: item_result.data,
+            total: item_result.total,
+            page: item_result.page,
+            per_page: item_result.per_page,
+            page_counts: item_result.page_counts,
+        }),
+        Err(err) => {
+            // Log the error message here
+            println!("Error retrieving models: {:?}", err);
+            HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error trying to read all models from database"),
             })
         }
     }

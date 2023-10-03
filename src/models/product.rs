@@ -1,4 +1,7 @@
-use crate::utils::sql::{generate_pagination_query, PaginationOptions};
+use crate::utils::{
+    common_struct::PaginationResult,
+    sql::{generate_pagination_query, PaginationOptions},
+};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -25,14 +28,6 @@ pub struct Product {
     pub brand_name: String,
 }
 
-pub struct GetProductsResult {
-    pub products: Vec<Product>,
-    pub total: i64,
-    pub page: usize,
-    pub per_page: usize,
-    pub page_counts: usize,
-}
-
 pub async fn get_products(
     search: &Option<String>,
     page: Option<usize>,
@@ -45,7 +40,7 @@ pub async fn get_products(
     to_price: Option<f64>,
     role: &str,
     client: &Client,
-) -> Result<GetProductsResult, Error> {
+) -> Result<PaginationResult<Product>, Error> {
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
@@ -175,8 +170,56 @@ pub async fn get_products(
         });
     }
 
-    Ok(GetProductsResult {
-        products,
+    Ok(PaginationResult {
+        data: products,
+        total,
+        page: current_page,
+        per_page: limit,
+        page_counts,
+    })
+}
+
+pub async fn get_models(
+    search: &Option<String>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    client: &Client,
+) -> Result<PaginationResult<String>, Error> {
+    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns: "p.model",
+        base_query:
+            "from (select model from products where deleted_at is null group by model) as p where 1 = 1",
+        search_columns: vec!["p.model"],
+        search: search.as_deref(),
+        order_options: Some("p.model"),
+        page,
+        per_page,
+    });
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
+    let mut current_page = 0;
+    let mut limit = 0;
+    if page.is_some() && per_page.is_some() {
+        current_page = page.unwrap();
+        limit = per_page.unwrap();
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
+    }
+
+    let models = client
+        .query(&result.query, &params_slice[..])
+        .await?
+        .iter()
+        .map(|row| row.get("model"))
+        .collect();
+
+    Ok(PaginationResult {
+        data: models,
         total,
         page: current_page,
         per_page: limit,

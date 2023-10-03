@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDate;
 use serde::Deserialize;
 use tokio_postgres::Client;
 
