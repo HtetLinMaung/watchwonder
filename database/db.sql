@@ -304,7 +304,8 @@ CREATE TABLE order_addresses
     township VARCHAR(100),
     ward VARCHAR(100),
     note TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null
 );
 
 
