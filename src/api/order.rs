@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::Deserialize;
 use tokio_postgres::Client;
 
@@ -83,8 +83,8 @@ pub struct GetOrdersQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
-    pub from_date: Option<NaiveDateTime>,
-    pub to_date: Option<NaiveDateTime>,
+    pub from_date: Option<NaiveDate>,
+    pub to_date: Option<NaiveDate>,
     pub from_amount: Option<f64>,
     pub to_amount: Option<f64>,
 }

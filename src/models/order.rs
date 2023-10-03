@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -86,8 +86,8 @@ pub async fn get_orders(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
-    from_date: &Option<NaiveDateTime>,
-    to_date: &Option<NaiveDateTime>,
+    from_date: &Option<NaiveDate>,
+    to_date: &Option<NaiveDate>,
     from_amount: &Option<f64>,
     to_amount: &Option<f64>,
     user_id: i32,
@@ -95,7 +95,7 @@ pub async fn get_orders(
     client: &Client,
 ) -> Result<PaginationResult<Order>, Error> {
     let mut base_query =
-        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id where o.deleted is null and u.deleted_at is null and a.deleted_at is null"
+        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id where o.deleted_at is null and u.deleted_at is null and a.deleted_at is null"
             .to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
@@ -122,7 +122,7 @@ pub async fn get_orders(
         );
     }
 
-    let order_options = "p.created_at desc".to_string();
+    let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
         select_columns: "o.order_id, u.name user_name, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text",

@@ -51,12 +51,12 @@ pub async fn get_products(
 
     if let Some(s) = shop_id {
         params.push(Box::new(s));
-        base_query = format!("{base_query} and o.shop_id = ${}", params.len());
+        base_query = format!("{base_query} and p.shop_id = ${}", params.len());
     }
 
     if let Some(c) = category_id {
         params.push(Box::new(c));
-        base_query = format!("{base_query} and o.category_id = ${}", params.len());
+        base_query = format!("{base_query} and p.category_id = ${}", params.len());
     }
 
     if let Some(brand_list) = brands {
