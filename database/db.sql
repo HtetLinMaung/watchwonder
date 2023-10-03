@@ -19,15 +19,22 @@ CREATE TABLE user_addresses
 (
     address_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id),
+    home_address TEXT,
     street_address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(100),
     postal_code VARCHAR(20) NOT NULL,
     country VARCHAR(100) NOT NULL,
+    township VARCHAR(100),
+    ward VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
+
+alter table user_addresses
+add constraint user_id_deleted_at_unique unique (user_id, deleted_at);
+
 
 CREATE TABLE shops
 (
@@ -288,11 +295,15 @@ CREATE TABLE orders
 CREATE TABLE order_addresses
 (
     address_id SERIAL PRIMARY KEY,
+    home_address TEXT,
     street_address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(100),
     postal_code VARCHAR(20) NOT NULL,
     country VARCHAR(100) NOT NULL,
+    township VARCHAR(100),
+    ward VARCHAR(100),
+    note TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
