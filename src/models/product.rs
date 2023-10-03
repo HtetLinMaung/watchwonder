@@ -37,6 +37,8 @@ pub async fn get_products(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    shop_id: Option<i32>,
+    category_id: Option<i32>,
     brands: &Option<Vec<i32>>,
     models: &Option<Vec<String>>,
     from_price: Option<f64>,
@@ -46,6 +48,16 @@ pub async fn get_products(
 ) -> Result<GetProductsResult, Error> {
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if let Some(s) = shop_id {
+        params.push(Box::new(s));
+        base_query = format!("{base_query} and o.shop_id = ${}", params.len());
+    }
+
+    if let Some(c) = category_id {
+        params.push(Box::new(c));
+        base_query = format!("{base_query} and o.category_id = ${}", params.len());
+    }
 
     if let Some(brand_list) = brands {
         if !brand_list.is_empty() {
