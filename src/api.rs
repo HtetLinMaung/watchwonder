@@ -3,6 +3,7 @@ mod auth;
 mod brand;
 mod category;
 mod image;
+mod order;
 mod product;
 mod shop;
 
@@ -18,4 +19,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(brand::get_brands);
     cfg.service(product::get_products);
     cfg.service(address::get_address);
+    cfg.service(order::add_order);
 }

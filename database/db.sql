@@ -15,6 +15,20 @@ CREATE TABLE users
     deleted_at TIMESTAMP DEFAULT null
 );
 
+CREATE TABLE user_addresses
+(
+    address_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    street_address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100),
+    postal_code VARCHAR(20) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null
+);
+
 CREATE TABLE shops
 (
     shop_id SERIAL PRIMARY KEY,
@@ -264,26 +278,25 @@ CREATE TABLE orders
 (
     order_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id),
-    shipping_address_id INT REFERENCES addresses(address_id),
+    shipping_address_id INT REFERENCES order_addresses(address_id),
     status VARCHAR(50) DEFAULT 'Pending',
-    order_total DECIMAL(10, 2),
+    order_total DECIMAL(10, 2) DEFAULT 0.0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
 
-CREATE TABLE addresses
+CREATE TABLE order_addresses
 (
     address_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(user_id),
     street_address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(100),
     postal_code VARCHAR(20) NOT NULL,
     country VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP DEFAULT null
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
 
 CREATE TABLE order_items
 (
