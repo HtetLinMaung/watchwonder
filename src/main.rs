@@ -2,6 +2,7 @@ extern crate dotenv;
 
 use std::{env, sync::Arc};
 
+use actix_cors::Cors;
 use actix_files as fs;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
@@ -35,7 +36,13 @@ async fn main() -> std::io::Result<()> {
         //     .unwrap_or_else(|_| "2097152".to_string())
         //     .parse::<usize>()
         //     .unwrap_or(2097152);
+        let cors = Cors::permissive() // This allows all origins. Be careful with this in production!
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
         App::new()
+            .wrap(cors)
             .app_data(web::Data::new(client.clone()))
             .configure(api::init)
             .service(fs::Files::new("/images", "./images").show_files_listing())
