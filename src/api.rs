@@ -6,6 +6,7 @@ mod image;
 mod order;
 mod product;
 mod shop;
+mod user;
 
 use actix_web::web;
 
@@ -22,4 +23,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(order::add_order);
     cfg.service(order::get_orders);
     cfg.service(product::get_models);
+    cfg.service(user::get_users);
 }
