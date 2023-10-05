@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::models::user::{create_user, get_user, user_exists};
+use crate::models::user::{self, get_user, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
 use crate::utils::jwt;
 use crate::utils::validator::{validate_email, validate_mobile};
@@ -25,6 +25,12 @@ pub async fn register(
     client: web::Data<Arc<Client>>,
     body: web::Json<RegisterRequest>,
 ) -> HttpResponse {
+    if body.name.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Name must not be empty!"),
+        });
+    }
     if !validate_email(&body.email) {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
@@ -45,13 +51,15 @@ pub async fn register(
                     message: String::from("User already exists!"),
                 });
             }
-            match create_user(
+
+            match user::add_user(
                 &body.name,
                 &body.username,
                 &body.password,
                 &body.email,
                 &body.phone,
                 &body.profile_image,
+                "user",
                 &client,
             )
             .await
@@ -87,9 +95,10 @@ pub struct LoginRequest {
 
 #[derive(Serialize)]
 pub struct LoginData {
-    pub token: Option<String>,
-    pub name: Option<String>,
-    pub profile_image: Option<String>,
+    pub token: String,
+    pub name: String,
+    pub profile_image: String,
+    pub role: String,
 }
 
 #[post("/api/auth/login")]
@@ -117,9 +126,10 @@ pub async fn login(
                     code: 200,
                     message: String::from("Token generated successfully."),
                     data: Some(LoginData {
-                        token: Some(token),
-                        name: Some(user.name),
-                        profile_image: Some(user.profile_image),
+                        token,
+                        name: user.name,
+                        profile_image: user.profile_image,
+                        role: user.role,
                     }),
                 })
             } else {

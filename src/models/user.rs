@@ -34,13 +34,14 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
     Ok(row.is_ok())
 }
 
-pub async fn create_user(
+pub async fn add_user(
     name: &str,
     username: &str,
     password: &str,
     email: &str,
     phone: &str,
     profile_image: &str,
+    role: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let hashed_password =
@@ -48,8 +49,40 @@ pub async fn create_user(
 
     // Insert the new user into the database
     client.execute(
-        "INSERT INTO users (name, username, password, email, phone, profile_image) VALUES ($1, $2, $3, $4, $5, $6)",
-        &[&name, &username, &hashed_password, &email, &phone, &profile_image],
+        "INSERT INTO users (name, username, password, email, phone, profile_image, role) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role],
+    ).await?;
+    Ok(())
+}
+
+pub async fn update_user(
+    user_id: i32,
+    name: &str,
+    password: &str,
+    email: &str,
+    phone: &str,
+    profile_image: &str,
+    role: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let row = client
+        .query_one(
+            "select password from users where user_id = $1 and deleted_at is null",
+            &[&user_id],
+        )
+        .await?;
+    let old_password: &str = row.get("password");
+
+    let mut hashed_password = String::new();
+    if password != old_password {
+        hashed_password =
+            hash(&password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
+    }
+
+    // Insert the new user into the database
+    client.execute(
+        "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6 where user_id = $7 and deleted_at is null",
+        &[&name, &hashed_password, &email, &phone, &profile_image, &role, &user_id],
     ).await?;
     Ok(())
 }
