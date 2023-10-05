@@ -26,4 +26,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(product::get_models);
     cfg.service(user::get_users);
     cfg.service(user::add_user);
+    cfg.service(user::get_user_by_id);
+    cfg.service(user::update_user);
+    cfg.service(user::delete_user);
 }

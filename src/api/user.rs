@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::user::{self, user_exists},
+    models::user,
     utils::{
-        common_struct::{BaseResponse, PaginationResponse},
+        common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
         validator::{validate_email, validate_mobile},
     },
@@ -110,8 +110,8 @@ pub struct AddUserRequest {
 #[post("/api/users")]
 pub async fn add_user(
     req: HttpRequest,
-    client: web::Data<Arc<Client>>,
     body: web::Json<AddUserRequest>,
+    client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
@@ -186,7 +186,7 @@ pub async fn add_user(
             message: String::from("Invalid phone!"),
         });
     }
-    match user_exists(&body.username, &client).await {
+    match user::user_exists(&body.username, &client).await {
         Ok(exists) => {
             if exists {
                 return HttpResponse::BadRequest().json(BaseResponse {
@@ -207,8 +207,8 @@ pub async fn add_user(
             )
             .await
             {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                    code: 200,
+                Ok(()) => HttpResponse::Created().json(BaseResponse {
+                    code: 201,
                     message: String::from("User added successfully"),
                 }),
                 Err(e) => {
@@ -227,5 +227,280 @@ pub async fn add_user(
                 message: String::from("Something went wrong!"),
             });
         }
+    }
+}
+
+#[get("/api/users/{user_id}")]
+pub async fn get_user_by_id(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match user::get_user_by_id(user_id, &client).await {
+        Some(u) => HttpResponse::Ok().json(DataResponse {
+            code: 200,
+            message: String::from("User fetched successfully."),
+            data: Some(u),
+        }),
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("User not found!"),
+        }),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserRequest {
+    pub name: String,
+    pub password: String,
+    pub email: String,
+    pub phone: String,
+    pub role: String,
+    pub profile_image: String,
+}
+
+#[put("/api/users/{user_id}")]
+pub async fn update_user(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    body: web::Json<UpdateUserRequest>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    if body.name.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Name must not be empty!"),
+        });
+    }
+    if &body.role != "admin" && &body.role != "user" {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Role must be admin or user!"),
+        });
+    }
+    if !validate_email(&body.email) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Invalid email!"),
+        });
+    }
+    if !validate_mobile(&body.phone) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Invalid phone!"),
+        });
+    }
+    match user::get_user_by_id(user_id, &client).await {
+        Some(u) => {
+            let old_password: &str = &u.password;
+            let old_profile_image: &str = &u.profile_image;
+            match user::update_user(
+                user_id,
+                &body.name,
+                old_password,
+                &body.password,
+                &body.email,
+                &body.phone,
+                old_profile_image,
+                &body.profile_image,
+                &body.role,
+                &client,
+            )
+            .await
+            {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("User updated successfully"),
+                }),
+                Err(e) => {
+                    eprintln!("User updating error: {}", e);
+                    return HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error updating user!"),
+                    });
+                }
+            }
+        }
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("User not found!"),
+        }),
+    }
+}
+
+#[delete("/api/users/{user_id}")]
+pub async fn delete_user(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match user::get_user_by_id(user_id, &client).await {
+        Some(u) => match user::delete_user(user_id, &u.profile_image, &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 204,
+                message: String::from("User deleted successfully"),
+            }),
+            Err(e) => {
+                eprintln!("User deleting error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error deleting user!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("User not found!"),
+        }),
     }
 }

@@ -1,3 +1,5 @@
+use std::fs;
+
 use bcrypt::{hash, DEFAULT_COST};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -34,6 +36,30 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
     Ok(row.is_ok())
 }
 
+pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
+    let result = client
+        .query_one(
+            "select user_id, username, password, role, name, profile_image, email, phone, created_at from users where user_id = $1 and deleted_at is null",
+            &[&user_id],
+        )
+        .await;
+
+    match result {
+        Ok(row) => Some(User {
+            user_id: row.get("user_id"),
+            username: row.get("username"),
+            password: row.get("password"),
+            role: row.get("role"),
+            name: row.get("name"),
+            profile_image: row.get("profile_image"),
+            email: row.get("email"),
+            phone: row.get("phone"),
+            created_at: row.get("created_at"),
+        }),
+        Err(_) => None,
+    }
+}
+
 pub async fn add_user(
     name: &str,
     username: &str,
@@ -58,22 +84,23 @@ pub async fn add_user(
 pub async fn update_user(
     user_id: i32,
     name: &str,
+    old_password: &str,
     password: &str,
     email: &str,
     phone: &str,
+    old_profile_image: &str,
     profile_image: &str,
     role: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let row = client
-        .query_one(
-            "select password from users where user_id = $1 and deleted_at is null",
-            &[&user_id],
-        )
-        .await?;
-    let old_password: &str = row.get("password");
+    if profile_image != old_profile_image {
+        match fs::remove_file(old_profile_image) {
+            Ok(_) => println!("File deleted successfully!"),
+            Err(e) => println!("Error deleting file: {}", e),
+        };
+    }
 
-    let mut hashed_password = String::new();
+    let mut hashed_password = password.to_string();
     if password != old_password {
         hashed_password =
             hash(&password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
@@ -83,6 +110,22 @@ pub async fn update_user(
     client.execute(
         "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6 where user_id = $7 and deleted_at is null",
         &[&name, &hashed_password, &email, &phone, &profile_image, &role, &user_id],
+    ).await?;
+    Ok(())
+}
+
+pub async fn delete_user(
+    user_id: i32,
+    old_profile_image: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match fs::remove_file(old_profile_image) {
+        Ok(_) => println!("File deleted successfully!"),
+        Err(e) => println!("Error deleting file: {}", e),
+    };
+    client.execute(
+        "update users set deleted_at = CURRENT_TIMESTAMP where user_id = $1 and deleted_at is null",
+        &[&user_id],
     ).await?;
     Ok(())
 }
