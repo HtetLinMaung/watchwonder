@@ -18,7 +18,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(shop::get_shops);
     cfg.service(category::get_categories);
     cfg.service(brand::get_brands);
-    cfg.service(brand::addbrands);
+    cfg.service(brand::add_brands);
     cfg.service(product::get_products);
     cfg.service(address::get_address);
     cfg.service(order::add_order);

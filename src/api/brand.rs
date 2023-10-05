@@ -103,8 +103,8 @@ pub async fn get_brands(
     }
 }
 
-#[post("/api/brands/addbrands")]
-pub async fn addbrands(
+#[post("/api/brands")]
+pub async fn add_brands(
     req: HttpRequest,
     client: web::Data<Arc<Client>>,
     body: web::Json<Brands>,
@@ -152,28 +152,28 @@ pub async fn addbrands(
 
     let role_name: &str = parsed_values[1];
     if role_name.contains(user_role) {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("!UserCannot Be Add  Brands!"),
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
         });
     }
 
     if body.name.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("!Brands Name Cannot Be Null!"),
+            message: String::from("Brand name cannot be empty!"),
         });
     }
     match brand::add_brands(&body.name, &body.description, &body.logo_url, &client).await {
         Ok(_) => HttpResponse::Ok().json(BaseResponse {
             code: 200,
-            message: String::from("Order Adding successfully"),
+            message: String::from("Brand added successfully."),
         }),
         Err(e) => {
-            eprintln!("Order Adding ! {}", e);
+            println!("Error adding brands: {:?}", e);
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
-                message: String::from("Error Order Adding !"),
+                message: String::from("Error trying to add brands to database"),
             })
         }
     }
