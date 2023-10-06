@@ -292,3 +292,30 @@ pub async fn get_order_items(
         page_counts,
     })
 }
+
+pub async fn update_order(
+    order_id: i32,
+    status: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "update orders set status = $1 where order_id = $2 and deleted_at is null",
+            &[&status, &order_id],
+        )
+        .await?;
+    Ok(())
+}
+
+pub async fn order_exists(order_id: i32, client: &Client) -> Result<bool, Error> {
+    // Execute a query to check if the username exists in the users table
+    let row = client
+        .query_one(
+            "select order_id from orders where order_id = $1 and deleted_at is null",
+            &[&order_id],
+        )
+        .await;
+
+    // Return whether the user exists
+    Ok(row.is_ok())
+}
