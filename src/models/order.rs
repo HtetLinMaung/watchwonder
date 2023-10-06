@@ -28,15 +28,27 @@ pub struct Order {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OrderItem {
+    pub order_item_id: i32,
+    pub order_id: i32,
+    pub brand: String,
+    pub model: String,
+    pub quantity: i32,
+    pub price: f64,
+    pub amount: f64,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewOrderItem {
     pub product_id: i32,
     pub quantity: i32,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct NewOrder {
-    pub order_items: Vec<OrderItem>,
+    pub order_items: Vec<NewOrderItem>,
     pub address: NewAddress,
 }
 
@@ -178,6 +190,102 @@ pub async fn get_orders(
 
     Ok(PaginationResult {
         data: orders,
+        total,
+        page: current_page,
+        per_page: limit,
+        page_counts,
+    })
+}
+
+pub async fn get_order_items(
+    search: &Option<String>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    from_date: &Option<NaiveDate>,
+    to_date: &Option<NaiveDate>,
+    order_id: Option<i32>,
+    user_id: i32,
+    role: &str,
+    client: &Client,
+) -> Result<PaginationResult<OrderItem>, Error> {
+    let mut base_query = "from order_items oi inner join orders o on oi.order_id = o.order_id inner join products p on p.product_id = oi.product_id inner join brands b on b.brand_id = p.brand_id where oi.deleted_at is null and o.deleted_at is null and p.deleted_at is null".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if role == "user" {
+        params.push(Box::new(user_id));
+        base_query = format!("{base_query} and o.user_id = ${}", params.len());
+    }
+
+    if let Some(oi) = order_id {
+        params.push(Box::new(oi));
+        base_query = format!("{base_query} and oi.order_id = ${}", params.len());
+    }
+
+    if from_date.is_some() && to_date.is_some() {
+        params.push(Box::new(from_date.unwrap()));
+        params.push(Box::new(to_date.unwrap()));
+        base_query = format!(
+            "{base_query} and oi.created_at::date between ${} and ${}",
+            params.len() - 1,
+            params.len()
+        );
+    }
+
+    let order_options = match role {
+        "admin" => "oi.created_at desc".to_string(),
+        "user" => "b.name, p.model".to_string(),
+        _ => "".to_string(),
+    };
+
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns:
+            "oi.order_item_id, o.order_id, b.name brand, p.model, oi.quantity, oi.price::text, (oi.price * oi.quantity)::text as amount, oi.created_at",
+        base_query: &base_query,
+        search_columns: vec!["b.name", "p.model"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
+        page,
+        per_page,
+    });
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
+    let mut current_page = 0;
+    let mut limit = 0;
+    if page.is_some() && per_page.is_some() {
+        current_page = page.unwrap();
+        limit = per_page.unwrap();
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
+    }
+
+    let order_items = client
+        .query(&result.query, &params_slice[..])
+        .await?
+        .iter()
+        .map(|row| {
+            let price: String = row.get("price");
+            let price: f64 = price.parse().unwrap();
+            let amount: String = row.get("amount");
+            let amount: f64 = amount.parse().unwrap();
+            return OrderItem {
+                order_item_id: row.get("order_item_id"),
+                order_id: row.get("order_id"),
+                brand: row.get("brand"),
+                model: row.get("model"),
+                quantity: row.get("quantity"),
+                price,
+                amount,
+                created_at: row.get("created_at"),
+            };
+        })
+        .collect();
+
+    Ok(PaginationResult {
+        data: order_items,
         total,
         page: current_page,
         per_page: limit,
