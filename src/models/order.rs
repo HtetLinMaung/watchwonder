@@ -37,6 +37,7 @@ pub struct OrderItem {
     pub quantity: i32,
     pub price: f64,
     pub amount: f64,
+    pub product_images: Vec<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -239,7 +240,7 @@ pub async fn get_order_items(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "oi.order_item_id, o.order_id, b.name brand, p.model, oi.quantity, oi.price::text, (oi.price * oi.quantity)::text as amount, oi.created_at",
+            "oi.order_item_id, o.order_id, b.name brand, p.product_id, p.model, oi.quantity, oi.price::text, (oi.price * oi.quantity)::text as amount, oi.created_at",
         base_query: &base_query,
         search_columns: vec!["b.name", "p.model"],
         search: search.as_deref(),
@@ -262,27 +263,34 @@ pub async fn get_order_items(
         page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
-    let order_items = client
-        .query(&result.query, &params_slice[..])
-        .await?
-        .iter()
-        .map(|row| {
-            let price: String = row.get("price");
-            let price: f64 = price.parse().unwrap();
-            let amount: String = row.get("amount");
-            let amount: f64 = amount.parse().unwrap();
-            return OrderItem {
-                order_item_id: row.get("order_item_id"),
-                order_id: row.get("order_id"),
-                brand: row.get("brand"),
-                model: row.get("model"),
-                quantity: row.get("quantity"),
-                price,
-                amount,
-                created_at: row.get("created_at"),
-            };
-        })
-        .collect();
+    let rows = client.query(&result.query, &params_slice[..]).await?;
+
+    let mut order_items = Vec::new();
+    for row in &rows {
+        let price: String = row.get("price");
+        let price: f64 = price.parse().unwrap();
+        let amount: String = row.get("amount");
+        let amount: f64 = amount.parse().unwrap();
+        let product_id: i32 = row.get("product_id");
+        let image_rows = client
+            .query(
+                "select image_url from product_images where product_id = $1 and deleted_at is null",
+                &[&product_id],
+            )
+            .await?;
+        let product_images: Vec<String> = image_rows.iter().map(|r| r.get("image_url")).collect();
+        order_items.push(OrderItem {
+            order_item_id: row.get("order_item_id"),
+            order_id: row.get("order_id"),
+            brand: row.get("brand"),
+            model: row.get("model"),
+            quantity: row.get("quantity"),
+            price,
+            amount,
+            created_at: row.get("created_at"),
+            product_images,
+        });
+    }
 
     Ok(PaginationResult {
         data: order_items,

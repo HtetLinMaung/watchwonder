@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::order::{self, order_exists, NewOrder},
+    models::order::{self, NewOrder},
     utils::{
         common_struct::{BaseResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -325,6 +325,26 @@ pub async fn update_order(
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
+        });
+    }
+
+    let status_list: Vec<&str> = vec![
+        "Pending",
+        "Processing",
+        "Shipped",
+        "Delivered",
+        "Completed",
+        "Cancelled",
+        "Refunded",
+        "Failed",
+        "On Hold",
+        "Backordered",
+        "Returned",
+    ];
+    if !status_list.contains(&body.status.as_str()) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Please select a valid order status: Pending, Processing, Shipped, Delivered, Completed, Cancelled, Refunded, Failed, On Hold, Backordered, or Returned."),
         });
     }
 

@@ -293,6 +293,18 @@ CREATE TABLE orders
     deleted_at TIMESTAMP DEFAULT null
 );
 
+-- Pending: The order has been placed but not yet processed.
+-- Processing: The order is currently being prepared or packaged.
+-- Shipped: The order has been dispatched and is on its way to the customer.
+-- Delivered: The order has been delivered to the customer.
+-- Completed: The order has been received by the customer and is considered complete.
+-- Cancelled: The order was cancelled by the customer or the seller.
+-- Refunded: The order has been refunded to the customer.
+-- Failed: There was an issue processing the order, and it did not go through.
+-- On Hold: The order is temporarily on hold, possibly due to payment issues or stock availability.
+-- Backordered: Some or all of the items in the order are not currently in stock and will be shipped when available.
+-- Returned: The customer has returned the order, and it's being processed for a refund or exchange.
+
 CREATE TABLE order_addresses
 (
     address_id SERIAL PRIMARY KEY,
