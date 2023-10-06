@@ -75,8 +75,8 @@ pub async fn add_order(
 
     client
         .execute(
-            "update orders set order_total = (select sum(price * quantity) from order_items where order_id = $1 and deleted_at is null) where order_id = $2 and deleted_at is null",
-            &[&order_id, &order_id],
+            "update orders set order_total = (select sum(price * quantity) from order_items where order_id = $1 and deleted_at is null), item_counts = (select count(*) from order_items where order_id = $2 and deleted_at is null) where order_id = $3 and deleted_at is null",
+            &[&order_id, &order_id, &order_id],
         )
         .await?;
     Ok(())

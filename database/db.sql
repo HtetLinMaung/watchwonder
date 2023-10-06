@@ -288,6 +288,7 @@ CREATE TABLE orders
     shipping_address_id INT REFERENCES order_addresses(address_id),
     status VARCHAR(50) DEFAULT 'Pending',
     order_total DECIMAL(10, 2) DEFAULT 0.0,
+    item_counts INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
