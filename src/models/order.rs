@@ -24,6 +24,7 @@ pub struct Order {
     pub note: String,
     pub status: String,
     pub order_total: f64,
+    pub item_counts: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -125,7 +126,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text",
+        select_columns: "o.order_id, u.name user_name, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text, o.item_counts",
         base_query: &base_query,
         search_columns: vec![ "u.name", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status"],
         search: search.as_deref(),
@@ -170,6 +171,7 @@ pub async fn get_orders(
                 status: row.get("status"),
                 order_total,
                 created_at: row.get("created_at"),
+                item_counts: row.get("item_counts"),
             };
         })
         .collect();
