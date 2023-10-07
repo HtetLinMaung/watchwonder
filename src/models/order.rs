@@ -13,6 +13,8 @@ use super::address::NewAddress;
 pub struct Order {
     pub order_id: i32,
     pub user_name: String,
+    pub phone: String,
+    pub email: String,
     pub home_address: String,
     pub street_address: String,
     pub city: String,
@@ -139,9 +141,9 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text, o.item_counts",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text, o.item_counts",
         base_query: &base_query,
-        search_columns: vec![ "u.name", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status"],
+        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -172,6 +174,8 @@ pub async fn get_orders(
             return Order {
                 order_id: row.get("order_id"),
                 user_name: row.get("user_name"),
+                phone: row.get("phone"),
+                email: row.get("email"),
                 home_address: row.get("home_address"),
                 street_address: row.get("street_address"),
                 city: row.get("city"),
