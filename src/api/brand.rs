@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{get, post,put, delete,web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
@@ -21,7 +21,7 @@ pub struct GetBrandsResponse {
 }
 #[derive(Deserialize)]
 pub struct Brands {
-    pub brand_id:i32,
+    pub brand_id: i32,
     pub name: String,
     pub description: String,
     pub logo_url: String,
@@ -165,7 +165,7 @@ pub async fn add_brands(
             message: String::from("Brand name cannot be empty!"),
         });
     }
-    match brand::add_brands(&body.name, &body.description, &body.logo_url, &client).await {
+    match brand::add_brand(&body.name, &body.description, &body.logo_url, &client).await {
         Ok(_) => HttpResponse::Ok().json(BaseResponse {
             code: 200,
             message: String::from("Brand added successfully."),
@@ -180,9 +180,8 @@ pub async fn add_brands(
     }
 }
 
-
 #[put("/api/brands/{brand_id}")]
-pub async fn update_brands(
+pub async fn update_brand(
     req: HttpRequest,
     client: web::Data<Arc<Client>>,
     path: web::Path<i32>,
@@ -244,20 +243,26 @@ pub async fn update_brands(
             message: String::from("Brand name cannot be empty!"),
         });
     }
-    match brand::get_brand_by_id(brand_id, &client).await
-    {
-        Some(brand)=>
-        {
-            match  brand::update_brands(brand_id,&body.name, &body.description, &body.logo_url, &client).await {
+    match brand::get_brand_by_id(brand_id, &client).await {
+        Some(_) => {
+            match brand::update_brand(
+                brand_id,
+                &body.name,
+                &body.description,
+                &body.logo_url,
+                &client,
+            )
+            .await
+            {
                 Ok(_) => HttpResponse::Ok().json(BaseResponse {
                     code: 200,
                     message: String::from("Brand Updated successfully."),
                 }),
                 Err(e) => {
-                    println!("Error adding brands: {:?}", e);
+                    println!("Error updating brand: {:?}", e);
                     HttpResponse::InternalServerError().json(BaseResponse {
                         code: 500,
-                        message: String::from("Error trying to Updating Brand to database"),
+                        message: String::from("Error trying to updating Brand to database"),
                     })
                 }
             }
@@ -267,7 +272,6 @@ pub async fn update_brands(
             message: String::from("Brand not found!"),
         }),
     }
-  
 }
 
 #[delete("/api/brands/{brand_id}")]
@@ -317,17 +321,17 @@ pub async fn delete_brand(
         });
     }
 
-    // let role: &str = parsed_values[1];
+    let role: &str = parsed_values[1];
 
-    // if role != "admin" {
-    //     return HttpResponse::Unauthorized().json(BaseResponse {
-    //         code: 401,
-    //         message: String::from("Unauthorized!"),
-    //     });
-    // }
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
 
     match brand::get_brand_by_id(brand_id, &client).await {
-        Some(b) => match brand::delete_brand(brand_id,  &client).await {
+        Some(b) => match brand::delete_brand(brand_id, &client).await {
             Ok(()) => HttpResponse::Ok().json(BaseResponse {
                 code: 204,
                 message: String::from("Brand deleted successfully"),
@@ -346,4 +350,3 @@ pub async fn delete_brand(
         }),
     }
 }
-

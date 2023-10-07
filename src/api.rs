@@ -19,7 +19,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(category::get_categories);
     cfg.service(brand::get_brands);
     cfg.service(brand::add_brands);
-    cfg.service(brand::update_brands);
+    cfg.service(brand::update_brand);
     cfg.service(brand::delete_brand);
     cfg.service(product::get_products);
     cfg.service(address::get_address);

@@ -8,7 +8,7 @@ pub struct Brand {
     pub name: String,
     pub description: String,
     pub logo_url: String,
-    pub created_at : Option<NaiveDateTime>
+    pub created_at: Option<NaiveDateTime>,
 }
 
 pub struct GetBrandsResult {
@@ -74,7 +74,7 @@ pub async fn get_brands(
     })
 }
 
-pub async fn add_brands(
+pub async fn add_brand(
     name: &str,
     description: &str,
     logo_url: &str,
@@ -83,31 +83,26 @@ pub async fn add_brands(
     // Insert the new brands into the database
     client
         .execute(
-            "INSERT INTO brands (name, description, logo_url,created_at) VALUES ($1, $2, $3,CURRENT_TIMESTAMP)",
+            "INSERT INTO brands (name, description, logo_url) VALUES ($1, $2, $3)",
             &[&name, &description, &logo_url],
         )
         .await?;
     Ok(())
 }
 
-
-
-pub async fn update_brands(
-    brand_id :i32,
+pub async fn update_brand(
+    brand_id: i32,
     name: &str,
     description: &str,
     logo_url: &str,
-
     client: &Client,
-)->Result<(), Box<dyn std::error::Error>> 
-{
-        client.execute(
+) -> Result<(), Box<dyn std::error::Error>> {
+    client.execute(
             "update brands set name = $1, description = $2, logo_url = $3 where brand_id = $4 and deleted_at is null",
             &[&name, &description, &logo_url ,&brand_id],
         ).await?;
-        Ok(())
+    Ok(())
 }
-
 
 pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
     let result = client
@@ -124,7 +119,6 @@ pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
             description: row.get("description"),
             logo_url: row.get("logo_url"),
             created_at: row.get("created_at"),
-          
         }),
         Err(_) => None,
     }
@@ -134,7 +128,6 @@ pub async fn delete_brand(
     brand_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-   
     client.execute(
         "update brands set deleted_at = CURRENT_TIMESTAMP where brand_id = $1 and deleted_at is null",
         &[&brand_id],
