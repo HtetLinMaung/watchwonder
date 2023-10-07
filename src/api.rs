@@ -31,4 +31,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(user::delete_user);
     cfg.service(order::get_order_items);
     cfg.service(order::update_order);
+    cfg.service(product::add_product);
+    cfg.service(product::get_product_by_id);
+    cfg.service(product::update_product);
+    cfg.service(product::delete_product);
 }
