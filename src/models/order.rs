@@ -61,16 +61,11 @@ pub async fn add_order(
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // client.execute("insert into user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (user_id, deleted_at) do update set street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country", &[&user_id, &order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township, &order.address.home_address, &order.address.ward]).await?;
-    client.execute("
-    INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
+    client.execute("INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-    ON CONFLICT ON CONSTRAINT idx_unique_user_not_deleted 
-    DO UPDATE SET 
-        street_address = excluded.street_address, 
-        city = excluded.city, 
-        state = excluded.state, 
-        postal_code = excluded.postal_code, 
-        country = excluded.country", 
+    ON CONFLICT (user_id) WHERE deleted_at IS NULL
+    DO UPDATE SET street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country;
+    ", 
     &[&user_id, &order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township, &order.address.home_address, &order.address.ward]
 ).await?;
 
