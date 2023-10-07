@@ -322,7 +322,7 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
 
 pub async fn update_product(
     product_id: i32,
-    old_product_images: Vec<String>,
+    old_product_images: &Vec<String>,
     data: &ProductRequest,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -346,7 +346,7 @@ pub async fn update_product(
             )
             .await?;
     }
-    for old_product_image in &old_product_images {
+    for old_product_image in old_product_images {
         if !data.product_images.contains(old_product_image) {
             match fs::remove_file(old_product_image) {
                 Ok(_) => println!("File deleted successfully!"),
@@ -359,7 +359,7 @@ pub async fn update_product(
 
 pub async fn delete_product(
     product_id: i32,
-    old_product_images: Vec<String>,
+    old_product_images: &Vec<String>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
@@ -374,7 +374,7 @@ pub async fn delete_product(
             &[&product_id],
         )
         .await?;
-    for old_product_image in &old_product_images {
+    for old_product_image in old_product_images {
         match fs::remove_file(old_product_image) {
             Ok(_) => println!("File deleted successfully!"),
             Err(e) => println!("Error deleting file: {}", e),

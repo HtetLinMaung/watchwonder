@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use tokio_postgres::Client;
 
@@ -175,7 +175,7 @@ pub async fn get_models(
 }
 
 #[post("/api/products")]
-pub async fn add_user(
+pub async fn add_product(
     req: HttpRequest,
     body: web::Json<ProductRequest>,
     client: web::Data<Arc<Client>>,
@@ -312,7 +312,7 @@ pub async fn add_user(
 }
 
 #[get("/api/products/{product_id}")]
-pub async fn get_user_by_id(
+pub async fn get_product_by_id(
     req: HttpRequest,
     path: web::Path<i32>,
     client: web::Data<Arc<Client>>,
@@ -373,6 +373,230 @@ pub async fn get_user_by_id(
             message: String::from("Product fetched successfully."),
             data: Some(p),
         }),
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Product not found!"),
+        }),
+    }
+}
+
+#[put("/api/products/{product_id}")]
+pub async fn update_product(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    body: web::Json<ProductRequest>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let product_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    if body.model.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Model must not be empty!"),
+        });
+    }
+    if body.description.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Description must not be empty!"),
+        });
+    }
+    if body.color.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Color must not be empty!"),
+        });
+    }
+    if body.strap_material.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Strap Material must not be empty!"),
+        });
+    }
+    if body.strap_color.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Strap Color must not be empty!"),
+        });
+    }
+    if body.case_material.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Case Material must not be empty!"),
+        });
+    }
+    if body.dial_color.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Dial Color must not be empty!"),
+        });
+    }
+    if body.movement_type.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Movement Type must not be empty!"),
+        });
+    }
+    if body.water_resistance.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Water Resistance must not be empty!"),
+        });
+    }
+    if body.warranty_period.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Warranty Period must not be empty!"),
+        });
+    }
+    if body.dimensions.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Dimensions must not be empty!"),
+        });
+    }
+
+    match product::get_product_by_id(product_id, &client).await {
+        Some(p) => {
+            match product::update_product(product_id, &p.product_images, &body, &client).await {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("Product updated successfully"),
+                }),
+                Err(e) => {
+                    eprintln!("Product updating error: {}", e);
+                    return HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error updating product!"),
+                    });
+                }
+            }
+        }
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Product not found!"),
+        }),
+    }
+}
+
+#[delete("/api/products/{product_id}")]
+pub async fn delete_product(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let product_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match product::get_product_by_id(product_id, &client).await {
+        Some(p) => match product::delete_product(product_id, &p.product_images, &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 204,
+                message: String::from("Product deleted successfully"),
+            }),
+            Err(e) => {
+                eprintln!("Product deleting error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error deleting product!"),
+                });
+            }
+        },
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
             message: String::from("Product not found!"),
