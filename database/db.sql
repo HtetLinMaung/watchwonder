@@ -32,8 +32,12 @@ CREATE TABLE user_addresses
     deleted_at TIMESTAMP DEFAULT null
 );
 
-alter table user_addresses
-add constraint user_id_deleted_at_unique unique (user_id, deleted_at);
+-- alter table user_addresses
+-- add constraint user_id_deleted_at_unique unique (user_id, deleted_at);
+CREATE UNIQUE INDEX idx_unique_user_not_deleted 
+ON user_addresses(user_id) 
+WHERE deleted_at IS NULL;
+
 
 
 CREATE TABLE shops
