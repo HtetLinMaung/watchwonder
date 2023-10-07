@@ -33,7 +33,6 @@ pub async fn get_shops(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<Shop>, Error> {
-    println!("{role}");
     let base_query = "from shops where deleted_at is null".to_string();
     let params: Vec<Box<dyn ToSql + Sync>> = vec![];
     let order_options = match role {
