@@ -60,7 +60,7 @@ pub async fn add_order(
 ) -> Result<(), Box<dyn std::error::Error>> {
     client.execute("insert into user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (user_id, deleted_at) do update set street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country", &[&user_id, &order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township, &order.address.home_address, &order.address.ward]).await?;
 
-    let address_row = client.query_one("insert into order_addresses (street_address, city, state, postal_code, country, township, home_address, ward, note) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning address_id", &[&order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township,&order.address.home_address, &order.address.ward, &order.address.ward]).await?;
+    let address_row = client.query_one("insert into order_addresses (street_address, city, state, postal_code, country, township, home_address, ward, note) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning address_id", &[&order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township,&order.address.home_address, &order.address.ward, &order.address.note]).await?;
 
     let shipping_address_id: i32 = address_row.get("address_id");
 
