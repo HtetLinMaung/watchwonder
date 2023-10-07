@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post,put, delete,web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
@@ -21,6 +21,7 @@ pub struct GetBrandsResponse {
 }
 #[derive(Deserialize)]
 pub struct Brands {
+    pub brand_id:i32,
     pub name: String,
     pub description: String,
     pub logo_url: String,
@@ -178,3 +179,171 @@ pub async fn add_brands(
         }
     }
 }
+
+
+#[put("/api/brands/{brand_id}")]
+pub async fn update_brands(
+    req: HttpRequest,
+    client: web::Data<Arc<Client>>,
+    path: web::Path<i32>,
+    body: web::Json<Brands>,
+) -> HttpResponse {
+    let brand_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+    let user_role: &str = "user";
+
+    let role_name: &str = parsed_values[1];
+    if role_name.contains(user_role) {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    if body.name.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Brand name cannot be empty!"),
+        });
+    }
+    match brand::get_brand_by_id(brand_id, &client).await
+    {
+        Some(brand)=>
+        {
+            match  brand::update_brands(brand_id,&body.name, &body.description, &body.logo_url, &client).await {
+                Ok(_) => HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("Brand Updated successfully."),
+                }),
+                Err(e) => {
+                    println!("Error adding brands: {:?}", e);
+                    HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error trying to Updating Brand to database"),
+                    })
+                }
+            }
+        }
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Brand not found!"),
+        }),
+    }
+  
+}
+
+#[delete("/api/brands/{brand_id}")]
+pub async fn delete_brand(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let brand_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    // let role: &str = parsed_values[1];
+
+    // if role != "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
+
+    match brand::get_brand_by_id(brand_id, &client).await {
+        Some(b) => match brand::delete_brand(brand_id,  &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 204,
+                message: String::from("Brand deleted successfully"),
+            }),
+            Err(e) => {
+                eprintln!("Brand deleting error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error deleting Brand!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Brand not found!"),
+        }),
+    }
+}
+

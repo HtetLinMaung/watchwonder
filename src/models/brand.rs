@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -7,6 +8,7 @@ pub struct Brand {
     pub name: String,
     pub description: String,
     pub logo_url: String,
+    pub created_at : Option<NaiveDateTime>
 }
 
 pub struct GetBrandsResult {
@@ -24,7 +26,7 @@ pub async fn get_brands(
     client: &Client,
 ) -> Result<GetBrandsResult, Error> {
     let mut query =
-        "select brand_id, name, description, logo_url from brands where deleted_at is null"
+        "select brand_id, name, description, logo_url,created_at from brands where deleted_at is null"
             .to_string();
     let mut count_sql =
         String::from("select count(*) as total from brands where deleted_at is null");
@@ -59,6 +61,7 @@ pub async fn get_brands(
             name: row.get("name"),
             description: row.get("description"),
             logo_url: row.get("logo_url"),
+            created_at: row.get("created_at"),
         })
         .collect();
 
@@ -80,9 +83,61 @@ pub async fn add_brands(
     // Insert the new brands into the database
     client
         .execute(
-            "INSERT INTO brands (name, description, logo_url) VALUES ($1, $2, $3)",
+            "INSERT INTO brands (name, description, logo_url,created_at) VALUES ($1, $2, $3,CURRENT_TIMESTAMP)",
             &[&name, &description, &logo_url],
         )
         .await?;
+    Ok(())
+}
+
+
+
+pub async fn update_brands(
+    brand_id :i32,
+    name: &str,
+    description: &str,
+    logo_url: &str,
+
+    client: &Client,
+)->Result<(), Box<dyn std::error::Error>> 
+{
+        client.execute(
+            "update brands set name = $1, description = $2, logo_url = $3 where brand_id = $4 and deleted_at is null",
+            &[&name, &description, &logo_url ,&brand_id],
+        ).await?;
+        Ok(())
+}
+
+
+pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
+    let result = client
+        .query_one(
+            "select brand_id, name, description, logo_url,created_at from brands where brand_id = $1 and deleted_at is null",
+            &[&brand_id],
+        )
+        .await;
+
+    match result {
+        Ok(row) => Some(Brand {
+            brand_id: row.get("brand_id"),
+            name: row.get("name"),
+            description: row.get("description"),
+            logo_url: row.get("logo_url"),
+            created_at: row.get("created_at"),
+          
+        }),
+        Err(_) => None,
+    }
+}
+
+pub async fn delete_brand(
+    brand_id: i32,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+   
+    client.execute(
+        "update brands set deleted_at = CURRENT_TIMESTAMP where brand_id = $1 and deleted_at is null",
+        &[&brand_id],
+    ).await?;
     Ok(())
 }
