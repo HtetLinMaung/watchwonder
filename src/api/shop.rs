@@ -6,7 +6,10 @@ use tokio_postgres::Client;
 
 use crate::{
     models::shop::{self, Shop},
-    utils::{common_struct::BaseResponse, jwt::verify_token_and_get_sub},
+    utils::{
+        common_struct::{BaseResponse, PaginationResponse},
+        jwt::verify_token_and_get_sub,
+    },
 };
 
 #[derive(Serialize)]
@@ -23,8 +26,8 @@ pub struct GetShopsResponse {
 #[derive(Deserialize)]
 pub struct GetShopsQuery {
     pub search: Option<String>,
-    pub page: Option<u32>,
-    pub per_page: Option<u32>,
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
 }
 
 #[get("/api/shops")]
@@ -38,49 +41,42 @@ pub async fn get_shops(
         Some(value) => {
             let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
             if parts.len() == 2 && parts[0] == "Bearer" {
-                parts[1]
+                parts[1].to_string()
             } else {
-                return HttpResponse::BadRequest().json(BaseResponse {
-                    code: 400,
-                    message: String::from("Invalid Authorization header format"),
-                });
+                "".to_string()
             }
         }
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Authorization header missing"),
-            })
-        }
+        None => "".to_string(),
     };
 
-    let sub = match verify_token_and_get_sub(token) {
-        Some(s) => s,
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Invalid token"),
-            })
+    let mut role = "user".to_string();
+    if !token.is_empty() {
+        let sub = match verify_token_and_get_sub(&token) {
+            Some(s) => s,
+            None => {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Invalid token"),
+                })
+            }
+        };
+        // Parse the `sub` value
+        let parsed_values: Vec<String> = sub.split(',').map(|s| s.to_string()).collect();
+        if parsed_values.len() != 2 {
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Invalid sub format in token"),
+            });
         }
-    };
-
-    // Parse the `sub` value
-    let parsed_values: Vec<&str> = sub.split(',').collect();
-    if parsed_values.len() != 2 {
-        return HttpResponse::InternalServerError().json(BaseResponse {
-            code: 500,
-            message: String::from("Invalid sub format in token"),
-        });
+        //  user_id: &str = parsed_values[0];
+        role = parsed_values[1].clone();
     }
 
-    // let user_id: &str = parsed_values[0];
-    // let role_name: &str = parsed_values[1];
-
-    match shop::get_shops(&query.search, &query.page, &query.per_page, &client).await {
-        Ok(item_result) => HttpResponse::Ok().json(GetShopsResponse {
+    match shop::get_shops(&query.search, query.page, query.per_page, &role, &client).await {
+        Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
-            data: item_result.shops,
+            data: item_result.data,
             total: item_result.total,
             page: item_result.page,
             per_page: item_result.per_page,
