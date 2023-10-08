@@ -1,3 +1,5 @@
+use std::fs;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
@@ -74,4 +76,89 @@ pub async fn get_categories(
         per_page: limit,
         page_counts,
     })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CategoryRequest {
+    pub name: String,
+    pub description: String,
+    pub cover_image: String,
+}
+
+pub async fn add_category(
+    data: &CategoryRequest,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "insert into categories (name, description, cover_image) values ($1, $2, $3)",
+            &[&data.name, &data.description, &data.cover_image],
+        )
+        .await?;
+    Ok(())
+}
+
+pub async fn get_category_by_id(category_id: i32, client: &Client) -> Option<Category> {
+    let result = client
+        .query_one(
+            "select category_id, name, description, cover_image, created_at from categories where deleted_at is null and category_id = $1",
+            &[&category_id],
+        )
+        .await;
+
+    match result {
+        Ok(row) => Some(Category {
+            category_id: row.get("category_id"),
+            name: row.get("name"),
+            description: row.get("description"),
+            cover_image: row.get("cover_image"),
+            created_at: row.get("created_at"),
+        }),
+        Err(_) => None,
+    }
+}
+
+pub async fn update_category(
+    category_id: i32,
+    old_cover_image: &str,
+    data: &CategoryRequest,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "update categories set name = $1, description = $2, cover_image = $3 where category_id = $4",
+            &[
+                &data.name,
+                &data.description,
+                &data.cover_image,
+                &category_id,
+            ],
+        )
+        .await?;
+    if old_cover_image != &data.cover_image {
+        match fs::remove_file(old_cover_image) {
+            Ok(_) => println!("File deleted successfully!"),
+            Err(e) => println!("Error deleting file: {}", e),
+        };
+    }
+
+    Ok(())
+}
+
+pub async fn delete_category(
+    category_id: i32,
+    old_cover_image: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "update categories set deleted_at = CURRENT_TIMESTAMP where category_id = $1",
+            &[&category_id],
+        )
+        .await?;
+    match fs::remove_file(old_cover_image) {
+        Ok(_) => println!("File deleted successfully!"),
+        Err(e) => println!("Error deleting file: {}", e),
+    };
+    Ok(())
 }

@@ -42,4 +42,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(shop::get_shop_by_id);
     cfg.service(shop::update_shop);
     cfg.service(shop::delete_shop);
+    cfg.service(category::add_category);
+    cfg.service(category::get_category_by_id);
+    cfg.service(category::update_category);
+    cfg.service(category::delete_category);
 }
