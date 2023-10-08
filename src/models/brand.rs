@@ -2,6 +2,11 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
+use crate::utils::{
+    common_struct::PaginationResult,
+    sql::{generate_pagination_query, PaginationOptions},
+};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Brand {
     pub brand_id: i32,
@@ -11,49 +16,46 @@ pub struct Brand {
     pub created_at: Option<NaiveDateTime>,
 }
 
-pub struct GetBrandsResult {
-    pub brands: Vec<Brand>,
-    pub total: i64,
-    pub page: u32,
-    pub per_page: u32,
-    pub page_counts: usize,
-}
-
 pub async fn get_brands(
     search: &Option<String>,
-    page: &Option<u32>,
-    per_page: &Option<u32>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    role: &str,
     client: &Client,
-) -> Result<GetBrandsResult, Error> {
-    let mut query =
-        "select brand_id, name, description, logo_url,created_at from brands where deleted_at is null"
-            .to_string();
-    let mut count_sql =
-        String::from("select count(*) as total from brands where deleted_at is null");
+) -> Result<PaginationResult<Brand>, Error> {
+    let base_query = "from brands where deleted_at is null".to_string();
     let params: Vec<Box<dyn ToSql + Sync>> = vec![];
-    if let Some(s) = search {
-        query = format!("{query} and (name like '%{s}%' or description like '%{s}%')");
-        count_sql = format!("{count_sql} and (name like '%{s}%' or description like '%{s}%')");
-    }
+    let order_options = match role {
+        "user" => "name asc, created_at desc",
+        "admin" => "created_at desc",
+        _ => "",
+    };
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns: "brand_id, name, description, logo_url, created_at",
+        base_query: &base_query,
+        search_columns: vec!["name", "description"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
+        page,
+        per_page,
+    });
 
-    query = format!("{query} order by name asc, created_at desc");
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
 
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
     let mut current_page = 0;
     let mut limit = 0;
-    let mut page_counts = 0;
-    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
-    let row = client.query_one(&count_sql, &params_slice).await?;
-    let total: i64 = row.get("total");
     if page.is_some() && per_page.is_some() {
         current_page = page.unwrap();
         limit = per_page.unwrap();
-        let offset = (current_page - 1) * limit;
-        query = format!("{query} limit {limit} offset {offset}");
-        page_counts = (total as f64 / f64::from(limit)).ceil() as usize;
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
     let brands: Vec<Brand> = client
-        .query(&query, &params_slice[..])
+        .query(&result.query, &params_slice[..])
         .await?
         .iter()
         .map(|row| Brand {
@@ -65,8 +67,8 @@ pub async fn get_brands(
         })
         .collect();
 
-    Ok(GetBrandsResult {
-        brands,
+    Ok(PaginationResult {
+        data: brands,
         total,
         page: current_page,
         per_page: limit,

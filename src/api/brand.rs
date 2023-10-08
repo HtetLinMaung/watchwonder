@@ -1,24 +1,17 @@
 use std::sync::Arc;
 
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::brand::{self, Brand},
-    utils::{common_struct::BaseResponse, jwt::verify_token_and_get_sub},
+    models::brand::{self},
+    utils::{
+        common_struct::{BaseResponse, PaginationResponse},
+        jwt::verify_token_and_get_sub,
+    },
 };
 
-#[derive(Serialize)]
-pub struct GetBrandsResponse {
-    pub code: u16,
-    pub message: String,
-    pub data: Vec<Brand>,
-    pub total: i64,
-    pub page: u32,
-    pub per_page: u32,
-    pub page_counts: usize,
-}
 #[derive(Deserialize)]
 pub struct Brands {
     pub brand_id: i32,
@@ -30,20 +23,56 @@ pub struct Brands {
 #[derive(Deserialize)]
 pub struct GetBrandsQuery {
     pub search: Option<String>,
-    pub page: Option<u32>,
-    pub per_page: Option<u32>,
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
 }
 
 #[get("/api/brands")]
 pub async fn get_brands(
+    req: HttpRequest,
     client: web::Data<Arc<Client>>,
     query: web::Query<GetBrandsQuery>,
 ) -> impl Responder {
-    match brand::get_brands(&query.search, &query.page, &query.per_page, &client).await {
-        Ok(item_result) => HttpResponse::Ok().json(GetBrandsResponse {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1].to_string()
+            } else {
+                "".to_string()
+            }
+        }
+        None => "".to_string(),
+    };
+
+    let mut role = "user".to_string();
+    if !token.is_empty() {
+        let sub = match verify_token_and_get_sub(&token) {
+            Some(s) => s,
+            None => {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Invalid token"),
+                })
+            }
+        };
+        // Parse the `sub` value
+        let parsed_values: Vec<String> = sub.split(',').map(|s| s.to_string()).collect();
+        if parsed_values.len() != 2 {
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Invalid sub format in token"),
+            });
+        }
+        //  user_id: &str = parsed_values[0];
+        role = parsed_values[1].clone();
+    }
+    match brand::get_brands(&query.search, query.page, query.per_page, &role, &client).await {
+        Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
-            data: item_result.brands,
+            data: item_result.data,
             total: item_result.total,
             page: item_result.page,
             per_page: item_result.per_page,

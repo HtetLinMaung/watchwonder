@@ -1,5 +1,11 @@
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::{Client, Error};
+use tokio_postgres::{types::ToSql, Client, Error};
+
+use crate::utils::{
+    common_struct::PaginationResult,
+    sql::{generate_pagination_query, PaginationOptions},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Category {
@@ -7,49 +13,49 @@ pub struct Category {
     pub name: String,
     pub description: String,
     pub cover_image: String,
-}
-
-pub struct GetCategoriesResult {
-    pub categories: Vec<Category>,
-    pub total: i64,
-    pub page: u32,
-    pub per_page: u32,
-    pub page_counts: usize,
+    pub created_at: NaiveDateTime,
 }
 
 pub async fn get_categories(
     search: &Option<String>,
-    page: &Option<u32>,
-    per_page: &Option<u32>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    role: &str,
     client: &Client,
-) -> Result<GetCategoriesResult, Error> {
-    let mut query =
-        "select category_id, name, description, cover_image from categories where deleted_at is null"
-            .to_string();
-    let mut count_sql =
-        String::from("select count(*) as total from categories where deleted_at is null");
-    if let Some(s) = search {
-        query = format!("{query} and (name like '%{s}%' or description like '%{s}%')");
-        count_sql = format!("{count_sql} and (name like '%{s}%' or description like '%{s}%')");
-    }
+) -> Result<PaginationResult<Category>, Error> {
+    let base_query = "from categories where deleted_at is null".to_string();
+    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let order_options = match role {
+        "user" => "name asc, created_at desc",
+        "admin" => "created_at desc",
+        _ => "",
+    };
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns: "category_id, name, description, cover_image, created_at",
+        base_query: &base_query,
+        search_columns: vec!["name", "description"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
+        page,
+        per_page,
+    });
 
-    query = format!("{query} order by name asc, created_at desc");
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
 
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
     let mut current_page = 0;
     let mut limit = 0;
-    let mut page_counts = 0;
-    let row = client.query_one(&count_sql, &[]).await?;
-    let total: i64 = row.get("total");
     if page.is_some() && per_page.is_some() {
         current_page = page.unwrap();
         limit = per_page.unwrap();
-        let offset = (current_page - 1) * limit;
-        query = format!("{query} limit {limit} offset {offset}");
-        page_counts = (total as f64 / f64::from(limit)).ceil() as usize;
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
     let categories: Vec<Category> = client
-        .query(&query, &[])
+        .query(&result.query, &params_slice)
         .await?
         .iter()
         .map(|row| Category {
@@ -57,11 +63,12 @@ pub async fn get_categories(
             name: row.get("name"),
             description: row.get("description"),
             cover_image: row.get("cover_image"),
+            created_at: row.get("created_at"),
         })
         .collect();
 
-    Ok(GetCategoriesResult {
-        categories,
+    Ok(PaginationResult {
+        data: categories,
         total,
         page: current_page,
         per_page: limit,
