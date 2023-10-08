@@ -4,6 +4,7 @@ use crate::utils::{
     common_struct::PaginationResult,
     sql::{generate_pagination_query, PaginationOptions},
 };
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -28,6 +29,7 @@ pub struct Product {
     pub shop_name: String,
     pub category_name: String,
     pub brand_name: String,
+    pub created_at: NaiveDateTime,
 }
 
 pub async fn get_products(
@@ -108,7 +110,7 @@ pub async fn get_products(
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name",
+        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name, p.created_at",
         base_query: &base_query,
         search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"],
         search: search.as_deref(),
@@ -169,6 +171,7 @@ pub async fn get_products(
             brand_name: row.get("brand_name"),
             category_name: row.get("category_name"),
             shop_name: row.get("shop_name"),
+            created_at: row.get("created_at"),
         });
     }
 
@@ -255,17 +258,36 @@ pub async fn add_product(
     data: &ProductRequest,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    client
+    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16) returning product_id", &data.price);
+    let result = client
         .query_one(
-            "insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning product_id",
-            &[&data.shop_id, &data.category_id, &data.brand_id, &data.model, &data.description, &data.color, &data.strap_material, &data.strap_color, &data.case_material, &data.dial_color, &data.movement_type, &data.water_resistance, &data.warranty_period, &data.dimensions, &data.price, &data.stock_quantity, &data.is_top_model],
+            &query,
+            &[
+                &data.shop_id,
+                &data.category_id,
+                &data.brand_id,
+                &data.model,
+                &data.description,
+                &data.color,
+                &data.strap_material,
+                &data.strap_color,
+                &data.case_material,
+                &data.dial_color,
+                &data.movement_type,
+                &data.water_resistance,
+                &data.warranty_period,
+                &data.dimensions,
+                &data.stock_quantity,
+                &data.is_top_model,
+            ],
         )
         .await?;
+    let product_id: i32 = result.get("product_id");
     for product_image in &data.product_images {
         client
             .execute(
                 "insert into product_images (product_id, image_url) values ($1, $2)",
-                &[&product_image],
+                &[&product_id, &product_image],
             )
             .await?;
     }
@@ -275,7 +297,7 @@ pub async fn add_product(
 pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Product> {
     let result = client
         .query_one(
-            "select p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and p.product_id = $1",
+            "select p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and p.product_id = $1",
             &[&product_id],
         )
         .await;
@@ -314,6 +336,7 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 brand_name: row.get("brand_name"),
                 category_name: row.get("category_name"),
                 shop_name: row.get("shop_name"),
+                created_at: row.get("created_at"),
             })
         }
         Err(_) => None,
@@ -326,10 +349,29 @@ pub async fn update_product(
     data: &ProductRequest,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16 where product_id = $17", &data.price);
     client
         .execute(
-            "update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = $15, stock_quantity = $16, is_top_model = $17 where product_id = $18",
-            &[&data.shop_id, &data.category_id, &data.brand_id, &data.model, &data.description, &data.color, &data.strap_material, &data.strap_color, &data.case_material, &data.dial_color, &data.movement_type, &data.water_resistance, &data.warranty_period, &data.dimensions, &data.price, &data.stock_quantity, &data.is_top_model, &product_id],
+            &query,
+            &[
+                &data.shop_id,
+                &data.category_id,
+                &data.brand_id,
+                &data.model,
+                &data.description,
+                &data.color,
+                &data.strap_material,
+                &data.strap_color,
+                &data.case_material,
+                &data.dial_color,
+                &data.movement_type,
+                &data.water_resistance,
+                &data.warranty_period,
+                &data.dimensions,
+                &data.stock_quantity,
+                &data.is_top_model,
+                &product_id,
+            ],
         )
         .await?;
     client
@@ -342,7 +384,7 @@ pub async fn update_product(
         client
             .execute(
                 "insert into product_images (product_id, image_url) values ($1, $2)",
-                &[&product_image],
+                &[&product_id, &product_image],
             )
             .await?;
     }
