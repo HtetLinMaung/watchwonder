@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
 use crate::{
-    models::shop::{self, Shop},
+    models::shop::{self, Shop, ShopRequest},
     utils::{
-        common_struct::{BaseResponse, PaginationResponse},
+        common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
     },
 };
@@ -90,5 +90,357 @@ pub async fn get_shops(
                 message: String::from("Error trying to read all shops from database"),
             })
         }
+    }
+}
+
+#[post("/api/shops")]
+pub async fn add_shop(
+    req: HttpRequest,
+    body: web::Json<ShopRequest>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    if body.name.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Name must not be empty!"),
+        });
+    }
+    if body.cover_image.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Cover image must not be empty!"),
+        });
+    }
+
+    let status_list: Vec<&str> = vec![
+        "Active",
+        "Inactive",
+        "Closed",
+        "Suspended",
+        "Pending Approval",
+    ];
+    if !status_list.contains(&body.status.as_str()) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from(
+                "Please select a valid status: Active, Inactive, Closed, Suspended, or Pending Approval.",
+            ),
+        });
+    }
+
+    match shop::add_shop(&body, &client).await {
+        Ok(()) => HttpResponse::Created().json(BaseResponse {
+            code: 201,
+            message: String::from("Shop added successfully"),
+        }),
+        Err(e) => {
+            eprintln!("Shop adding error: {}", e);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error adding shop!"),
+            });
+        }
+    }
+}
+
+#[get("/api/shops/{shop_id}")]
+pub async fn get_shop_by_id(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let shop_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match shop::get_shop_by_id(shop_id, &client).await {
+        Some(s) => HttpResponse::Ok().json(DataResponse {
+            code: 200,
+            message: String::from("Shop fetched successfully."),
+            data: Some(s),
+        }),
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Shop not found!"),
+        }),
+    }
+}
+
+#[put("/api/shops/{shop_id}")]
+pub async fn update_shop(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    body: web::Json<ShopRequest>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let shop_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    if body.name.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Name must not be empty!"),
+        });
+    }
+    if body.cover_image.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Cover image must not be empty!"),
+        });
+    }
+
+    let status_list: Vec<&str> = vec![
+        "Active",
+        "Inactive",
+        "Closed",
+        "Suspended",
+        "Pending Approval",
+    ];
+    if !status_list.contains(&body.status.as_str()) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from(
+                "Please select a valid status: Active, Inactive, Closed, Suspended, or Pending Approval.",
+            ),
+        });
+    }
+
+    match shop::get_shop_by_id(shop_id, &client).await {
+        Some(s) => match shop::update_shop(shop_id, &s.cover_image, &body, &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 200,
+                message: String::from("Shop updated successfully"),
+            }),
+            Err(e) => {
+                eprintln!("Shop updating error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error updating shop!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Shop not found!"),
+        }),
+    }
+}
+
+#[delete("/api/shops/{shop_id}")]
+pub async fn delete_shop(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let shop_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match shop::get_shop_by_id(shop_id, &client).await {
+        Some(s) => match shop::delete_shop(shop_id, &s.cover_image, &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 204,
+                message: String::from("Shop deleted successfully"),
+            }),
+            Err(e) => {
+                eprintln!("Shop deleting error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error deleting shop!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Shop not found!"),
+        }),
     }
 }

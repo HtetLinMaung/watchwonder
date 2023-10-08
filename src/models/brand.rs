@@ -99,12 +99,19 @@ pub async fn update_brand(
     name: &str,
     description: &str,
     logo_url: &str,
+    old_logo_url: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client.execute(
             "update brands set name = $1, description = $2, logo_url = $3 where brand_id = $4 and deleted_at is null",
             &[&name, &description, &logo_url ,&brand_id],
         ).await?;
+    if logo_url != old_logo_url {
+        match fs::remove_file(old_logo_url) {
+            Ok(_) => println!("File deleted successfully!"),
+            Err(e) => println!("Error deleting file: {}", e),
+        };
+    }
     Ok(())
 }
 

@@ -42,6 +42,7 @@ pub async fn get_products(
     models: &Option<Vec<String>>,
     from_price: Option<f64>,
     to_price: Option<f64>,
+    is_top_model: Option<bool>,
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<Product>, Error> {
@@ -101,6 +102,11 @@ pub async fn get_products(
             from_price.unwrap(),
             to_price.unwrap()
         );
+    }
+
+    if let Some(top_model) = is_top_model {
+        params.push(Box::new(top_model));
+        base_query = format!("{base_query} and p.is_top_model = ${}", params.len());
     }
 
     let order_options = match role {

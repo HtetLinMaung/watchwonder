@@ -60,6 +60,12 @@ CREATE TABLE shops
     deleted_at TIMESTAMP DEFAULT null
 );
 
+-- Active: The shop is currently operational and open for business.
+-- Inactive: The shop is registered but not currently operational.
+-- Closed: The shop has permanently closed down.
+-- Suspended: The shop's operations are temporarily halted, possibly due to some regulatory or administrative reasons.
+-- Pending Approval: The shop's details are under review, and it hasn't been approved to start operations yet.
+
 INSERT INTO shops
     (
     name,

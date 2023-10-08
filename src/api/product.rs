@@ -23,6 +23,7 @@ pub struct GetProductsRequestBody {
     pub models: Option<Vec<String>>,
     pub from_price: Option<f64>,
     pub to_price: Option<f64>,
+    pub is_top_model: Option<bool>,
 }
 
 #[post("/api/get-products")]
@@ -77,6 +78,7 @@ pub async fn get_products(
         &body.models,
         body.from_price,
         body.to_price,
+        body.is_top_model,
         &role,
         &client,
     )

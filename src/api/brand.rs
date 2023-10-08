@@ -297,12 +297,13 @@ pub async fn update_brand(
         });
     }
     match brand::get_brand_by_id(brand_id, &client).await {
-        Some(_) => {
+        Some(b) => {
             match brand::update_brand(
                 brand_id,
                 &body.name,
                 &body.description,
                 &body.logo_url,
+                &b.logo_url,
                 &client,
             )
             .await
