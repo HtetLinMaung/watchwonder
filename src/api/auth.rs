@@ -3,9 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::user::{self, get_user, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
-use crate::utils::jwt;
+use crate::utils::jwt::{self, verify_token_and_get_sub};
 use crate::utils::validator::{validate_email, validate_mobile};
-use actix_web::{post, web, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
@@ -163,5 +163,89 @@ pub async fn hash_password(password_input: web::Json<PasswordInput>) -> HttpResp
             hashed_password: hashed,
         }),
         Err(_) => HttpResponse::InternalServerError().body("Failed to hash password"),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ChangePasswordRequest {
+    pub new_password: String,
+    pub old_password: String,
+}
+
+#[post("/api/auth/change-password")]
+pub async fn change_password(
+    req: HttpRequest,
+    body: web::Json<ChangePasswordRequest>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let user_id: &str = parsed_values[0];
+    let user_id: i32 = user_id.parse().unwrap();
+    match user::get_user_by_id(user_id, &client).await {
+        Some(u) => {
+            if !verify(&body.old_password, &u.password).unwrap() {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Incorrect password!"),
+                });
+            }
+
+            match user::change_password(user_id, &body.new_password, &client).await {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("Password changed successfully."),
+                }),
+                Err(e) => {
+                    eprintln!("Password changing error: {}", e);
+                    return HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error changing password!"),
+                    });
+                }
+            }
+        }
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("User not found!"),
+        }),
     }
 }

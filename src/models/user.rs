@@ -213,3 +213,19 @@ pub async fn get_users(
         page_counts,
     })
 }
+
+pub async fn change_password(
+    user_id: i32,
+    new_password: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let hashed_password =
+        hash(new_password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
+    client
+        .execute(
+            "update users set password = $1 where user_id = $2",
+            &[&hashed_password, &user_id],
+        )
+        .await?;
+    Ok(())
+}
