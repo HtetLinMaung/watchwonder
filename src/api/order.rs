@@ -62,6 +62,23 @@ pub async fn add_order(
     let user_id: &str = parsed_values[0];
     let user_id: i32 = user_id.parse().unwrap();
 
+    let payment_types: Vec<&str> = vec!["Preorder", "Cash on Delivery"];
+    if !payment_types.contains(&order.payment_type.as_str()) {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from(
+                "Please select a valid payment type: Preorder, or Cash on Delivery.",
+            ),
+        });
+    }
+
+    if &order.payment_type == "Preorder" && order.payslip_screenshot_path.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Please provide your payment slip."),
+        });
+    }
+
     match order::add_order(&order, user_id, &client).await {
         Ok(_) => HttpResponse::Ok().json(BaseResponse {
             code: 200,
@@ -87,6 +104,7 @@ pub struct GetOrdersQuery {
     pub to_date: Option<NaiveDate>,
     pub from_amount: Option<f64>,
     pub to_amount: Option<f64>,
+    pub payment_type: Option<String>,
 }
 
 #[get("/api/orders")]
@@ -147,6 +165,7 @@ pub async fn get_orders(
         &query.to_date,
         &query.from_amount,
         &query.to_amount,
+        &query.payment_type,
         user_id,
         role,
         &client,

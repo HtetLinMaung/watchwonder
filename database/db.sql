@@ -293,9 +293,12 @@ CREATE TABLE orders
     status VARCHAR(50) DEFAULT 'Pending',
     order_total DECIMAL(10, 2) DEFAULT 0.0,
     item_counts INT DEFAULT 0,
+    payment_type VARCHAR(50) DEFAULT 'Cash on Delivery',
+    payslip_screenshot_path VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
+-- Preorder || Cash on Delivery
 
 -- Pending: The order has been placed but not yet processed.
 -- Processing: The order is currently being prepared or packaged.

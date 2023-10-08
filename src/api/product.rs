@@ -36,43 +36,36 @@ pub async fn get_products(
         Some(value) => {
             let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
             if parts.len() == 2 && parts[0] == "Bearer" {
-                parts[1]
+                parts[1].to_string()
             } else {
-                return HttpResponse::BadRequest().json(BaseResponse {
-                    code: 400,
-                    message: String::from("Invalid Authorization header format"),
-                });
+                "".to_string()
             }
         }
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Authorization header missing"),
-            })
-        }
+        None => "".to_string(),
     };
 
-    let sub = match verify_token_and_get_sub(token) {
-        Some(s) => s,
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Invalid token"),
-            })
+    let mut role = "user".to_string();
+    if !token.is_empty() {
+        let sub = match verify_token_and_get_sub(&token) {
+            Some(s) => s,
+            None => {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Invalid token"),
+                })
+            }
+        };
+        // Parse the `sub` value
+        let parsed_values: Vec<String> = sub.split(',').map(|s| s.to_string()).collect();
+        if parsed_values.len() != 2 {
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Invalid sub format in token"),
+            });
         }
-    };
-
-    // Parse the `sub` value
-    let parsed_values: Vec<&str> = sub.split(',').collect();
-    if parsed_values.len() != 2 {
-        return HttpResponse::InternalServerError().json(BaseResponse {
-            code: 500,
-            message: String::from("Invalid sub format in token"),
-        });
+        //  user_id: &str = parsed_values[0];
+        role = parsed_values[1].clone();
     }
-
-    // let user_id: &str = parsed_values[0];
-    let role: &str = parsed_values[1];
 
     match product::get_products(
         &body.search,
@@ -84,7 +77,7 @@ pub async fn get_products(
         &body.models,
         body.from_price,
         body.to_price,
-        role,
+        &role,
         &client,
     )
     .await
@@ -118,41 +111,9 @@ pub struct GetModelsQuery {
 
 #[get("/api/models")]
 pub async fn get_models(
-    req: HttpRequest,
     query: web::Query<GetModelsQuery>,
     client: web::Data<Arc<Client>>,
 ) -> impl Responder {
-    // Extract the token from the Authorization header
-    let token = match req.headers().get("Authorization") {
-        Some(value) => {
-            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
-            if parts.len() == 2 && parts[0] == "Bearer" {
-                parts[1]
-            } else {
-                return HttpResponse::BadRequest().json(BaseResponse {
-                    code: 400,
-                    message: String::from("Invalid Authorization header format"),
-                });
-            }
-        }
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Authorization header missing"),
-            })
-        }
-    };
-
-    match verify_token_and_get_sub(token) {
-        Some(s) => s,
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Invalid token"),
-            })
-        }
-    };
-
     match product::get_models(&query.search, query.page, query.per_page, &client).await {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,

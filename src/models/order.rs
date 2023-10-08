@@ -27,6 +27,8 @@ pub struct Order {
     pub status: String,
     pub order_total: f64,
     pub item_counts: i32,
+    pub payment_type: String,
+    pub payslip_screenshot_path: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -53,6 +55,8 @@ pub struct NewOrderItem {
 pub struct NewOrder {
     pub order_items: Vec<NewOrderItem>,
     pub address: NewAddress,
+    pub payment_type: String,
+    pub payslip_screenshot_path: String,
 }
 
 pub async fn add_order(
@@ -60,7 +64,6 @@ pub async fn add_order(
     user_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // client.execute("insert into user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (user_id, deleted_at) do update set street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country", &[&user_id, &order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township, &order.address.home_address, &order.address.ward]).await?;
     client.execute("INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     ON CONFLICT (user_id) WHERE deleted_at IS NULL
@@ -75,8 +78,8 @@ pub async fn add_order(
 
     let order_row = client
         .query_one(
-            "insert into orders (user_id, shipping_address_id) values ($1, $2) returning order_id",
-            &[&user_id, &shipping_address_id],
+            "insert into orders (user_id, shipping_address_id, payment_type, payslip_screenshot_path) values ($1, $2, $3, $4) returning order_id",
+            &[&user_id, &shipping_address_id, &order.payment_type, &order.payslip_screenshot_path],
         )
         .await?;
     let order_id: i32 = order_row.get("order_id");
@@ -113,6 +116,7 @@ pub async fn get_orders(
     to_date: &Option<NaiveDate>,
     from_amount: &Option<f64>,
     to_amount: &Option<f64>,
+    payment_type: &Option<String>,
     user_id: i32,
     role: &str,
     client: &Client,
@@ -145,12 +149,17 @@ pub async fn get_orders(
         );
     }
 
+    if let Some(pt) = payment_type {
+        params.push(Box::new(pt));
+        base_query = format!("{base_query} and o.payment_type = ${}", params.len());
+    }
+
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, a.created_at, o.status, o.order_total::text, o.item_counts",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, o.item_counts, o.payment_type, o.payslip_screenshot_path",
         base_query: &base_query,
-        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status"],
+        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -196,6 +205,8 @@ pub async fn get_orders(
                 order_total,
                 created_at: row.get("created_at"),
                 item_counts: row.get("item_counts"),
+                payment_type: row.get("payment_type"),
+                payslip_screenshot_path: row.get("payslip_screenshot_path"),
             };
         })
         .collect();
