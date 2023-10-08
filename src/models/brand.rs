@@ -1,3 +1,5 @@
+use std::fs;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
@@ -128,11 +130,16 @@ pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
 
 pub async fn delete_brand(
     brand_id: i32,
+    old_logo_url: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client.execute(
         "update brands set deleted_at = CURRENT_TIMESTAMP where brand_id = $1 and deleted_at is null",
         &[&brand_id],
     ).await?;
+    match fs::remove_file(old_logo_url) {
+        Ok(_) => println!("File deleted successfully!"),
+        Err(e) => println!("Error deleting file: {}", e),
+    };
     Ok(())
 }
