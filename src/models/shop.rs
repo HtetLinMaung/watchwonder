@@ -199,7 +199,7 @@ pub async fn update_shop(
             ],
         )
         .await?;
-    if (old_cover_image != &data.cover_image) {
+    if old_cover_image != &data.cover_image {
         match fs::remove_file(old_cover_image) {
             Ok(_) => println!("File deleted successfully!"),
             Err(e) => println!("Error deleting file: {}", e),
