@@ -266,3 +266,28 @@ pub async fn update_user_profile(
     }
     Ok(())
 }
+
+pub async fn get_admin_user_ids(client: &Client) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+    Ok(client
+        .query(
+            "select user_id from users where role = 'admin' and deleted_at is null",
+            &[],
+        )
+        .await?
+        .iter()
+        .map(|row| row.get("user_id"))
+        .collect())
+}
+
+pub async fn get_user_name(user_id: i32, client: &Client) -> Option<String> {
+    match client
+        .query_one(
+            "select name from users where user_id = $1 and deleted_at is null",
+            &[&user_id],
+        )
+        .await
+    {
+        Ok(row) => Some(row.get("name")),
+        Err(_) => None,
+    }
+}

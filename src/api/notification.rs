@@ -17,7 +17,6 @@ pub struct GetNotificationsBody {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
-    pub user_id: Option<i32>,
     pub status_list: Option<Vec<String>>,
 }
 
@@ -68,7 +67,7 @@ pub async fn get_notifications(
     }
 
     let user_id: &str = parsed_values[0];
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
     let user_id: i32 = user_id.parse().unwrap();
 
     match notification::get_notifications(
@@ -76,9 +75,7 @@ pub async fn get_notifications(
         body.page,
         body.per_page,
         user_id,
-        body.user_id,
         &body.status_list,
-        role,
         &client,
     )
     .await

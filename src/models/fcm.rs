@@ -19,14 +19,26 @@ pub async fn add_fcm_token(
     Ok(())
 }
 
-// pub async fn get_fcm_tokens(
-//     user_id: i32,
+pub async fn get_fcm_tokens(
+    user_id: i32,
+    client: &Client,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let rows = client
+        .query(
+            "select token from fcm_tokens where user_id = $1",
+            &[&user_id],
+        )
+        .await?;
+    Ok(rows.iter().map(|row| row.get("token")).collect())
+}
+
+// pub async fn get_admin_fcm_tokens(
 //     client: &Client,
 // ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 //     let rows = client
 //         .query(
-//             "select token from fcm_tokens where user_id = $1",
-//             &[&user_id],
+//             "select f.token from fcm_tokens f inner join users u on u.user_id = f.user_id where u.role = 'admin' and u.deleted_at is null",
+//             &[],
 //         )
 //         .await?;
 //     Ok(rows.iter().map(|row| row.get("token")).collect())

@@ -430,3 +430,28 @@ pub async fn delete_product(
     }
     Ok(())
 }
+
+#[derive(Serialize)]
+pub struct ProductAndShopName {
+    pub product_name: String,
+    pub shop_name: String,
+}
+
+pub async fn get_product_and_shop_names(
+    product_id_list: &Vec<i32>,
+    client: &Client,
+) -> Result<Vec<ProductAndShopName>, Box<dyn std::error::Error>> {
+    if product_id_list.is_empty() {
+        return Ok(vec![]);
+    }
+    let query = format!("select (b.name || ' ' || p.model) as product_name, s.name shop_name from products p inner join brands b on b.brand_id = p.brand_id inner join shops s on s.shop_id = p.shop_id where p.product_id in ({}) and p.deleted_at is null and s.deleted_at is null and b.deleted_at is null", product_id_list.iter().map(|id| id.to_string()).collect::<Vec<String>>().join(", "));
+    Ok(client
+        .query(&query, &[])
+        .await?
+        .iter()
+        .map(|row| ProductAndShopName {
+            product_name: row.get("product_name"),
+            shop_name: row.get("shop_name"),
+        })
+        .collect())
+}

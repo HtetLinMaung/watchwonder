@@ -6,7 +6,11 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::order::{self, NewOrder},
+    models::{
+        notification,
+        order::{self, NewOrder},
+        product, user,
+    },
     utils::{
         common_struct::{BaseResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -62,6 +66,13 @@ pub async fn add_order(
     let user_id: &str = parsed_values[0];
     let user_id: i32 = user_id.parse().unwrap();
 
+    if order.order_items.is_empty() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Order items must not be empty!"),
+        });
+    }
+
     let payment_types: Vec<&str> = vec!["Preorder", "Cash on Delivery"];
     if !payment_types.contains(&order.payment_type.as_str()) {
         return HttpResponse::BadRequest().json(BaseResponse {
@@ -80,10 +91,48 @@ pub async fn add_order(
     }
 
     match order::add_order(&order, user_id, &client).await {
-        Ok(_) => HttpResponse::Ok().json(BaseResponse {
-            code: 200,
-            message: String::from("Successful."),
-        }),
+        Ok(_) => {
+            tokio::spawn(async move {
+                let user_name = match user::get_user_name(user_id, &client).await {
+                    Some(name) => name,
+                    None => "".to_string(),
+                };
+                let product_shop_names = match product::get_product_and_shop_names(
+                    &order
+                        .order_items
+                        .iter()
+                        .map(|item| item.product_id)
+                        .collect(),
+                    &client,
+                )
+                .await
+                {
+                    Ok(items) => items,
+                    Err(_) => vec![],
+                };
+
+                let mut items: Vec<String> = vec![];
+                let mut shops: Vec<String> = vec![];
+                for product_shop_name in &product_shop_names {
+                    items.push(product_shop_name.product_name.clone());
+                    shops.push(product_shop_name.shop_name.clone());
+                }
+                let message = format!("User {user_name} has placed a {} order for {} from {}. Please review and process the order.",&order.payment_type.to_lowercase(), items.join(", "), shops.join(", "));
+                match notification::add_notification_to_admins("New Order", &message, &client).await
+                {
+                    Ok(()) => {
+                        println!("Notification added successfully.");
+                    }
+                    Err(err) => {
+                        println!("Error adding notification: {:?}", err);
+                    }
+                };
+            });
+            return HttpResponse::Ok().json(BaseResponse {
+                code: 200,
+                message: String::from("Successful."),
+            });
+        }
         Err(err) => {
             // Log the error message here
             println!("Error adding order: {:?}", err);

@@ -4,8 +4,11 @@ use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
+    fcm::send_notification,
     sql::{generate_pagination_query, PaginationOptions},
 };
+
+use super::{fcm::get_fcm_tokens, user::get_admin_user_ids};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Notification {
@@ -22,24 +25,14 @@ pub async fn get_notifications(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
-    token_user_id: i32,
-    user_id: Option<i32>,
+    user_id: i32,
     status_list: &Option<Vec<String>>,
-    role: &str,
     client: &Client,
 ) -> Result<PaginationResult<Notification>, Error> {
     let mut base_query =
-        "from notifications n inner join users u on n.user_id = u.user_id where n.deleted_at is null and u.deleted_at is null"
+        "from notifications n inner join users u on n.user_id = u.user_id where n.deleted_at is null and u.deleted_at is null and n.user_id = $1"
             .to_string();
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
-
-    if role != "admin" {
-        params.push(Box::new(token_user_id));
-        base_query = format!("{base_query} and n.user_id = ${}", params.len());
-    } else if user_id.is_some() {
-        params.push(Box::new(user_id.unwrap()));
-        base_query = format!("{base_query} and n.user_id = ${}", params.len());
-    }
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
     if let Some(slist) = status_list {
         if !slist.is_empty() {
@@ -131,16 +124,36 @@ pub async fn update_notification_status(
     Ok(())
 }
 
+pub async fn add_notification_to_admins(
+    title: &str,
+    message: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let user_id_list = get_admin_user_ids(&client).await?;
+    for user_id in user_id_list {
+        add_notification(user_id, title, message, &client).await?;
+    }
+    Ok(())
+}
+
 pub async fn add_notification(
     user_id: i32,
+    title: &str,
     message: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .execute(
-            "insert into notifications (user_id, message) values ($1, $2)",
-            &[&user_id, &message],
+            "insert into notifications (user_id, title, message) values ($1, $2, $3)",
+            &[&user_id, &title, &message],
         )
         .await?;
+    let fcm_tokens = match get_fcm_tokens(user_id, &client).await {
+        Ok(tokens) => tokens,
+        Err(_) => vec![],
+    };
+    for fcm_token in &fcm_tokens {
+        send_notification(title, message, fcm_token, None).await?;
+    }
     Ok(())
 }
