@@ -47,4 +47,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(category::update_category);
     cfg.service(category::delete_category);
     cfg.service(auth::change_password);
+    cfg.service(user::get_user_profile);
+    cfg.service(user::update_user_profile);
 }
