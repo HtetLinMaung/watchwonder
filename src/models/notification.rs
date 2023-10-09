@@ -12,6 +12,7 @@ pub struct Notification {
     pub notification_id: i32,
     pub name: String,
     pub username: String,
+    pub title: String,
     pub message: String,
     pub status: String,
     pub created_at: NaiveDateTime,
@@ -59,9 +60,10 @@ pub async fn get_notifications(
 
     let order_options = "n.created_at desc";
     let result = generate_pagination_query(PaginationOptions {
-        select_columns: "n.notification_id, n.message, n.status, u.name, u.username, n.created_at",
+        select_columns:
+            "n.notification_id, n.title, n.message, n.status, u.name, u.username, n.created_at",
         base_query: &base_query,
-        search_columns: vec!["n.message", "n.status", "u.name", "u.username"],
+        search_columns: vec!["n.title", "n.message", "n.status", "u.name", "u.username"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -90,6 +92,7 @@ pub async fn get_notifications(
             notification_id: row.get("notification_id"),
             name: row.get("name"),
             username: row.get("username"),
+            title: row.get("title"),
             message: row.get("message"),
             status: row.get("status"),
             created_at: row.get("created_at"),

@@ -351,6 +351,7 @@ CREATE TABLE notifications
 (
     notification_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id),
+    title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     status VARCHAR(50) DEFAULT 'Unread',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
