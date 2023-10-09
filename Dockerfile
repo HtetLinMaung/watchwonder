@@ -23,7 +23,7 @@ RUN cargo build --release
 FROM debian:12-slim
 
 # Install necessary libraries. This might change based on your application's requirements
-RUN apt-get update && apt-get install -y libpq5 libssl1.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*
 
 # Copy over the built binary file from the builder stage
 COPY --from=builder /usr/src/app/target/release/watchwonder /usr/local/bin/
