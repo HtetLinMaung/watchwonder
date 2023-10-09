@@ -337,15 +337,28 @@ pub async fn update_order(
     Ok(())
 }
 
-pub async fn order_exists(order_id: i32, client: &Client) -> Result<bool, Error> {
-    // Execute a query to check if the username exists in the users table
-    let row = client
+// pub async fn order_exists(order_id: i32, client: &Client) -> Result<bool, Error> {
+//     // Execute a query to check if the username exists in the users table
+//     let row = client
+//         .query_one(
+//             "select order_id from orders where order_id = $1 and deleted_at is null",
+//             &[&order_id],
+//         )
+//         .await;
+
+//     // Return whether the user exists
+//     Ok(row.is_ok())
+// }
+
+pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i32> {
+    match client
         .query_one(
-            "select order_id from orders where order_id = $1 and deleted_at is null",
+            "select user_id from orders where order_id = $1 and deleted_at is null",
             &[&order_id],
         )
-        .await;
-
-    // Return whether the user exists
-    Ok(row.is_ok())
+        .await
+    {
+        Ok(row) => Some(row.get("user_id")),
+        Err(_) => None,
+    }
 }

@@ -416,35 +416,48 @@ pub async fn update_order(
         });
     }
 
-    match order::order_exists(order_id, &client).await {
-        Ok(exists) => {
-            if !exists {
-                return HttpResponse::NotFound().json(BaseResponse {
-                    code: 404,
-                    message: String::from("Order not found!"),
+    match order::get_user_id_by_order_id(order_id, &client).await {
+        Some(client_id) => match order::update_order(order_id, &body.status, &client).await {
+            Ok(()) => {
+                tokio::spawn(async move {
+                    let title = format!("Order {}", &body.status);
+                    let status: &str = &body.status;
+                    let message = match status {
+                        "Processing" => {
+                            format!("Your order #{order_id} is {}.", &body.status.to_lowercase())
+                        }
+                        _ => format!(
+                            "Your order #{order_id} has been {}.",
+                            &body.status.to_lowercase()
+                        ),
+                    };
+
+                    match notification::add_notification(client_id, &title, &message, &client).await
+                    {
+                        Ok(()) => {
+                            println!("Notification added successfully.");
+                        }
+                        Err(err) => {
+                            println!("Error adding notification: {:?}", err);
+                        }
+                    };
                 });
-            }
-            match order::update_order(order_id, &body.status, &client).await {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                return HttpResponse::Ok().json(BaseResponse {
                     code: 200,
                     message: String::from("Order updated successfully"),
-                }),
-                Err(e) => {
-                    eprintln!("User updating error: {}", e);
-                    return HttpResponse::InternalServerError().json(BaseResponse {
-                        code: 500,
-                        message: String::from("Error updating order!"),
-                    });
-                }
+                });
             }
-        }
-        Err(err) => {
-            // Log the error message here
-            println!("Error updating order: {:?}", err);
-            HttpResponse::InternalServerError().json(BaseResponse {
-                code: 500,
-                message: String::from("Error trying to update order from database"),
-            })
-        }
+            Err(e) => {
+                eprintln!("User updating error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error updating order!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Order not found!"),
+        }),
     }
 }
