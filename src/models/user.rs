@@ -229,3 +229,38 @@ pub async fn change_password(
         .await?;
     Ok(())
 }
+
+pub struct UserProfile {
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub profile_image: String,
+}
+
+async fn get_user_profile(user_id: i32, client: &Client) -> Option<UserProfile> {
+    let result = client.query_one("select name, email, phone, profile_image from users where deleted_at is null and user_id = $1", &[&user_id]).await;
+    match result {
+        Ok(row) => Some(UserProfile {
+            name: row.get("name"),
+            email: row.get("email"),
+            phone: row.get("phone"),
+            profile_image: row.get("profile_image"),
+        }),
+        Err(_) => None,
+    }
+}
+
+async fn update_user_profile(
+    data: &UserProfile,
+    old_profile_image: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client.execute("update users set name = $1, email = $2, phone = $3, profile_image = $4 where user_id = $5", &[&data.name, &data.email, &data.phone, &data.profile_image]).await?;
+    if data.profile_image != old_profile_image {
+        match fs::remove_file(old_profile_image) {
+            Ok(_) => println!("File deleted successfully!"),
+            Err(e) => println!("Error deleting file: {}", e),
+        };
+    }
+    Ok(())
+}
