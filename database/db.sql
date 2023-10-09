@@ -350,12 +350,30 @@ CREATE TABLE order_items
 CREATE TABLE notifications
 (
     notification_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
+    user_id INT REFERENCES users(user_id),
     message TEXT NOT NULL,
     status VARCHAR(50) DEFAULT 'Unread',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
+-- Unread: The user hasn't seen or interacted with the notification yet.
+-- Read: The user has seen the notification but hasn't taken any action on it.
+-- Acted: The user has taken some action on the notification, such as clicking on a link or button associated with it.
+-- Dismissed: The user has chosen to dismiss or ignore the notification without taking any further action.
+-- Archived: The user has chosen to archive the notification for future reference.
+
+CREATE TABLE fcm_tokens
+(
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    token VARCHAR(255) NOT NULL UNIQUE,
+    device_type VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_unique_user_device_type 
+ON fcm_tokens(user_id, device_type);
+-- e.g., 'android', 'ios', 'web'
 
 CREATE INDEX idx_user_addresses ON addresses(user_id);
 

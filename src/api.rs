@@ -2,7 +2,9 @@ mod address;
 mod auth;
 mod brand;
 mod category;
+mod fcm;
 mod image;
+mod notification;
 mod order;
 mod product;
 mod shop;
@@ -49,4 +51,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(auth::change_password);
     cfg.service(user::get_user_profile);
     cfg.service(user::update_user_profile);
+    cfg.service(fcm::add_fcm);
+    cfg.service(notification::get_notifications);
+    cfg.service(notification::get_unread_counts);
+    cfg.service(notification::update_notification_status);
 }

@@ -1,0 +1,143 @@
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
+use tokio_postgres::{types::ToSql, Client, Error};
+
+use crate::utils::{
+    common_struct::PaginationResult,
+    sql::{generate_pagination_query, PaginationOptions},
+};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Notification {
+    pub notification_id: i32,
+    pub name: String,
+    pub username: String,
+    pub message: String,
+    pub status: String,
+    pub created_at: NaiveDateTime,
+}
+
+pub async fn get_notifications(
+    search: &Option<String>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    token_user_id: i32,
+    user_id: Option<i32>,
+    status_list: &Option<Vec<String>>,
+    role: &str,
+    client: &Client,
+) -> Result<PaginationResult<Notification>, Error> {
+    let mut base_query =
+        "from notifications n inner join users u on n.user_id = u.user_id where n.deleted_at is null and u.deleted_at is null"
+            .to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if role != "admin" {
+        params.push(Box::new(token_user_id));
+        base_query = format!("{base_query} and n.user_id = ${}", params.len());
+    } else if user_id.is_some() {
+        params.push(Box::new(user_id.unwrap()));
+        base_query = format!("{base_query} and n.user_id = ${}", params.len());
+    }
+
+    if let Some(slist) = status_list {
+        if !slist.is_empty() {
+            if slist.len() > 1 {
+                let mut placeholders: Vec<String> = vec![];
+                for status in slist {
+                    params.push(Box::new(status));
+                    placeholders.push(format!("${}", params.len()));
+                }
+                base_query = format!("{base_query} and n.status in ({})", placeholders.join(", "));
+            } else {
+                let status = slist[0].clone();
+                params.push(Box::new(status));
+                base_query = format!("{base_query} and n.status = ${}", params.len());
+            }
+        }
+    }
+
+    let order_options = "n.created_at desc";
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns: "n.notification_id, n.message, n.status, u.name, u.username, n.created_at",
+        base_query: &base_query,
+        search_columns: vec!["n.message", "n.status", "u.name", "u.username"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
+        page,
+        per_page,
+    });
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
+    let mut current_page = 0;
+    let mut limit = 0;
+    if page.is_some() && per_page.is_some() {
+        current_page = page.unwrap();
+        limit = per_page.unwrap();
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
+    }
+
+    let notifications: Vec<Notification> = client
+        .query(&result.query, &params_slice[..])
+        .await?
+        .iter()
+        .map(|row| Notification {
+            notification_id: row.get("notification_id"),
+            name: row.get("name"),
+            username: row.get("username"),
+            message: row.get("message"),
+            status: row.get("status"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
+
+    Ok(PaginationResult {
+        data: notifications,
+        total,
+        page: current_page,
+        per_page: limit,
+        page_counts,
+    })
+}
+
+pub async fn get_unread_counts(
+    user_id: i32,
+    client: &Client,
+) -> Result<i64, Box<dyn std::error::Error>> {
+    let result = client
+        .query_one(
+            "select count(*) as total from notifications where user_id = $1 and status = 'Unread' and deleted_at is null",
+            &[&user_id],
+        )
+        .await?;
+    let total: i64 = result.get("total");
+    Ok(total)
+}
+
+pub async fn update_notification_status(
+    notification_id: i32,
+    status: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client.execute("update notifications set status = $1 where notification_id = $2 and deleted_at is null", &[&status, &notification_id]).await?;
+    Ok(())
+}
+
+pub async fn add_notification(
+    user_id: i32,
+    message: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "insert into notifications (user_id, message) values ($1, $2)",
+            &[&user_id, &message],
+        )
+        .await?;
+    Ok(())
+}
