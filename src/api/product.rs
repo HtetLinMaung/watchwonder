@@ -24,6 +24,7 @@ pub struct GetProductsRequestBody {
     pub from_price: Option<f64>,
     pub to_price: Option<f64>,
     pub is_top_model: Option<bool>,
+    pub products: Option<Vec<i32>>,
 }
 
 #[post("/api/get-products")]
@@ -79,6 +80,7 @@ pub async fn get_products(
         body.from_price,
         body.to_price,
         body.is_top_model,
+        &body.products,
         &role,
         &client,
     )
@@ -564,5 +566,27 @@ pub async fn delete_product(
             code: 404,
             message: String::from("Product not found!"),
         }),
+    }
+}
+
+#[get("/api/products/{product_id}/recommended")]
+pub async fn get_recommended_products_for_product(
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let product_id = path.into_inner();
+    match product::get_recommended_products_for_product(product_id, &client).await {
+        Ok(products) => HttpResponse::Ok().json(DataResponse {
+            code: 204,
+            message: String::from("Recommended products fetched successfully"),
+            data: Some(products),
+        }),
+        Err(e) => {
+            eprintln!("Recommended products fetching error: {}", e);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error fetching recommended products!"),
+            });
+        }
     }
 }

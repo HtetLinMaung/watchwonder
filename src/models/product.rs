@@ -43,6 +43,7 @@ pub async fn get_products(
     from_price: Option<f64>,
     to_price: Option<f64>,
     is_top_model: Option<bool>,
+    products: &Option<Vec<i32>>,
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<Product>, Error> {
@@ -107,6 +108,26 @@ pub async fn get_products(
     if let Some(top_model) = is_top_model {
         params.push(Box::new(top_model));
         base_query = format!("{base_query} and p.is_top_model = ${}", params.len());
+    }
+
+    if let Some(product_list) = products {
+        if !product_list.is_empty() {
+            if product_list.len() > 1 {
+                let mut placeholders: Vec<String> = vec![];
+                for product_id in product_list {
+                    params.push(Box::new(product_id));
+                    placeholders.push(format!("${}", params.len()));
+                }
+                base_query = format!(
+                    "{base_query} and p.product_id in ({})",
+                    placeholders.join(", ")
+                );
+            } else {
+                let product_id = product_list[0];
+                params.push(Box::new(product_id));
+                base_query = format!("{base_query} and p.product_id = ${}", params.len());
+            }
+        }
     }
 
     let order_options = match role {
@@ -455,3 +476,87 @@ pub async fn get_product_and_shop_names(
         })
         .collect())
 }
+
+pub async fn get_recommended_products_for_product(
+    product_id: i32,
+    client: &Client,
+) -> Result<Vec<i32>, Error> {
+    let query = "
+        WITH UsersWhoBoughtThisProduct AS (
+            SELECT o.user_id
+            FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE oi.product_id = $1
+        ),
+        ProductsBoughtByTheseUsers AS (
+            SELECT oi.product_id, COUNT(DISTINCT o.user_id) as user_count
+            FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE o.user_id IN (SELECT user_id FROM UsersWhoBoughtThisProduct)
+            AND oi.product_id <> $1
+            GROUP BY oi.product_id
+        )
+        SELECT product_id
+        FROM ProductsBoughtByTheseUsers
+        ORDER BY user_count DESC
+        LIMIT 10;
+    ";
+
+    let rows = client.query(query, &[&product_id]).await?;
+    let product_ids: Vec<i32> = rows.iter().map(|row| row.get(0)).collect();
+
+    Ok(product_ids)
+}
+
+// pub async fn get_top_products_for_user(client: &Client, user_id: i32) -> Result<Vec<i32>, Error> {
+//     let query = "
+//         SELECT product_id
+//         FROM order_items
+//         WHERE order_id IN (SELECT order_id FROM orders WHERE user_id = $1)
+//         GROUP BY product_id
+//         ORDER BY COUNT(*) DESC
+//         LIMIT 10;
+//     ";
+
+//     let rows = client.query(query, &[&user_id]).await?;
+//     let product_ids: Vec<i32> = rows.iter().map(|row| row.get(0)).collect();
+
+//     Ok(product_ids)
+// }
+
+// pub async fn get_recommended_products_for_user(
+//     client: &Client,
+//     user_id: i32,
+// ) -> Result<Vec<i32>, Error> {
+//     let query = "
+//         WITH UserProducts AS (
+//             SELECT product_id
+//             FROM order_items
+//             WHERE order_id IN (SELECT order_id FROM orders WHERE user_id = $1)
+//         ),
+//         SimilarUsers AS (
+//             SELECT o.user_id
+//             FROM orders o
+//             JOIN order_items oi ON o.order_id = oi.order_id
+//             WHERE oi.product_id IN (SELECT product_id FROM UserProducts)
+//             AND o.user_id <> $1
+//         ),
+//         RecommendedProducts AS (
+//             SELECT oi.product_id, COUNT(DISTINCT o.user_id) as user_count
+//             FROM orders o
+//             JOIN order_items oi ON o.order_id = oi.order_id
+//             WHERE o.user_id IN (SELECT user_id FROM SimilarUsers)
+//             AND oi.product_id NOT IN (SELECT product_id FROM UserProducts)
+//             GROUP BY oi.product_id
+//         )
+//         SELECT product_id
+//         FROM RecommendedProducts
+//         ORDER BY user_count DESC
+//         LIMIT 10;
+//     ";
+
+//     let rows = client.query(query, &[&user_id]).await?;
+//     let product_ids: Vec<i32> = rows.iter().map(|row| row.get(0)).collect();
+
+//     Ok(product_ids)
+// }

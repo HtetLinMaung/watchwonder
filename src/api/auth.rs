@@ -249,3 +249,22 @@ pub async fn change_password(
         }),
     }
 }
+
+#[derive(Deserialize)]
+pub struct VerifyTokenRequest {
+    pub token: String,
+}
+
+#[post("/api/auth/verify-token")]
+pub async fn verify_token(body: web::Json<VerifyTokenRequest>) -> impl Responder {
+    if verify_token_and_get_sub(&body.token).is_none() {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Token is invalid!"),
+        });
+    };
+    return HttpResponse::Ok().json(BaseResponse {
+        code: 200,
+        message: String::from("Token is valid."),
+    });
+}
