@@ -57,4 +57,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(notification::update_notification_status);
     cfg.service(product::get_recommended_products_for_product);
     cfg.service(auth::verify_token);
+    cfg.service(product::get_recommended_products_for_user);
 }

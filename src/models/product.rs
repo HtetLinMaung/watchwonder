@@ -524,39 +524,39 @@ pub async fn get_recommended_products_for_product(
 //     Ok(product_ids)
 // }
 
-// pub async fn get_recommended_products_for_user(
-//     client: &Client,
-//     user_id: i32,
-// ) -> Result<Vec<i32>, Error> {
-//     let query = "
-//         WITH UserProducts AS (
-//             SELECT product_id
-//             FROM order_items
-//             WHERE order_id IN (SELECT order_id FROM orders WHERE user_id = $1)
-//         ),
-//         SimilarUsers AS (
-//             SELECT o.user_id
-//             FROM orders o
-//             JOIN order_items oi ON o.order_id = oi.order_id
-//             WHERE oi.product_id IN (SELECT product_id FROM UserProducts)
-//             AND o.user_id <> $1
-//         ),
-//         RecommendedProducts AS (
-//             SELECT oi.product_id, COUNT(DISTINCT o.user_id) as user_count
-//             FROM orders o
-//             JOIN order_items oi ON o.order_id = oi.order_id
-//             WHERE o.user_id IN (SELECT user_id FROM SimilarUsers)
-//             AND oi.product_id NOT IN (SELECT product_id FROM UserProducts)
-//             GROUP BY oi.product_id
-//         )
-//         SELECT product_id
-//         FROM RecommendedProducts
-//         ORDER BY user_count DESC
-//         LIMIT 10;
-//     ";
+pub async fn get_recommended_products_for_user(
+    user_id: i32,
+    client: &Client,
+) -> Result<Vec<i32>, Error> {
+    let query = "
+        WITH UserProducts AS (
+            SELECT product_id
+            FROM order_items
+            WHERE order_id IN (SELECT order_id FROM orders WHERE user_id = $1)
+        ),
+        SimilarUsers AS (
+            SELECT o.user_id
+            FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE oi.product_id IN (SELECT product_id FROM UserProducts)
+            AND o.user_id <> $1
+        ),
+        RecommendedProducts AS (
+            SELECT oi.product_id, COUNT(DISTINCT o.user_id) as user_count
+            FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE o.user_id IN (SELECT user_id FROM SimilarUsers)
+            AND oi.product_id NOT IN (SELECT product_id FROM UserProducts)
+            GROUP BY oi.product_id
+        )
+        SELECT product_id
+        FROM RecommendedProducts
+        ORDER BY user_count DESC
+        LIMIT 10;
+    ";
 
-//     let rows = client.query(query, &[&user_id]).await?;
-//     let product_ids: Vec<i32> = rows.iter().map(|row| row.get(0)).collect();
+    let rows = client.query(query, &[&user_id]).await?;
+    let product_ids: Vec<i32> = rows.iter().map(|row| row.get(0)).collect();
 
-//     Ok(product_ids)
-// }
+    Ok(product_ids)
+}
