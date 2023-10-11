@@ -220,6 +220,14 @@ pub async fn change_password(
 
     let user_id: &str = parsed_values[0];
     let user_id: i32 = user_id.parse().unwrap();
+
+    if &body.old_password == &body.new_password {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Old password and new password is same!"),
+        });
+    }
+
     match user::get_user_by_id(user_id, &client).await {
         Some(u) => {
             if !verify(&body.old_password, &u.password).unwrap() {

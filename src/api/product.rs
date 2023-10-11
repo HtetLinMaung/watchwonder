@@ -641,7 +641,7 @@ pub async fn get_recommended_products_for_user(
 
     match product::get_recommended_products_for_user(user_id, &client).await {
         Ok(products) => HttpResponse::Ok().json(DataResponse {
-            code: 204,
+            code: 200,
             message: String::from("Recommended products fetched successfully"),
             data: Some(products),
         }),
