@@ -3,7 +3,7 @@ use actix_multipart::Multipart;
 use actix_web::{post, web, HttpResponse, Result};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::io::Write;
+use std::{fs, io::Write};
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -60,6 +60,10 @@ pub async fn upload(
                                 image::ImageFormat::Png,
                             ) {
                                 eprintln!("Resized image saving error: {}", e);
+                                match fs::remove_file(format!("./images/{}", filename)) {
+                                    Ok(_) => println!("File deleted successfully!"),
+                                    Err(e) => println!("Error deleting file: {}", e),
+                                };
                                 return Ok(HttpResponse::InternalServerError().json(
                                     BaseResponse {
                                         code: 500,
@@ -70,6 +74,10 @@ pub async fn upload(
                         }
                         Err(e) => {
                             eprintln!("Image opening error: {}", e);
+                            match fs::remove_file(format!("./images/{}", filename)) {
+                                Ok(_) => println!("File deleted successfully!"),
+                                Err(e) => println!("Error deleting file: {}", e),
+                            };
                             return Ok(HttpResponse::InternalServerError().json(BaseResponse {
                                 code: 500,
                                 message: String::from("Error resizing image!"),
