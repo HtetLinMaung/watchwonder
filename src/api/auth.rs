@@ -224,7 +224,7 @@ pub async fn change_password(
     if &body.old_password == &body.new_password {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("Old password and new password is same!"),
+            message: String::from("Old password and new password are the same!"),
         });
     }
 
