@@ -1,8 +1,8 @@
+use crate::utils::common_struct::BaseResponse;
 use actix_multipart::Multipart;
 use actix_web::{post, web, HttpResponse, Result};
 use futures::StreamExt;
-use serde::Serialize;
-
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use uuid::Uuid;
 
@@ -13,8 +13,16 @@ pub struct UploadResponse {
     pub url: String,
 }
 
+#[derive(Deserialize)]
+pub struct ResolutionInfo {
+    resolution: Option<String>,
+}
+
 #[post("/api/image/upload")]
-pub async fn upload(mut payload: Multipart) -> Result<HttpResponse> {
+pub async fn upload(
+    web::Query(info): web::Query<ResolutionInfo>,
+    mut payload: Multipart,
+) -> Result<HttpResponse, Box<dyn std::error::Error>> {
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content_disposition = field.content_disposition();
@@ -33,6 +41,45 @@ pub async fn upload(mut payload: Multipart) -> Result<HttpResponse> {
                 .unwrap();
         }
 
+        // Resize the image if resolution parameter is provided
+        if let Some(resolution) = &info.resolution {
+            let parts: Vec<&str> = resolution.split('x').collect();
+            if parts.len() == 2 {
+                if let (Ok(width), Ok(height)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>())
+                {
+                    let img_path = format!("./images/{}", filename);
+                    match image::open(img_path) {
+                        Ok(img) => {
+                            let resized = img.resize_exact(
+                                width,
+                                height,
+                                image::imageops::FilterType::Nearest,
+                            );
+                            if let Err(e) = resized.save_with_format(
+                                format!("./images/{}", filename),
+                                image::ImageFormat::Png,
+                            ) {
+                                eprintln!("Resized image saving error: {}", e);
+                                return Ok(HttpResponse::InternalServerError().json(
+                                    BaseResponse {
+                                        code: 500,
+                                        message: String::from("Error resizing image!"),
+                                    },
+                                ));
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Image opening error: {}", e);
+                            return Ok(HttpResponse::InternalServerError().json(BaseResponse {
+                                code: 500,
+                                message: String::from("Error resizing image!"),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+
         let url = format!("/images/{}", filename);
         return Ok(HttpResponse::Ok().json(UploadResponse {
             code: 200,
@@ -43,7 +90,7 @@ pub async fn upload(mut payload: Multipart) -> Result<HttpResponse> {
 
     Ok(HttpResponse::InternalServerError().json(UploadResponse {
         code: 500,
-        message: "Image uploaded successfully".to_string(),
+        message: "Image upload failed".to_string(),
         url: "".to_string(),
     }))
 }
