@@ -12,7 +12,7 @@ use crate::{
         product, user,
     },
     utils::{
-        common_struct::{BaseResponse, PaginationResponse},
+        common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
     },
 };
@@ -91,7 +91,7 @@ pub async fn add_order(
     }
 
     match order::add_order(&order, user_id, &client).await {
-        Ok(_) => {
+        Ok(order_id) => {
             tokio::spawn(async move {
                 let user_name = match user::get_user_name(user_id, &client).await {
                     Some(name) => name,
@@ -128,9 +128,10 @@ pub async fn add_order(
                     }
                 };
             });
-            return HttpResponse::Ok().json(BaseResponse {
+            return HttpResponse::Ok().json(DataResponse {
                 code: 200,
                 message: String::from("Successful."),
+                data: Some(order_id),
             });
         }
         Err(err) => {
