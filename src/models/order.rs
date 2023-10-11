@@ -63,11 +63,11 @@ pub async fn add_order(
     order: &NewOrder,
     user_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<i32, Box<dyn std::error::Error>> {
     client.execute("INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     ON CONFLICT (user_id) WHERE deleted_at IS NULL
-    DO UPDATE SET street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country;
+    DO UPDATE SET street_address = excluded.street_address, city = excluded.city, state = excluded.state, postal_code = excluded.postal_code, country = excluded.country
     ", 
     &[&user_id, &order.address.street_address, &order.address.city, &order.address.state, &order.address.postal_code, &order.address.country, &order.address.township, &order.address.home_address, &order.address.ward]
 ).await?;
@@ -105,7 +105,7 @@ pub async fn add_order(
             &[&order_id, &order_id, &order_id],
         )
         .await?;
-    Ok(())
+    Ok(order_id)
 }
 
 pub async fn get_orders(
