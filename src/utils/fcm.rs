@@ -12,7 +12,7 @@ pub async fn send_notification(
     let firebase_fcm_url = env::var("FIREBASE_FCM_URL")
         .unwrap_or_else(|_| String::from("https://fcm.googleapis.com/fcm/send"));
     let firebase_fcm_auth =
-        env::var("FIREBASE_FCM_AUTH").unwrap_or_else(|_| String::from("key=AAAAbqDfgxU:APA91bFyK7L-58Gz9IJfMY_5BIZY5KTDRHKLHz3di5oh_Jab0G730E0OmP3tZgDobMLg82jFWKoVDQtKprqEm8fgN-dh4ZnBG_vJXrQh9tVkx2WmSvuo9oEuDCbLGxBilBLgvKhYVUqw"));
+        env::var("FIREBASE_FCM_AUTH").unwrap_or_else(|_| String::from("key=AAAAP89u1s0:APA91bHf2dDH0XrJt1u71o8UrNsmOt57A4TJhQzj_MtSygfHoBJ_6VXvjriacwhcNeLSHp4Ix947YmtZO_f2IwJL_9zqU2UkKH6gSzbpJ86YXXghiCfLoLpJ9Iz4Hsj8SMQ8XhjrcAC1"));
 
     // Sample data for the notification
     let mut notification = HashMap::new();
