@@ -3,6 +3,7 @@ use std::fs;
 use crate::utils::{
     common_struct::PaginationResult,
     sql::{generate_pagination_query, PaginationOptions},
+    vector_finder::add_vector,
 };
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -317,6 +318,26 @@ pub async fn add_product(
                 &[&product_id, &product_image],
             )
             .await?;
+        // Clone necessary data for the async block
+        let product_id_clone = product_id.clone();
+        let product_image_clone = product_image.clone();
+
+        tokio::spawn(async move {
+            match add_vector(
+                &product_id_clone.to_string(),
+                &product_image_clone.replace("/images", "images"),
+            )
+            .await
+            {
+                Ok(response) => {
+                    // println!("Vector added successfully.");
+                    println!("{:?}", response);
+                }
+                Err(err) => {
+                    println!("Error adding vector: {:?}", err);
+                }
+            }
+        });
     }
     Ok(())
 }
