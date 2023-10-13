@@ -9,6 +9,7 @@ mod order;
 mod product;
 mod shop;
 mod user;
+mod vector;
 
 use actix_web::web;
 
