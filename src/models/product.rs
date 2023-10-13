@@ -27,8 +27,11 @@ pub struct Product {
     pub stock_quantity: i32,
     pub is_top_model: bool,
     pub product_images: Vec<String>,
+    pub shop_id: i32,
     pub shop_name: String,
+    pub category_id: i32,
     pub category_name: String,
+    pub brand_id: i32,
     pub brand_name: String,
     pub created_at: NaiveDateTime,
 }
@@ -138,7 +141,7 @@ pub async fn get_products(
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name, p.created_at",
+        select_columns: "p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.created_at",
         base_query: &base_query,
         search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"],
         search: search.as_deref(),
@@ -196,8 +199,11 @@ pub async fn get_products(
             stock_quantity: row.get("stock_quantity"),
             is_top_model: row.get("is_top_model"),
             product_images,
+            brand_id: row.get("brand_id"),
             brand_name: row.get("brand_name"),
+            category_id: row.get("category_id"),
             category_name: row.get("category_name"),
+            shop_id: row.get("shop_id"),
             shop_name: row.get("shop_name"),
             created_at: row.get("created_at"),
         });
@@ -345,7 +351,7 @@ pub async fn add_product(
 pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Product> {
     let result = client
         .query_one(
-            "select p.product_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.name category_name, s.name shop_name, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and p.product_id = $1",
+            "select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and p.product_id = $1",
             &[&product_id],
         )
         .await;
@@ -381,8 +387,11 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 stock_quantity: row.get("stock_quantity"),
                 is_top_model: row.get("is_top_model"),
                 product_images,
+                brand_id: row.get("brand_id"),
                 brand_name: row.get("brand_name"),
+                category_id: row.get("category_id"),
                 category_name: row.get("category_name"),
+                shop_id: row.get("shop_id"),
                 shop_name: row.get("shop_name"),
                 created_at: row.get("created_at"),
             })
@@ -435,6 +444,26 @@ pub async fn update_product(
                 &[&product_id, &product_image],
             )
             .await?;
+        // Clone necessary data for the async block
+        let product_id_clone = product_id.clone();
+        let product_image_clone = product_image.clone();
+
+        tokio::spawn(async move {
+            match add_vector(
+                &product_id_clone.to_string(),
+                &product_image_clone.replace("/images", "images"),
+            )
+            .await
+            {
+                Ok(response) => {
+                    // println!("Vector added successfully.");
+                    println!("{:?}", response);
+                }
+                Err(err) => {
+                    println!("Error adding vector: {:?}", err);
+                }
+            }
+        });
     }
     for old_product_image in old_product_images {
         if !data.product_images.contains(old_product_image) {
