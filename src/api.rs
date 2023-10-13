@@ -59,4 +59,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(product::get_recommended_products_for_product);
     cfg.service(auth::verify_token);
     cfg.service(product::get_recommended_products_for_user);
+    cfg.service(vector::search_vectors);
 }
