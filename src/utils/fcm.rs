@@ -28,7 +28,9 @@ pub async fn send_notification(
     println!("notification: {:?}", notification);
     println!("to: {fcmtoken}");
     println!("data: {:?}", fcm_data);
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true) // Only if you're sure about the security implications
+        .build()?;
     let response = client
         .post(&firebase_fcm_url)
         .header("Authorization", firebase_fcm_auth)
