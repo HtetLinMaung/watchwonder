@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Diver's Watches",
+    "description": "Watches specifically designed for underwater diving that feature water resistance greater than 1.0 MPa (10 atm), the equivalent of 100 m (330 ft). Examples: Rolex Submariner, Omega Seamaster.",
+    "cover_image": "/images/34456196-8b18-4aa8-95af-f6d5103d7467_diver.webp"
+  },
+  {
+    "name": "Chronographs",
+    "description": "Watches that combine a display watch and a stopwatch. Examples: Rolex Daytona, Omega Speedmaster.",
+    "cover_image": "/images/534af6c2-db50-45f8-ab25-68f34f681387_chronograph.png"
+  }
+]

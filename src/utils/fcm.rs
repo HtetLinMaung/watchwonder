@@ -23,6 +23,11 @@ pub async fn send_notification(
         Some(d) => d,
         None => HashMap::new(),
     };
+    println!("firebase_fcm_url: {firebase_fcm_url}");
+    println!("firebase_fcm_auth: {firebase_fcm_auth}");
+    println!("notification: {:?}", notification);
+    println!("to: {fcmtoken}");
+    println!("data: {:?}", data);
     let client = reqwest::Client::new();
     let response = client
         .post(&firebase_fcm_url)
@@ -37,6 +42,7 @@ pub async fn send_notification(
         .await?
         .json()
         .await?;
+    println!("{:?}", response);
 
     Ok(response)
 }
