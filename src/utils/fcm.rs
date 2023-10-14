@@ -27,7 +27,7 @@ pub async fn send_notification(
     println!("firebase_fcm_auth: {firebase_fcm_auth}");
     println!("notification: {:?}", notification);
     println!("to: {fcmtoken}");
-    println!("data: {:?}", data);
+    println!("data: {:?}", fcm_data);
     let client = reqwest::Client::new();
     let response = client
         .post(&firebase_fcm_url)
