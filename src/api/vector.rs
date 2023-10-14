@@ -25,7 +25,7 @@ struct VectorData {
 pub async fn search_vectors(body: web::Json<SearchRequest>) -> impl Responder {
     match vector_finder::search_vectors(&body.image_path).await {
         Ok(response) => {
-            let clone_image_path = body.image_path.clone();
+            let clone_image_path = body.image_path.clone().replace("/images", "./images");
             tokio::spawn(async move {
                 match fs::remove_file(clone_image_path) {
                     Ok(_) => println!("File deleted successfully!"),
