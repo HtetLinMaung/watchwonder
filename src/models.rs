@@ -6,4 +6,5 @@ pub mod notification;
 pub mod order;
 pub mod product;
 pub mod shop;
+pub mod terms_and_conditions;
 pub mod user;

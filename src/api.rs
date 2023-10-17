@@ -8,6 +8,7 @@ mod notification;
 mod order;
 mod product;
 mod shop;
+mod terms_and_conditions;
 mod user;
 mod vector;
 
@@ -60,4 +61,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(auth::verify_token);
     cfg.service(product::get_recommended_products_for_user);
     cfg.service(vector::search_vectors);
+    cfg.service(terms_and_conditions::add_terms_and_conditions);
+    cfg.service(terms_and_conditions::get_terms_and_conditions);
 }

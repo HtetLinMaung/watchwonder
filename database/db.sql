@@ -395,3 +395,11 @@ CREATE TABLE recommended_products
     recommended_product_id INT REFERENCES products(product_id),
     deleted_at TIMESTAMP DEFAULT null
 );
+
+CREATE TABLE terms_and_conditions
+(
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

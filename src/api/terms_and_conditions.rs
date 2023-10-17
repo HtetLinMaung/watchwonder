@@ -1,0 +1,129 @@
+use std::sync::Arc;
+
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use serde::Deserialize;
+use tokio_postgres::Client;
+
+use crate::{
+    models::terms_and_conditions,
+    utils::{
+        common_struct::{BaseResponse, DataResponse},
+        jwt::verify_token_and_get_sub,
+    },
+};
+
+#[derive(Deserialize)]
+pub struct TermsAndConditionsRequest {
+    pub content: String,
+}
+
+#[post("/api/terms-and-conditions")]
+pub async fn add_terms_and_conditions(
+    req: HttpRequest,
+    body: web::Json<TermsAndConditionsRequest>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role != "admin" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    match terms_and_conditions::add_terms_and_conditions(&body.content, &client).await {
+        Ok(()) => HttpResponse::Created().json(BaseResponse {
+            code: 200,
+            message: String::from("Terms & Conditions added successfully"),
+        }),
+        Err(e) => {
+            eprintln!("Terms & Conditions adding error: {}", e);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error adding Terms & Conditions!"),
+            });
+        }
+    }
+}
+
+#[get("/api/terms-and-conditions")]
+pub async fn get_terms_and_conditions(
+    req: HttpRequest,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    if verify_token_and_get_sub(token).is_none() {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Invalid token"),
+        });
+    };
+
+    let content = terms_and_conditions::get_terms_and_conditions(&client).await;
+    HttpResponse::Ok().json(DataResponse {
+        code: 200,
+        message: String::from("Terms & Conditions fetched successfully."),
+        data: Some(content),
+    })
+}
