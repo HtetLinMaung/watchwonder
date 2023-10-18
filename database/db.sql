@@ -56,6 +56,7 @@ CREATE TABLE shops
     website_url VARCHAR(255),
     operating_hours TEXT,
     status VARCHAR(50) DEFAULT 'Active',
+    creator_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -132,6 +133,7 @@ CREATE TABLE categories
     name VARCHAR(255) NOT NULL,
     description TEXT,
     cover_image VARCHAR(255),
+    creator_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -170,6 +172,7 @@ CREATE TABLE brands
     name VARCHAR(255) NOT NULL,
     description TEXT,
     logo_url VARCHAR(255),
+    creator_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -237,6 +240,7 @@ CREATE TABLE products
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
     is_top_model BOOLEAN DEFAULT FALSE,
+    creator_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -437,3 +441,31 @@ CREATE TABLE insurance_options
     deleted_at TIMESTAMP DEFAULT null
 );
 
+-- CREATE TABLE agent_shops
+-- (
+--     agent_id INT REFERENCES users(user_id),
+--     shop_id INT REFERENCES shops(shop_id),
+--     deleted_at TIMESTAMP DEFAULT null,
+--     PRIMARY KEY(agent_id, shop_id, deleted_at)
+-- );
+
+-- CREATE TABLE agent_categories
+-- (
+--     agent_id INT REFERENCES users(user_id),
+--     category_id INT REFERENCES categories(category_id),
+--     deleted_at TIMESTAMP DEFAULT null,
+--     PRIMARY KEY(agent_id, category_id, deleted_at)
+-- );
+
+CREATE TABLE seller_reviews
+(
+    review_id SERIAL PRIMARY KEY,
+    agent_id INT REFERENCES users(user_id),
+    user_id INT REFERENCES users(user_id),
+    rating DECIMAL(2,1) NOT NULL,
+    comment TEXT,
+    review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null,
+);
+
+-- e.g., 4.5

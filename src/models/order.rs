@@ -149,6 +149,9 @@ pub async fn get_orders(
     if role == "user" {
         params.push(Box::new(user_id));
         base_query = format!("{base_query} and o.user_id = ${}", params.len());
+    } else if role == "agent" {
+        params.push(Box::new(user_id));
+        base_query = format!("{base_query} and o.user_id = ${}", params.len());
     }
 
     if from_date.is_some() && to_date.is_some() {

@@ -23,15 +23,21 @@ pub async fn get_brands(
     page: Option<usize>,
     per_page: Option<usize>,
     role: &str,
+    user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<Brand>, Error> {
-    let base_query = "from brands where deleted_at is null".to_string();
-    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut base_query = "from brands where deleted_at is null".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
     let order_options = match role {
         "user" => "name asc, created_at desc",
-        "admin" => "created_at desc",
-        _ => "",
+        _ => "created_at desc",
     };
+
+    if role == "agent" {
+        params.push(Box::new(user_id));
+        base_query = format!("{base_query} and creator_id = ${}", params.len());
+    }
+
     let result = generate_pagination_query(PaginationOptions {
         select_columns: "brand_id, name, description, logo_url, created_at",
         base_query: &base_query,

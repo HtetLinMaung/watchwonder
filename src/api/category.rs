@@ -50,6 +50,7 @@ pub async fn get_categories(
     };
 
     let mut role = "user".to_string();
+    let mut user_id = 0;
     if !token.is_empty() {
         let sub = match verify_token_and_get_sub(&token) {
             Some(s) => s,
@@ -68,10 +69,18 @@ pub async fn get_categories(
                 message: String::from("Invalid sub format in token"),
             });
         }
-        //  user_id: &str = parsed_values[0];
+        user_id = parsed_values[0].parse().unwrap();
         role = parsed_values[1].clone();
     }
-    match category::get_categories(&query.search, query.page, query.per_page, &role, &client).await
+    match category::get_categories(
+        &query.search,
+        query.page,
+        query.per_page,
+        &role,
+        user_id,
+        &client,
+    )
+    .await
     {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,

@@ -49,10 +49,16 @@ pub async fn get_products(
     is_top_model: Option<bool>,
     products: &Option<Vec<i32>>,
     role: &str,
+    user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<Product>, Error> {
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if role == "agent" {
+        params.push(Box::new(user_id));
+        base_query = format!("{base_query} and p.creator_id = ${}", params.len());
+    }
 
     if let Some(s) = shop_id {
         params.push(Box::new(s));
@@ -136,8 +142,7 @@ pub async fn get_products(
 
     let order_options = match role {
         "user" => "p.model asc, p.created_at desc".to_string(),
-        "admin" => "p.created_at desc".to_string(),
-        _ => "".to_string(),
+        _ => "p.created_at desc".to_string(),
     };
 
     let result=  generate_pagination_query(PaginationOptions {

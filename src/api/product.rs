@@ -47,6 +47,7 @@ pub async fn get_products(
     };
 
     let mut role = "user".to_string();
+    let mut user_id = 0;
     if !token.is_empty() {
         let sub = match verify_token_and_get_sub(&token) {
             Some(s) => s,
@@ -65,7 +66,7 @@ pub async fn get_products(
                 message: String::from("Invalid sub format in token"),
             });
         }
-        //  user_id: &str = parsed_values[0];
+        user_id = parsed_values[0].parse().unwrap();
         role = parsed_values[1].clone();
     }
 
@@ -82,6 +83,7 @@ pub async fn get_products(
         body.is_top_model,
         &body.products,
         &role,
+        user_id,
         &client,
     )
     .await
