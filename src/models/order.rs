@@ -29,6 +29,8 @@ pub struct Order {
     pub item_counts: i32,
     pub payment_type: String,
     pub payslip_screenshot_path: String,
+    pub rule_id: i32,
+    pub rule_description: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -57,6 +59,7 @@ pub struct NewOrder {
     pub address: NewAddress,
     pub payment_type: String,
     pub payslip_screenshot_path: String,
+    pub rule_id: Option<i32>,
 }
 
 pub async fn add_order(
@@ -98,12 +101,35 @@ pub async fn add_order(
             .await?;
     }
 
-    client
-        .execute(
-            "update orders set order_total = (select sum(price * quantity) from order_items where order_id = $1 and deleted_at is null), item_counts = (select count(*) from order_items where order_id = $2 and deleted_at is null) where order_id = $3 and deleted_at is null",
-            &[&order_id, &order_id, &order_id],
-        )
-        .await?;
+    if let Some(rid) = &order.rule_id {
+        client
+            .execute(
+                "insert into insurance_options (order_id, rule_id) values ($1, $2)",
+                &[&order_id, &rid],
+            )
+            .await?;
+    }
+
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut total_query =
+        "select coalesce(sum(price * quantity), 0) from order_items where deleted_at is null"
+            .to_string();
+    if order.rule_id.is_some() {
+        params.push(Box::new(order_id));
+        params.push(Box::new(order_id));
+        params.push(Box::new(&order.rule_id));
+        total_query = format!("({total_query} and order_id = ${}) + (({total_query} and order_id = ${}) * (select coalesce(commission_percentage / 100, 0) from commission_rules where rule_id = ${} and deleted_at is null))",params.len() - 2, params.len() - 1, params.len());
+    } else {
+        params.push(Box::new(order_id));
+        total_query = format!("{total_query} and order_id = ${}", params.len());
+    }
+
+    params.push(Box::new(order_id));
+    params.push(Box::new(order_id));
+    let update_query = format!("update orders set order_total = ({}), item_counts = (select count(*) from order_items where order_id = ${} and deleted_at is null) where order_id = ${} and deleted_at is null", total_query, params.len() - 1, params.len());
+    println!("update_query: {}", update_query);
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+    client.execute(&update_query, &params_slice).await?;
     Ok(order_id)
 }
 
@@ -121,7 +147,7 @@ pub async fn get_orders(
     client: &Client,
 ) -> Result<PaginationResult<Order>, Error> {
     let mut base_query =
-        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id where o.deleted_at is null and u.deleted_at is null and a.deleted_at is null"
+        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id left join insurance_options i on i.order_id = o.order_id left join commission_rules r on r.rule_id = i.rule_id where o.deleted_at is null and u.deleted_at is null and a.deleted_at is null and i.deleted_at is null and r.deleted_at is null"
             .to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
@@ -156,9 +182,9 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, o.item_counts, o.payment_type, o.payslip_screenshot_path",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description",
         base_query: &base_query,
-        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type"],
+        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -206,6 +232,8 @@ pub async fn get_orders(
                 item_counts: row.get("item_counts"),
                 payment_type: row.get("payment_type"),
                 payslip_screenshot_path: row.get("payslip_screenshot_path"),
+                rule_id: row.get("rule_id"),
+                rule_description: row.get("rule_description"),
             };
         })
         .collect();
