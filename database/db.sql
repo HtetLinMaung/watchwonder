@@ -301,6 +301,7 @@ CREATE TABLE orders
     item_counts INT DEFAULT 0,
     payment_type VARCHAR(50) DEFAULT 'Cash on Delivery',
     payslip_screenshot_path VARCHAR(255) DEFAULT '',
+    commission_amount DECIMAL(10, 2) DEFAULT 0.0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );

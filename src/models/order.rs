@@ -31,6 +31,7 @@ pub struct Order {
     pub payslip_screenshot_path: String,
     pub rule_id: i32,
     pub rule_description: String,
+    pub commission_amount: f64,
     pub created_at: NaiveDateTime,
 }
 
@@ -110,23 +111,17 @@ pub async fn add_order(
             .await?;
     }
 
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
-    let mut total_query =
+    let params: Vec<Box<dyn ToSql + Sync>> = vec![
+        Box::new(order_id),
+        Box::new(order_id),
+        Box::new(order_id),
+        Box::new(order.rule_id.unwrap_or(0)),
+        Box::new(order_id),
+    ];
+    let total_query =
         "select coalesce(sum(price * quantity), 0) from order_items where deleted_at is null"
             .to_string();
-    if order.rule_id.is_some() {
-        params.push(Box::new(order_id));
-        params.push(Box::new(order_id));
-        params.push(Box::new(&order.rule_id));
-        total_query = format!("({total_query} and order_id = ${}) + (({total_query} and order_id = ${}) * (select coalesce(commission_percentage / 100, 0) from commission_rules where rule_id = ${} and deleted_at is null))",params.len() - 2, params.len() - 1, params.len());
-    } else {
-        params.push(Box::new(order_id));
-        total_query = format!("{total_query} and order_id = ${}", params.len());
-    }
-
-    params.push(Box::new(order_id));
-    params.push(Box::new(order_id));
-    let update_query = format!("update orders set order_total = ({}), item_counts = (select count(*) from order_items where order_id = ${} and deleted_at is null) where order_id = ${} and deleted_at is null", total_query, params.len() - 1, params.len());
+    let update_query = format!("update orders set order_total = ({total_query} and order_id = ${}), item_counts = (select count(*) from order_items where order_id = ${} and deleted_at is null), commission_amount = (({total_query} and order_id = ${}) * (select coalesce(commission_percentage / 100, 0) from commission_rules where rule_id = ${} and deleted_at is null)) where order_id = ${} and deleted_at is null", params.len() - 4, params.len() - 3, params.len() - 2, params.len() - 1,  params.len());
     println!("update_query: {}", update_query);
     let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
     client.execute(&update_query, &params_slice).await?;
@@ -182,7 +177,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, o.commission_amount::text, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description",
         base_query: &base_query,
         search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -212,6 +207,9 @@ pub async fn get_orders(
         .map(|row| {
             let order_total: String = row.get("order_total");
             let order_total: f64 = order_total.parse().unwrap();
+            let commission_amount: String = row.get("commission_amount");
+            let commission_amount: f64 = commission_amount.parse().unwrap();
+
             return Order {
                 order_id: row.get("order_id"),
                 user_name: row.get("user_name"),
@@ -228,6 +226,7 @@ pub async fn get_orders(
                 note: row.get("note"),
                 status: row.get("status"),
                 order_total,
+                commission_amount,
                 created_at: row.get("created_at"),
                 item_counts: row.get("item_counts"),
                 payment_type: row.get("payment_type"),
