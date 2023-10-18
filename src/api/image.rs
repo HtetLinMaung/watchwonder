@@ -102,3 +102,47 @@ pub async fn upload(
         url: "".to_string(),
     }))
 }
+
+#[derive(Deserialize)]
+pub struct ResizeRequest {
+    pub image_path: String,
+    pub resolution: String,
+}
+
+#[post("/api/image/resize")]
+pub async fn resize_image(
+    body: web::Json<ResizeRequest>,
+) -> Result<HttpResponse, Box<dyn std::error::Error>> {
+    let parts: Vec<&str> = body.resolution.split('x').collect();
+    if parts.len() == 2 {
+        if let (Ok(width), Ok(height)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+            let img_path = &body.image_path;
+            match image::open(img_path) {
+                Ok(img) => {
+                    let resized =
+                        img.resize_exact(width, height, image::imageops::FilterType::Nearest);
+                    if let Err(e) =
+                        resized.save_with_format(&body.image_path, image::ImageFormat::Png)
+                    {
+                        eprintln!("Resized image saving error: {}", e);
+                        return Ok(HttpResponse::InternalServerError().json(BaseResponse {
+                            code: 500,
+                            message: String::from("Error resizing image!"),
+                        }));
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Image opening error: {}", e);
+                    return Ok(HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error resizing image!"),
+                    }));
+                }
+            }
+        }
+    }
+    return Ok(HttpResponse::Ok().json(BaseResponse {
+        code: 200,
+        message: "Image resized successfully".to_string(),
+    }));
+}
