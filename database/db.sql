@@ -403,3 +403,36 @@ CREATE TABLE terms_and_conditions
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE commission_rules
+(
+    rule_id SERIAL PRIMARY KEY,
+    description TEXT,
+    commission_percentage DECIMAL(5, 2) NOT NULL,
+    min_order_amount DECIMAL(10, 2) NOT NULL,
+    max_order_amount DECIMAL(10, 2) NOT NULL,
+    effective_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null
+);
+
+INSERT INTO commission_rules
+    (description, commission_percentage, min_order_amount, max_order_amount, effective_from, effective_to, created_at, updated_at)
+VALUES
+    ('Standard Insurance for Watches', 5.00, 100.00, 10000.00, '2023-01-01 00:00:00', '2033-01-01 00:00:00', '2023-01-01 00:00:00', '2023-01-01 00:00:00'),
+    ('Premium Insurance for Luxury Watches', 7.00, 10001.00, 50000.00, '2023-01-01 00:00:00', '2033-01-01 00:00:00', '2023-01-01 00:00:00', '2023-01-01 00:00:00'),
+    ('Basic Insurance for Affordable Watches', 3.00, 1.00, 99.99, '2023-01-01 00:00:00', '2033-01-01 00:00:00', '2023-01-01 00:00:00', '2023-01-01 00:00:00');
+
+
+CREATE TABLE insurance_options
+(
+    option_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    rule_id INT REFERENCES commission_rules(rule_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null
+);
+

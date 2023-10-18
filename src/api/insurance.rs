@@ -5,7 +5,7 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::shop::{self, ShopRequest},
+    models::insurance::{self, InsuranceRuleRequest},
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -13,17 +13,18 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub struct GetShopsQuery {
+pub struct GetInsuranceRulesQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub amount: Option<f64>,
 }
 
-#[get("/api/shops")]
-pub async fn get_shops(
+#[get("/api/insurance-rules")]
+pub async fn get_insurance_rules(
     req: HttpRequest,
     client: web::Data<Arc<Client>>,
-    query: web::Query<GetShopsQuery>,
+    query: web::Query<GetInsuranceRulesQuery>,
 ) -> impl Responder {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
@@ -61,7 +62,16 @@ pub async fn get_shops(
         role = parsed_values[1].clone();
     }
 
-    match shop::get_shops(&query.search, query.page, query.per_page, &role, &client).await {
+    match insurance::get_insurance_rules(
+        &query.search,
+        query.page,
+        query.per_page,
+        query.amount,
+        &role,
+        &client,
+    )
+    .await
+    {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
@@ -73,19 +83,19 @@ pub async fn get_shops(
         }),
         Err(err) => {
             // Log the error message here
-            println!("Error retrieving shops: {:?}", err);
+            println!("Error retrieving insurance rules: {:?}", err);
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
-                message: String::from("Error trying to read all shops from database"),
+                message: String::from("Error trying to read all insurance rules from database"),
             })
         }
     }
 }
 
-#[post("/api/shops")]
-pub async fn add_shop(
+#[post("/api/insurance-rules")]
+pub async fn add_insurance_rule(
     req: HttpRequest,
-    body: web::Json<ShopRequest>,
+    body: web::Json<InsuranceRuleRequest>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
     // Extract the token from the Authorization header
@@ -137,57 +147,43 @@ pub async fn add_shop(
         });
     }
 
-    if body.name.is_empty() {
+    if body.description.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("Name must not be empty!"),
+            message: String::from("Description must not be empty!"),
         });
     }
-    if body.cover_image.is_empty() {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("Cover image must not be empty!"),
-        });
-    }
-
-    let status_list: Vec<&str> = vec![
-        "Active",
-        "Inactive",
-        "Closed",
-        "Suspended",
-        "Pending Approval",
-    ];
-    if !status_list.contains(&body.status.as_str()) {
+    if body.min_order_amount > body.max_order_amount {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from(
-                "Please select a valid status: Active, Inactive, Closed, Suspended, or Pending Approval.",
+                "Minimum order amount must not be greater than maximum order amount!",
             ),
         });
     }
 
-    match shop::add_shop(&body, &client).await {
+    match insurance::add_insurance_rule(&body, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
-            message: String::from("Shop added successfully"),
+            message: String::from("Insurance rule added successfully"),
         }),
         Err(e) => {
-            eprintln!("Shop adding error: {}", e);
+            eprintln!("Insurance rule adding error: {}", e);
             return HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
-                message: String::from("Error adding shop!"),
+                message: String::from("Error adding insurance rule!"),
             });
         }
     }
 }
 
-#[get("/api/shops/{shop_id}")]
-pub async fn get_shop_by_id(
+#[get("/api/insurance-rules/{rule_id}")]
+pub async fn get_insurance_rule_by_id(
     req: HttpRequest,
     path: web::Path<i32>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
-    let shop_id = path.into_inner();
+    let rule_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -237,27 +233,27 @@ pub async fn get_shop_by_id(
         });
     }
 
-    match shop::get_shop_by_id(shop_id, &client).await {
-        Some(s) => HttpResponse::Ok().json(DataResponse {
+    match insurance::get_insurance_rule_by_id(rule_id, &client).await {
+        Some(r) => HttpResponse::Ok().json(DataResponse {
             code: 200,
-            message: String::from("Shop fetched successfully."),
-            data: Some(s),
+            message: String::from("Insurance rule fetched successfully."),
+            data: Some(r),
         }),
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
-            message: String::from("Shop not found!"),
+            message: String::from("Insurance rule not found!"),
         }),
     }
 }
 
-#[put("/api/shops/{shop_id}")]
-pub async fn update_shop(
+#[put("/api/insurance-rules/{rule_id}")]
+pub async fn update_insurance_rule(
     req: HttpRequest,
     path: web::Path<i32>,
-    body: web::Json<ShopRequest>,
+    body: web::Json<InsuranceRuleRequest>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
-    let shop_id = path.into_inner();
+    let rule_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -307,63 +303,49 @@ pub async fn update_shop(
         });
     }
 
-    if body.name.is_empty() {
+    if body.description.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("Name must not be empty!"),
+            message: String::from("Description must not be empty!"),
         });
     }
-    if body.cover_image.is_empty() {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("Cover image must not be empty!"),
-        });
-    }
-
-    let status_list: Vec<&str> = vec![
-        "Active",
-        "Inactive",
-        "Closed",
-        "Suspended",
-        "Pending Approval",
-    ];
-    if !status_list.contains(&body.status.as_str()) {
+    if body.min_order_amount > body.max_order_amount {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from(
-                "Please select a valid status: Active, Inactive, Closed, Suspended, or Pending Approval.",
+                "Minimum order amount must not be greater than maximum order amount!",
             ),
         });
     }
 
-    match shop::get_shop_by_id(shop_id, &client).await {
-        Some(s) => match shop::update_shop(shop_id, &s.cover_image, &body, &client).await {
+    match insurance::get_insurance_rule_by_id(rule_id, &client).await {
+        Some(_) => match insurance::update_insurance_rule(rule_id, &body, &client).await {
             Ok(()) => HttpResponse::Ok().json(BaseResponse {
                 code: 200,
-                message: String::from("Shop updated successfully"),
+                message: String::from("Insurance rule updated successfully"),
             }),
             Err(e) => {
-                eprintln!("Shop updating error: {}", e);
+                eprintln!("Insurance rule updating error: {}", e);
                 return HttpResponse::InternalServerError().json(BaseResponse {
                     code: 500,
-                    message: String::from("Error updating shop!"),
+                    message: String::from("Error updating insurance rule!"),
                 });
             }
         },
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
-            message: String::from("Shop not found!"),
+            message: String::from("Insurance rule not found!"),
         }),
     }
 }
 
-#[delete("/api/shops/{shop_id}")]
-pub async fn delete_shop(
+#[delete("/api/insurance-rules/{rule_id}")]
+pub async fn delete_insurance_rule(
     req: HttpRequest,
     path: web::Path<i32>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
-    let shop_id = path.into_inner();
+    let rule_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -413,23 +395,23 @@ pub async fn delete_shop(
         });
     }
 
-    match shop::get_shop_by_id(shop_id, &client).await {
-        Some(s) => match shop::delete_shop(shop_id, &s.cover_image, &client).await {
+    match insurance::get_insurance_rule_by_id(rule_id, &client).await {
+        Some(_) => match insurance::delete_insurance_rule(rule_id, &client).await {
             Ok(()) => HttpResponse::Ok().json(BaseResponse {
                 code: 204,
-                message: String::from("Shop deleted successfully"),
+                message: String::from("Insurance rule deleted successfully"),
             }),
             Err(e) => {
-                eprintln!("Shop deleting error: {}", e);
+                eprintln!("Insurance rule deleting error: {}", e);
                 return HttpResponse::InternalServerError().json(BaseResponse {
                     code: 500,
-                    message: String::from("Error deleting shop!"),
+                    message: String::from("Error deleting insurance rule!"),
                 });
             }
         },
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
-            message: String::from("Shop not found!"),
+            message: String::from("Insurance rule not found!"),
         }),
     }
 }

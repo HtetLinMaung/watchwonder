@@ -4,6 +4,7 @@ mod brand;
 mod category;
 mod fcm;
 mod image;
+mod insurance;
 mod notification;
 mod order;
 mod product;
@@ -63,4 +64,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(vector::search_vectors);
     cfg.service(terms_and_conditions::add_terms_and_conditions);
     cfg.service(terms_and_conditions::get_terms_and_conditions);
+    cfg.service(insurance::add_insurance_rule);
+    cfg.service(insurance::get_insurance_rules);
+    cfg.service(insurance::get_insurance_rule_by_id);
+    cfg.service(insurance::update_insurance_rule);
+    cfg.service(insurance::delete_insurance_rule);
 }
