@@ -53,7 +53,7 @@ pub async fn upload(
                             let resized = img.resize_exact(
                                 width,
                                 height,
-                                image::imageops::FilterType::Nearest,
+                                image::imageops::FilterType::Triangle,
                             );
                             // Determine the format based on the original image's format
                             let format = get_image_format_from_path(
@@ -124,7 +124,7 @@ pub async fn resize_image(
             match image::open(img_path) {
                 Ok(img) => {
                     let resized =
-                        img.resize_exact(width, height, image::imageops::FilterType::Nearest);
+                        img.resize_exact(width, height, image::imageops::FilterType::Triangle);
 
                     // Determine the format based on the original image's format
                     let format =
