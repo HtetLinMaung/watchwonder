@@ -122,7 +122,7 @@ pub async fn add_order(
         "select coalesce(sum(price * quantity), 0) from order_items where deleted_at is null"
             .to_string();
     let update_query = format!("update orders set order_total = ({total_query} and order_id = ${}), item_counts = (select count(*) from order_items where order_id = ${} and deleted_at is null), commission_amount = (({total_query} and order_id = ${}) * (select coalesce(commission_percentage / 100, 0) from commission_rules where rule_id = ${} and deleted_at is null)) where order_id = ${} and deleted_at is null", params.len() - 4, params.len() - 3, params.len() - 2, params.len() - 1,  params.len());
-    println!("update_query: {}", update_query);
+
     let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
     client.execute(&update_query, &params_slice).await?;
     Ok(order_id)
