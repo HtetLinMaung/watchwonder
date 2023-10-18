@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -36,6 +36,12 @@ pub async fn get_insurance_rules(
 
     if let Some(a) = amount {
         base_query = format!("{base_query} and min_order_amount <= {a} and max_order_amount >= {a}")
+    }
+
+    if role != "admin" {
+        base_query = format!(
+            "{base_query} and now()::date between effective_from::date AND effective_to::date"
+        )
     }
 
     let result=  generate_pagination_query(PaginationOptions {
@@ -99,8 +105,8 @@ pub struct InsuranceRuleRequest {
     pub commission_percentage: f64,
     pub min_order_amount: f64,
     pub max_order_amount: f64,
-    pub effective_from: NaiveDateTime,
-    pub effective_to: NaiveDateTime,
+    pub effective_from: DateTime<Utc>,
+    pub effective_to: DateTime<Utc>,
 }
 
 pub async fn add_insurance_rule(
@@ -111,7 +117,11 @@ pub async fn add_insurance_rule(
     client
         .execute(
             &query,
-            &[&data.description, &data.effective_from, &data.effective_to],
+            &[
+                &data.description,
+                &data.effective_from.naive_utc(),
+                &data.effective_to.naive_utc(),
+            ],
         )
         .await?;
     Ok(())
@@ -120,7 +130,7 @@ pub async fn add_insurance_rule(
 pub async fn get_insurance_rule_by_id(rule_id: i32, client: &Client) -> Option<InsuranceRule> {
     let result = client
         .query_one(
-            "rule_id, description, commission_percentage::text, min_order_amount::text, max_order_amount::text, effective_from, effective_to, created_at from commission_rules where deleted_at is null and rule_id = $1",
+            "select rule_id, description, commission_percentage::text, min_order_amount::text, max_order_amount::text, effective_from, effective_to, created_at from commission_rules where deleted_at is null and rule_id = $1",
             &[&rule_id],
         )
         .await;
@@ -142,7 +152,10 @@ pub async fn get_insurance_rule_by_id(rule_id: i32, client: &Client) -> Option<I
                 created_at: row.get("created_at"),
             })
         }
-        Err(_) => None,
+        Err(err) => {
+            println!("{:?}", err);
+            None
+        }
     }
 }
 
@@ -157,8 +170,8 @@ pub async fn update_insurance_rule(
             &query,
             &[
                 &data.description,
-                &data.effective_from,
-                &data.effective_to,
+                &data.effective_from.naive_utc(),
+                &data.effective_to.naive_utc(),
                 &rule_id,
             ],
         )
