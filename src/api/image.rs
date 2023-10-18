@@ -1,4 +1,4 @@
-use crate::utils::common_struct::BaseResponse;
+use crate::utils::{common_struct::BaseResponse, image::get_image_format_from_path};
 use actix_multipart::Multipart;
 use actix_web::{post, web, HttpResponse, Result};
 use futures::StreamExt;
@@ -55,10 +55,14 @@ pub async fn upload(
                                 height,
                                 image::imageops::FilterType::Nearest,
                             );
-                            if let Err(e) = resized.save_with_format(
-                                format!("./images/{}", filename),
-                                image::ImageFormat::Png,
-                            ) {
+                            // Determine the format based on the original image's format
+                            let format = get_image_format_from_path(
+                                format!("./images/{}", filename).as_str(),
+                            )
+                            .unwrap_or(image::ImageFormat::Png);
+                            if let Err(e) =
+                                resized.save_with_format(format!("./images/{}", filename), format)
+                            {
                                 eprintln!("Resized image saving error: {}", e);
                                 match fs::remove_file(format!("./images/{}", filename)) {
                                     Ok(_) => println!("File deleted successfully!"),
@@ -121,9 +125,12 @@ pub async fn resize_image(
                 Ok(img) => {
                     let resized =
                         img.resize_exact(width, height, image::imageops::FilterType::Nearest);
-                    if let Err(e) =
-                        resized.save_with_format(&body.image_path, image::ImageFormat::Png)
-                    {
+
+                    // Determine the format based on the original image's format
+                    let format =
+                        get_image_format_from_path(img_path).unwrap_or(image::ImageFormat::Png);
+
+                    if let Err(e) = resized.save_with_format(&body.image_path, format) {
                         eprintln!("Resized image saving error: {}", e);
                         return Ok(HttpResponse::InternalServerError().json(BaseResponse {
                             code: 500,
