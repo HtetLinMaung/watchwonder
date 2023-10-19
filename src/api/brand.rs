@@ -99,7 +99,7 @@ pub async fn get_brands(
 }
 
 #[post("/api/brands")]
-pub async fn add_brands(
+pub async fn add_brand(
     req: HttpRequest,
     client: web::Data<Arc<Client>>,
     body: web::Json<BrandRequest>,
@@ -145,6 +145,7 @@ pub async fn add_brands(
     }
     let user_role: &str = "user";
 
+    let user_id: i32 = parsed_values[0].parse().unwrap();
     let role_name: &str = parsed_values[1];
     if role_name.contains(user_role) {
         return HttpResponse::Unauthorized().json(BaseResponse {
@@ -159,7 +160,15 @@ pub async fn add_brands(
             message: String::from("Brand name cannot be empty!"),
         });
     }
-    match brand::add_brand(&body.name, &body.description, &body.logo_url, &client).await {
+    match brand::add_brand(
+        &body.name,
+        &body.description,
+        &body.logo_url,
+        user_id,
+        &client,
+    )
+    .await
+    {
         Ok(_) => HttpResponse::Ok().json(BaseResponse {
             code: 200,
             message: String::from("Brand added successfully."),

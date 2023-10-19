@@ -148,6 +148,7 @@ pub async fn add_category(
         });
     }
 
+    let user_id = parsed_values[0].parse().unwrap();
     let role: &str = parsed_values[1];
 
     if role != "admin" && role != "agent" {
@@ -170,7 +171,7 @@ pub async fn add_category(
         });
     }
 
-    match category::add_category(&body, &client).await {
+    match category::add_category(&body, user_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Category added successfully"),

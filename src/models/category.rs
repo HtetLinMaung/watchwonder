@@ -93,12 +93,13 @@ pub struct CategoryRequest {
 
 pub async fn add_category(
     data: &CategoryRequest,
+    creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .execute(
-            "insert into categories (name, description, cover_image) values ($1, $2, $3)",
-            &[&data.name, &data.description, &data.cover_image],
+            "insert into categories (name, description, cover_image, creator_id) values ($1, $2, $3, $4)",
+            &[&data.name, &data.description, &data.cover_image, &creator_id],
         )
         .await?;
     Ok(())

@@ -138,6 +138,7 @@ pub async fn add_shop(
         });
     }
 
+    let user_id: i32 = parsed_values[0].parse().unwrap();
     let role: &str = parsed_values[1];
 
     if role != "admin" && role != "agent" {
@@ -176,7 +177,7 @@ pub async fn add_shop(
         });
     }
 
-    match shop::add_shop(&body, &client).await {
+    match shop::add_shop(&body, user_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Shop added successfully"),

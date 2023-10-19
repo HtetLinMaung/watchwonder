@@ -88,13 +88,14 @@ pub async fn add_brand(
     name: &str,
     description: &str,
     logo_url: &str,
+    creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Insert the new brands into the database
     client
         .execute(
-            "INSERT INTO brands (name, description, logo_url) VALUES ($1, $2, $3)",
-            &[&name, &description, &logo_url],
+            "INSERT INTO brands (name, description, logo_url, creator_id) VALUES ($1, $2, $3, $4)",
+            &[&name, &description, &logo_url, &creator_id],
         )
         .await?;
     Ok(())

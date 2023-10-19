@@ -128,11 +128,12 @@ pub struct ShopRequest {
 
 pub async fn add_shop(
     data: &ShopRequest,
+    creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .execute(
-            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
             &[
                 &data.name,
                 &data.description,
@@ -147,6 +148,7 @@ pub async fn add_shop(
                 &data.website_url,
                 &data.operating_hours,
                 &data.status,
+                &creator_id
             ],
         )
         .await?;
