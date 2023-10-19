@@ -240,7 +240,7 @@ pub async fn get_shop_by_id(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -310,7 +310,7 @@ pub async fn update_shop(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -416,7 +416,7 @@ pub async fn delete_shop(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),

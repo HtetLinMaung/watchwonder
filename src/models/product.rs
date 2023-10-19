@@ -295,9 +295,10 @@ pub struct ProductRequest {
 
 pub async fn add_product(
     data: &ProductRequest,
+    creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16) returning product_id", &data.price);
+    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17) returning product_id", &data.price);
     let result = client
         .query_one(
             &query,
@@ -318,6 +319,7 @@ pub async fn add_product(
                 &data.dimensions,
                 &data.stock_quantity,
                 &data.is_top_model,
+                &creator_id,
             ],
         )
         .await?;

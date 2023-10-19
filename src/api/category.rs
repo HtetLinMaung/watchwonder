@@ -150,7 +150,7 @@ pub async fn add_category(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -234,7 +234,7 @@ pub async fn get_category_by_id(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -304,7 +304,7 @@ pub async fn update_category(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -396,7 +396,7 @@ pub async fn delete_category(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
