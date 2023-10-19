@@ -241,6 +241,7 @@ CREATE TABLE products
     stock_quantity INT DEFAULT 0,
     is_top_model BOOLEAN DEFAULT FALSE,
     creator_id INT REFERENCES users(user_id),
+    currency_id INT REFERENCES currencies(currency_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -306,6 +307,7 @@ CREATE TABLE orders
     payment_type VARCHAR(50) DEFAULT 'Cash on Delivery',
     payslip_screenshot_path VARCHAR(255) DEFAULT '',
     commission_amount DECIMAL(10, 2) DEFAULT 0.0,
+    currency_id INT REFERENCES currencies(currency_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -348,6 +350,7 @@ CREATE TABLE order_items
     product_id INT REFERENCES products(product_id),
     quantity INT DEFAULT 1,
     price DECIMAL(10, 2) NOT NULL,
+    currency_id INT REFERENCES currencies(currency_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -454,3 +457,17 @@ CREATE TABLE seller_reviews
 );
 
 -- e.g., 4.5
+
+CREATE TABLE currencies
+(
+    currency_id SERIAL PRIMARY KEY,
+    currency_code CHAR(3) NOT NULL UNIQUE,
+    currency_name VARCHAR(255) NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT null
+);
+
+-- ISO 4217 currency code, e.g., USD, EUR, MMK
+-- e.g., $, €, ကျပ်
