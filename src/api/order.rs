@@ -8,7 +8,7 @@ use tokio_postgres::Client;
 use crate::{
     models::{
         notification,
-        order::{self, NewOrder},
+        order::{self, is_items_from_single_shop, NewOrder},
         product, user,
     },
     utils::{
@@ -73,12 +73,12 @@ pub async fn add_order(
         });
     }
 
-    // if !is_items_from_single_shop(&order.order_items, &client).await {
-    //     return HttpResponse::BadRequest().json(BaseResponse {
-    //         code: 400,
-    //         message: String::from("You can only order items from one shop at a time. Please place separate orders for items from different shops!"),
-    //     });
-    // }
+    if !is_items_from_single_shop(&order.order_items, &client).await {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("You can only order items from one shop at a time. Please place separate orders for items from different shops!"),
+        });
+    }
 
     let payment_types: Vec<&str> = vec!["Preorder", "Cash on Delivery"];
     if !payment_types.contains(&order.payment_type.as_str()) {
