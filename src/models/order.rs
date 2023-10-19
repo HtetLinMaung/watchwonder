@@ -61,6 +61,7 @@ pub struct NewOrder {
     pub payment_type: String,
     pub payslip_screenshot_path: String,
     pub rule_id: Option<i32>,
+    pub shop_id: Option<i32>,
 }
 
 pub async fn add_order(

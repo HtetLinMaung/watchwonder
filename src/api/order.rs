@@ -2,20 +2,28 @@ use std::sync::Arc;
 
 use actix_web::{get, post, put, web, HttpRequest, HttpResponse, Responder};
 use chrono::NaiveDate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
 use crate::{
     models::{
         notification,
         order::{self, is_items_from_single_shop, NewOrder},
-        product, user,
+        product, seller_review, user,
     },
     utils::{
-        common_struct::{BaseResponse, DataResponse, PaginationResponse},
+        common_struct::{BaseResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
     },
 };
+
+#[derive(Serialize)]
+pub struct AddOrderResponse<T> {
+    pub code: u16,
+    pub message: String,
+    pub data: Option<T>,
+    pub is_already_reviewed: bool,
+}
 
 #[post("/api/orders")]
 pub async fn add_order(
@@ -99,11 +107,16 @@ pub async fn add_order(
 
     match order::add_order(&order, user_id, &client).await {
         Ok(order_id) => {
+            let shop_id = order.shop_id.unwrap_or(0);
+            let is_already_reviewed =
+                seller_review::is_user_already_review(shop_id, user_id, &client).await;
+
             tokio::spawn(async move {
                 let user_name = match user::get_user_name(user_id, &client).await {
                     Some(name) => name,
                     None => "".to_string(),
                 };
+
                 let product_shop_names = match product::get_product_and_shop_names(
                     &order
                         .order_items
@@ -155,10 +168,12 @@ pub async fn add_order(
                     };
                 }
             });
-            return HttpResponse::Ok().json(DataResponse {
+
+            return HttpResponse::Ok().json(AddOrderResponse {
                 code: 200,
                 message: String::from("Successful."),
                 data: Some(order_id),
+                is_already_reviewed,
             });
         }
         Err(err) => {

@@ -2,7 +2,7 @@ use std::fs;
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::{types::ToSql, Client, Error};
+use tokio_postgres::{types::ToSql, Client};
 
 use crate::utils::{
     common_struct::PaginationResult,
@@ -35,7 +35,7 @@ pub async fn get_shops(
     role: &str,
     user_id: i32,
     client: &Client,
-) -> Result<PaginationResult<Shop>, Error> {
+) -> Result<PaginationResult<Shop>, Box<dyn std::error::Error>> {
     let mut base_query = "from shops where deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
     let order_options = match role {
@@ -71,13 +71,18 @@ pub async fn get_shops(
         limit = per_page.unwrap();
         page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
+    // let shops: Vec<Shop> = client
+    // .query(&result.query, &params_slice[..])
+    // .await?
+    // .iter()
+    // .map(|row| {})
+    // .collect();
 
-    let shops: Vec<Shop> = client
-        .query(&result.query, &params_slice[..])
-        .await?
-        .iter()
-        .map(|row| Shop {
-            shop_id: row.get("shop_id"),
+    let mut shops: Vec<Shop> = vec![];
+    for row in client.query(&result.query, &params_slice[..]).await? {
+        let shop_id: i32 = row.get("shop_id");
+        shops.push(Shop {
+            shop_id,
             name: row.get("name"),
             description: row.get("description"),
             cover_image: row.get("cover_image"),
@@ -92,8 +97,8 @@ pub async fn get_shops(
             operating_hours: row.get("operating_hours"),
             status: row.get("status"),
             created_at: row.get("created_at"),
-        })
-        .collect();
+        });
+    }
 
     Ok(PaginationResult {
         data: shops,

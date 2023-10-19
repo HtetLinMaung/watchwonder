@@ -8,6 +8,7 @@ mod insurance;
 mod notification;
 mod order;
 mod product;
+mod seller_review;
 mod shop;
 mod terms_and_conditions;
 mod user;
@@ -71,4 +72,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(insurance::delete_insurance_rule);
     cfg.service(image::resize_image);
     cfg.service(user::delete_account);
+    cfg.service(seller_review::add_seller_review);
+    cfg.service(seller_review::get_seller_reviews);
 }

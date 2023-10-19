@@ -445,7 +445,7 @@ CREATE TABLE insurance_options
 CREATE TABLE seller_reviews
 (
     review_id SERIAL PRIMARY KEY,
-    agent_id INT REFERENCES users(user_id),
+    shop_id INT REFERENCES shops(shop_id),
     user_id INT REFERENCES users(user_id),
     rating DECIMAL(2,1) NOT NULL,
     comment TEXT,
