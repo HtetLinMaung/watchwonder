@@ -151,7 +151,7 @@ pub async fn get_orders(
         base_query = format!("{base_query} and o.user_id = ${}", params.len());
     } else if role == "agent" {
         params.push(Box::new(user_id));
-        base_query = format!("{base_query} and o.user_id = ${}", params.len());
+        base_query = format!("{base_query} and o.order_id in (select o.order_id from order_items oi inner join products p on p.product_id = oi.product_id where p.creator_id = ${} and p.deleted_at is null and oi.deleted_at is null)", params.len());
     }
 
     if from_date.is_some() && to_date.is_some() {
@@ -389,5 +389,18 @@ pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i
     {
         Ok(row) => Some(row.get("user_id")),
         Err(_) => None,
+    }
+}
+
+pub async fn is_items_from_single_shop(items: &Vec<NewOrderItem>, client: &Client) -> bool {
+    let product_ids: Vec<&i32> = items.iter().map(|item| &item.product_id).collect();
+    let query =
+        "SELECT DISTINCT shop_id FROM products WHERE deleted_at IS NULL AND product_id = ANY($1)";
+    match client.query_one(query, &[&product_ids]).await {
+        Ok(_) => true,
+        Err(err) => {
+            println!("{:?}", err);
+            false
+        }
     }
 }

@@ -8,7 +8,7 @@ use tokio_postgres::Client;
 use crate::{
     models::{
         notification,
-        order::{self, NewOrder},
+        order::{self, is_items_from_single_shop, NewOrder},
         product, user,
     },
     utils::{
@@ -70,6 +70,13 @@ pub async fn add_order(
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Order items must not be empty!"),
+        });
+    }
+
+    if !is_items_from_single_shop(&order.order_items, &client).await {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("You can only order items from one shop at a time. Please place separate orders for items from different shops!"),
         });
     }
 

@@ -168,10 +168,10 @@ pub async fn add_user(
             message: String::from("Name must not be empty!"),
         });
     }
-    if &body.role != "admin" && &body.role != "user" {
+    if &body.role != "admin" && &body.role != "user" && &body.role != "agent" {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("Role must be admin or user!"),
+            message: String::from("Role must be admin, user or agent!"),
         });
     }
     if !validate_email(&body.email) {
@@ -372,10 +372,10 @@ pub async fn update_user(
             message: String::from("Name must not be empty!"),
         });
     }
-    if &body.role != "admin" && &body.role != "user" {
+    if &body.role != "admin" && &body.role != "user" && &body.role != "agent" {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
-            message: String::from("Role must be admin or user!"),
+            message: String::from("Role must be admin, user or agent!"),
         });
     }
     if !validate_email(&body.email) {
