@@ -617,3 +617,16 @@ pub async fn get_recommended_products_for_user(
 
     Ok(product_ids)
 }
+
+pub async fn get_product_creator_id(product_id: i32, client: &Client) -> Option<i32> {
+    match client
+        .query_one(
+            "select creator_id from products where product_id = $1 and creator_id is not null",
+            &[&product_id],
+        )
+        .await
+    {
+        Ok(row) => Some(row.get("creator_id")),
+        Err(_) => None,
+    }
+}

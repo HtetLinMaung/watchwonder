@@ -124,7 +124,7 @@ pub async fn add_order(
                     items.push(product_shop_name.product_name.clone());
                     shops.push(product_shop_name.shop_name.clone());
                 }
-                let message = format!("User {user_name} has placed a {} order for {} from {}. Please review and process the order.",&order.payment_type.to_lowercase(), items.join(", "), shops.join(", "));
+                let message = format!("{user_name} has placed a {} order for {} from {}. Please review and process the order.",&order.payment_type.to_lowercase(), items.join(", "), shops.join(", "));
                 match notification::add_notification_to_admins("New Order", &message, &client).await
                 {
                     Ok(()) => {
@@ -134,6 +134,26 @@ pub async fn add_order(
                         println!("Error adding notification: {:?}", err);
                     }
                 };
+
+                if let Some(product_creator_id) =
+                    product::get_product_creator_id(order.order_items[0].product_id, &client).await
+                {
+                    match notification::add_notification(
+                        product_creator_id,
+                        "New Order",
+                        &message,
+                        &client,
+                    )
+                    .await
+                    {
+                        Ok(()) => {
+                            println!("Notification added successfully.");
+                        }
+                        Err(err) => {
+                            println!("Error adding notification: {:?}", err);
+                        }
+                    };
+                }
             });
             return HttpResponse::Ok().json(DataResponse {
                 code: 200,
