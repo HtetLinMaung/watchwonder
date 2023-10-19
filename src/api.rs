@@ -70,4 +70,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(insurance::update_insurance_rule);
     cfg.service(insurance::delete_insurance_rule);
     cfg.service(image::resize_image);
+    cfg.service(user::delete_account);
 }

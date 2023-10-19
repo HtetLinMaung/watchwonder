@@ -441,21 +441,6 @@ CREATE TABLE insurance_options
     deleted_at TIMESTAMP DEFAULT null
 );
 
--- CREATE TABLE agent_shops
--- (
---     agent_id INT REFERENCES users(user_id),
---     shop_id INT REFERENCES shops(shop_id),
---     deleted_at TIMESTAMP DEFAULT null,
---     PRIMARY KEY(agent_id, shop_id, deleted_at)
--- );
-
--- CREATE TABLE agent_categories
--- (
---     agent_id INT REFERENCES users(user_id),
---     category_id INT REFERENCES categories(category_id),
---     deleted_at TIMESTAMP DEFAULT null,
---     PRIMARY KEY(agent_id, category_id, deleted_at)
--- );
 
 CREATE TABLE seller_reviews
 (
@@ -465,7 +450,7 @@ CREATE TABLE seller_reviews
     rating DECIMAL(2,1) NOT NULL,
     comment TEXT,
     review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP DEFAULT null,
+    deleted_at TIMESTAMP DEFAULT null
 );
 
 -- e.g., 4.5
