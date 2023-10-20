@@ -5,7 +5,10 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::shop::{self, ShopRequest},
+    models::{
+        product,
+        shop::{self, ShopRequest},
+    },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -422,6 +425,24 @@ pub async fn delete_shop(
             code: 401,
             message: String::from("Unauthorized!"),
         });
+    }
+
+    match product::is_products_exist("shop_id", shop_id, &client).await {
+        Ok(is_exist) => {
+            if is_exist {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Please delete the associated products first before deleting the shop. Ensure all products related to this shop are removed to proceed with shop deletion!"),
+                });
+            };
+        }
+        Err(err) => {
+            println!("{:?}", err);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 400,
+                message: String::from("Something went wrong with checking products existence!"),
+            });
+        }
     }
 
     match shop::get_shop_by_id(shop_id, &client).await {

@@ -423,9 +423,10 @@ pub async fn update_product(
     product_id: i32,
     old_product_images: &Vec<String>,
     data: &ProductRequest,
+    currency_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16 where product_id = $17", &data.price);
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17 where product_id = $18", &data.price);
     client
         .execute(
             &query,
@@ -446,6 +447,7 @@ pub async fn update_product(
                 &data.dimensions,
                 &data.stock_quantity,
                 &data.is_top_model,
+                &currency_id,
                 &product_id,
             ],
         )
@@ -641,4 +643,16 @@ pub async fn get_product_creator_id(product_id: i32, client: &Client) -> Option<
         Ok(row) => Some(row.get("creator_id")),
         Err(_) => None,
     }
+}
+
+pub async fn is_products_exist(
+    key: &str,
+    id: i32,
+    client: &Client,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let query =
+        format!("select count(*) as total from products where {key} = $1 and deleted_at is null");
+    let row = client.query_one(&query, &[&id]).await?;
+    let total: i64 = row.get("total");
+    Ok(total > 0)
 }

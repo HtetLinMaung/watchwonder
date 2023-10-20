@@ -5,7 +5,10 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::brand::{self},
+    models::{
+        brand::{self},
+        product,
+    },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -401,6 +404,24 @@ pub async fn delete_brand(
             code: 401,
             message: String::from("Unauthorized!"),
         });
+    }
+
+    match product::is_products_exist("brand_id", brand_id, &client).await {
+        Ok(is_exist) => {
+            if is_exist {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Please delete the associated products first before deleting the brand. Ensure all products related to this brand are removed to proceed with brand deletion!"),
+                });
+            };
+        }
+        Err(err) => {
+            println!("{:?}", err);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 400,
+                message: String::from("Something went wrong with checking products existence!"),
+            });
+        }
     }
 
     match brand::get_brand_by_id(brand_id, &client).await {

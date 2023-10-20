@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
 use crate::{
-    models::category::{self, Category, CategoryRequest},
+    models::{
+        category::{self, Category, CategoryRequest},
+        product,
+    },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -402,6 +405,24 @@ pub async fn delete_category(
             code: 401,
             message: String::from("Unauthorized!"),
         });
+    }
+
+    match product::is_products_exist("category_id", category_id, &client).await {
+        Ok(is_exist) => {
+            if is_exist {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Please delete the associated products first before deleting the category. Ensure all products related to this category are removed to proceed with category deletion!"),
+                });
+            };
+        }
+        Err(err) => {
+            println!("{:?}", err);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 400,
+                message: String::from("Something went wrong with checking products existence!"),
+            });
+        }
     }
 
     match category::get_category_by_id(category_id, &client).await {

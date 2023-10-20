@@ -492,9 +492,34 @@ pub async fn update_product(
         });
     }
 
+    let currency_id = match body.currency_id {
+        Some(cur_id) => cur_id,
+        None => match currency::get_default_currency_id(&client).await {
+            Ok(cur_id) => cur_id,
+            Err(err) => {
+                println!("{:?}", err);
+                0
+            }
+        },
+    };
+    if currency_id == 0 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Something went wrong with currency!"),
+        });
+    }
+
     match product::get_product_by_id(product_id, &client).await {
         Some(p) => {
-            match product::update_product(product_id, &p.product_images, &body, &client).await {
+            match product::update_product(
+                product_id,
+                &p.product_images,
+                &body,
+                currency_id,
+                &client,
+            )
+            .await
+            {
                 Ok(()) => HttpResponse::Ok().json(BaseResponse {
                     code: 200,
                     message: String::from("Product updated successfully"),
