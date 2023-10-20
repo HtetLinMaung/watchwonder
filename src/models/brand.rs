@@ -157,3 +157,13 @@ pub async fn delete_brand(
     };
     Ok(())
 }
+
+pub async fn get_logo_urls(client: &Client) -> Vec<String> {
+    match client.query("select logo_url from brands", &[]).await {
+        Ok(rows) => rows.iter().map(|row| row.get("logo_url")).collect(),
+        Err(err) => {
+            println!("{:?}", err);
+            vec![]
+        }
+    }
+}

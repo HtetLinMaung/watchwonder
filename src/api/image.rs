@@ -1,9 +1,19 @@
-use crate::utils::{common_struct::BaseResponse, image::get_image_format_from_path};
+use crate::{
+    models::{brand, category, product, shop, user},
+    utils::{common_struct::BaseResponse, image::get_image_format_from_path},
+};
 use actix_multipart::Multipart;
-use actix_web::{post, web, HttpResponse, Result};
+use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::{fs, io::Write};
+use std::{
+    fs::{self, read_dir, remove_file},
+    io::Write,
+    path::{Path, PathBuf},
+    sync::Arc,
+    vec,
+};
+use tokio_postgres::Client;
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -152,4 +162,65 @@ pub async fn resize_image(
         code: 200,
         message: "Image resized successfully".to_string(),
     }));
+}
+
+#[get("/api/remove-dangling-images")]
+pub async fn remove_dangling_images(client: web::Data<Arc<Client>>) -> impl Responder {
+    let mut images: Vec<PathBuf> = vec![];
+    let user_profile_images = user::get_profile_images(&client).await;
+    for profile_image in user_profile_images {
+        images.push(PathBuf::from(profile_image.replace("/images", "./images")));
+    }
+
+    let shop_cover_images = shop::get_cover_images(&client).await;
+    for cover_image in shop_cover_images {
+        images.push(PathBuf::from(cover_image.replace("/images", "./images")));
+    }
+
+    let category_cover_images = category::get_cover_images(&client).await;
+    for cover_image in category_cover_images {
+        images.push(PathBuf::from(cover_image.replace("/images", "./images")));
+    }
+
+    let brand_logo_urls = brand::get_logo_urls(&client).await;
+    for logo_url in brand_logo_urls {
+        images.push(PathBuf::from(logo_url.replace("/images", "./images")));
+    }
+
+    let product_images = product::get_product_images(&client).await;
+    for product_image in product_images {
+        images.push(PathBuf::from(product_image.replace("/images", "./images")));
+    }
+
+    let path = Path::new("./images");
+
+    match read_dir(&path) {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(e) => {
+                        // println!("{:?}", e.path());
+                        let p = e.path();
+                        if !images.contains(&p) {
+                            match remove_file(&p) {
+                                Ok(_) => println!("Successfully deleted {:?}", p),
+                                Err(err) => eprintln!("Failed to delete {:?} due to {}", p, err),
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading directory entry: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error reading directory: {}", e);
+        }
+    }
+
+    HttpResponse::Ok().json(BaseResponse {
+        code: 200,
+        message: String::from("Image removed successfully"),
+    })
 }

@@ -316,3 +316,13 @@ pub async fn get_user_name(user_id: i32, client: &Client) -> Option<String> {
         Err(_) => None,
     }
 }
+
+pub async fn get_profile_images(client: &Client) -> Vec<String> {
+    match client.query("select profile_image from users", &[]).await {
+        Ok(rows) => rows.iter().map(|row| row.get("profile_image")).collect(),
+        Err(err) => {
+            println!("{:?}", err);
+            vec![]
+        }
+    }
+}

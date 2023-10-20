@@ -239,3 +239,13 @@ pub async fn delete_shop(
     };
     Ok(())
 }
+
+pub async fn get_cover_images(client: &Client) -> Vec<String> {
+    match client.query("select cover_image from shops", &[]).await {
+        Ok(rows) => rows.iter().map(|row| row.get("cover_image")).collect(),
+        Err(err) => {
+            println!("{:?}", err);
+            vec![]
+        }
+    }
+}

@@ -656,3 +656,16 @@ pub async fn is_products_exist(
     let total: i64 = row.get("total");
     Ok(total > 0)
 }
+
+pub async fn get_product_images(client: &Client) -> Vec<String> {
+    match client
+        .query("select image_url from product_images", &[])
+        .await
+    {
+        Ok(rows) => rows.iter().map(|row| row.get("image_url")).collect(),
+        Err(err) => {
+            println!("{:?}", err);
+            vec![]
+        }
+    }
+}
