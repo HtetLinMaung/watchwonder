@@ -5,7 +5,10 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::product::{self, ProductRequest},
+    models::{
+        currency,
+        product::{self, ProductRequest},
+    },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -264,7 +267,24 @@ pub async fn add_product(
         });
     }
 
-    match product::add_product(&body, user_id, &client).await {
+    let currency_id = match body.currency_id {
+        Some(cur_id) => cur_id,
+        None => match currency::get_default_currency_id(&client).await {
+            Ok(cur_id) => cur_id,
+            Err(err) => {
+                println!("{:?}", err);
+                0
+            }
+        },
+    };
+    if currency_id == 0 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Something went wrong with currency!"),
+        });
+    }
+
+    match product::add_product(&body, currency_id, user_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Product added successfully"),

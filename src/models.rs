@@ -1,6 +1,7 @@
 pub mod address;
 pub mod brand;
 pub mod category;
+pub mod currency;
 pub mod fcm;
 pub mod insurance;
 pub mod notification;

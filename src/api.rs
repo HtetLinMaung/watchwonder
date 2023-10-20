@@ -2,6 +2,7 @@ mod address;
 mod auth;
 mod brand;
 mod category;
+mod currency;
 mod fcm;
 mod image;
 mod insurance;
@@ -74,4 +75,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(user::delete_account);
     cfg.service(seller_review::add_seller_review);
     cfg.service(seller_review::get_seller_reviews);
+    cfg.service(currency::get_currencies);
 }
