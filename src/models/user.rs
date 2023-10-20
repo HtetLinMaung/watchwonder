@@ -20,6 +20,7 @@ pub struct User {
     pub profile_image: String,
     pub email: String,
     pub phone: String,
+    pub account_status: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -39,7 +40,7 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
 pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
     let result = client
         .query_one(
-            "select user_id, username, password, role, name, profile_image, email, phone, created_at from users where user_id = $1 and deleted_at is null",
+            "select user_id, username, password, role, name, profile_image, email, phone, account_status, created_at from users where user_id = $1 and deleted_at is null",
             &[&user_id],
         )
         .await;
@@ -54,6 +55,7 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
             profile_image: row.get("profile_image"),
             email: row.get("email"),
             phone: row.get("phone"),
+            account_status: row.get("account_status"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
@@ -68,6 +70,7 @@ pub async fn add_user(
     phone: &str,
     profile_image: &str,
     role: &str,
+    account_status: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let hashed_password =
@@ -75,8 +78,8 @@ pub async fn add_user(
 
     // Insert the new user into the database
     client.execute(
-        "INSERT INTO users (name, username, password, email, phone, profile_image, role) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role],
+        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status],
     ).await?;
     Ok(())
 }
@@ -135,7 +138,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
     // In a real-world scenario, handle errors gracefully
     let result = client
         .query_one(
-            "select user_id, username, password, role, name, profile_image, email, phone, created_at from users where username = $1 and deleted_at is null",
+            "select user_id, username, password, role, name, profile_image, email, phone, account_status, created_at from users where username = $1 and deleted_at is null",
             &[&username],
         )
         .await;
@@ -150,6 +153,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
             profile_image: row.get("profile_image"),
             email: row.get("email"),
             phone: row.get("phone"),
+            account_status: row.get("account_status"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
@@ -160,14 +164,34 @@ pub async fn get_users(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    role: &Option<String>,
+    account_status: &Option<String>,
     client: &Client,
 ) -> Result<PaginationResult<User>, Error> {
-    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut base_query = "from users where deleted_at is null".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if let Some(r) = role {
+        params.push(Box::new(r));
+        base_query = format!("{base_query} and role = ${}", params.len());
+    }
+    if let Some(status) = account_status {
+        params.push(Box::new(status));
+        base_query = format!("{base_query} and account_status = ${}", params.len());
+    }
+
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "user_id, name, username, password, role, email, phone, profile_image, created_at",
-        base_query: "from users where deleted_at is null",
-        search_columns: vec!["name", "username", "role", "email", "phone"],
+            "user_id, name, username, password, role, email, phone, profile_image, account_status, created_at",
+        base_query: &base_query,
+        search_columns: vec![
+            "name",
+            "username",
+            "role",
+            "email",
+            "phone",
+            "account_status",
+        ],
         search: search.as_deref(),
         order_options: Some("created_at desc"),
         page,
@@ -201,6 +225,7 @@ pub async fn get_users(
             profile_image: row.get("profile_image"),
             email: row.get("email"),
             phone: row.get("phone"),
+            account_status: row.get("account_status"),
             created_at: row.get("created_at"),
         })
         .collect();

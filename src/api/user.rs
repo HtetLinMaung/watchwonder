@@ -18,6 +18,8 @@ pub struct GetUsersQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub role: Option<String>,
+    pub account_status: Option<String>,
 }
 
 #[get("/api/users")]
@@ -75,7 +77,16 @@ pub async fn get_users(
         });
     }
 
-    match user::get_users(&query.search, query.page, query.per_page, &client).await {
+    match user::get_users(
+        &query.search,
+        query.page,
+        query.per_page,
+        &query.role,
+        &query.account_status,
+        &client,
+    )
+    .await
+    {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
@@ -105,6 +116,7 @@ pub struct AddUserRequest {
     pub phone: String,
     pub role: String,
     pub profile_image: String,
+    pub account_status: Option<String>,
 }
 
 #[post("/api/users")]
@@ -195,6 +207,11 @@ pub async fn add_user(
                 });
             }
 
+            let mut account_status = "active";
+            if let Some(status) = &body.account_status {
+                account_status = status;
+            }
+
             match user::add_user(
                 &body.name,
                 &body.username,
@@ -203,6 +220,7 @@ pub async fn add_user(
                 &body.phone,
                 &body.profile_image,
                 &body.role,
+                account_status,
                 &client,
             )
             .await

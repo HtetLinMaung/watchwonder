@@ -18,6 +18,7 @@ pub struct RegisterRequest {
     pub email: String,
     pub phone: String,
     pub profile_image: String,
+    pub role: Option<String>,
 }
 
 #[post("/api/auth/register")]
@@ -31,6 +32,7 @@ pub async fn register(
             message: String::from("Name must not be empty!"),
         });
     }
+
     if !validate_email(&body.email) {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
@@ -43,6 +45,23 @@ pub async fn register(
             message: String::from("Invalid phone!"),
         });
     }
+
+    let mut account_status = "active";
+    let mut role = "user";
+    if let Some(r) = &body.role {
+        role = r.as_str();
+        if role != "user" && role != "agent" {
+            return HttpResponse::BadRequest().json(BaseResponse {
+                code: 400,
+                message: String::from("Role must be user or agent!"),
+            });
+        }
+        account_status = match role {
+            "agent" => "pending",
+            _ => "active",
+        };
+    }
+
     match user_exists(&body.username, &client).await {
         Ok(exists) => {
             if exists {
@@ -59,7 +78,8 @@ pub async fn register(
                 &body.email,
                 &body.phone,
                 &body.profile_image,
-                "user",
+                role,
+                account_status,
                 &client,
             )
             .await
@@ -111,6 +131,13 @@ pub async fn login(
 
     match user {
         Some(user) => {
+            if &user.account_status != "active" {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Your account has not been activated yet. Please wait for an admin to approve your account or contact support for further assistance!")
+                });
+            }
+
             if verify(&credentials.password, &user.password).unwrap() {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
