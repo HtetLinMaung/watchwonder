@@ -166,7 +166,7 @@ pub async fn resize_image(
 
 #[get("/api/remove-dangling-images")]
 pub async fn remove_dangling_images(client: web::Data<Arc<Client>>) -> impl Responder {
-    let mut images: Vec<PathBuf> = vec![];
+    let mut images: Vec<PathBuf> = vec![PathBuf::from("./images/policy.html")];
     let user_profile_images = user::get_profile_images(&client).await;
     for profile_image in user_profile_images {
         images.push(PathBuf::from(profile_image.replace("/images", "./images")));
