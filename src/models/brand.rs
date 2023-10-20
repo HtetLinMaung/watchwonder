@@ -125,7 +125,7 @@ pub async fn update_brand(
 pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
     let result = client
         .query_one(
-            "select brand_id, name, description, logo_url,created_at from brands where brand_id = $1 and deleted_at is null",
+            "select brand_id, name, description, logo_url, created_at from brands where brand_id = $1 and deleted_at is null",
             &[&brand_id],
         )
         .await;
