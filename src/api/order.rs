@@ -474,9 +474,9 @@ pub async fn update_order(
         });
     }
 
-    match order::get_user_id_and_currency_id_by_order_id(order_id, &client).await {
-        Some((client_id, currency_id)) => {
-            match order::update_order(order_id, &body.status, currency_id, &client).await {
+    match order::get_user_id_by_order_id(order_id, &client).await {
+        Some(client_id) => {
+            match order::update_order(order_id, &body.status, &client).await {
                 Ok(()) => {
                     tokio::spawn(async move {
                         let title = format!("Order {}", &body.status);

@@ -358,13 +358,12 @@ pub async fn get_order_items(
 pub async fn update_order(
     order_id: i32,
     status: &str,
-    currency_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .execute(
-            "update orders set status = $1, currency_id = $2 where order_id = $3 and deleted_at is null",
-            &[&status, &currency_id, &order_id],
+            "update orders set status = $1 where order_id = $2 and deleted_at is null",
+            &[&status, &order_id],
         )
         .await?;
     Ok(())
@@ -383,18 +382,15 @@ pub async fn update_order(
 //     Ok(row.is_ok())
 // }
 
-pub async fn get_user_id_and_currency_id_by_order_id(
-    order_id: i32,
-    client: &Client,
-) -> Option<(i32, i32)> {
+pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i32> {
     match client
         .query_one(
-            "select user_id, currency_id from orders where order_id = $1 and deleted_at is null",
+            "select user_id from orders where order_id = $1 and deleted_at is null",
             &[&order_id],
         )
         .await
     {
-        Ok(row) => Some((row.get("user_id"), row.get("currency_id"))),
+        Ok(row) => row.get("user_id"),
         Err(_) => None,
     }
 }
