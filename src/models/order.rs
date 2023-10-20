@@ -67,6 +67,7 @@ pub struct NewOrder {
 pub async fn add_order(
     order: &NewOrder,
     user_id: i32,
+    currency_id: i32,
     client: &Client,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     client.execute("INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
@@ -82,14 +83,14 @@ pub async fn add_order(
 
     let order_row = client
         .query_one(
-            "insert into orders (user_id, shipping_address_id, payment_type, payslip_screenshot_path) values ($1, $2, $3, $4) returning order_id",
-            &[&user_id, &shipping_address_id, &order.payment_type, &order.payslip_screenshot_path],
+            "insert into orders (user_id, shipping_address_id, payment_type, payslip_screenshot_path, currency_id) values ($1, $2, $3, $4, $5) returning order_id",
+            &[&user_id, &shipping_address_id, &order.payment_type, &order.payslip_screenshot_path, &currency_id],
         )
         .await?;
     let order_id: i32 = order_row.get("order_id");
 
     for item in &order.order_items {
-        let query = format!("insert into order_items (order_id, product_id, quantity, price) values ($1, $2, $3, (select (coalesce(price, 0.0)) from products where product_id = $4 and deleted_at is null))");
+        let query = format!("insert into order_items (order_id, product_id, quantity, price, currency_id) values ($1, $2, $3, (select coalesce(price, 0.0) from products where product_id = $4 and deleted_at is null), $5)");
         client
             .execute(
                 &query,
@@ -98,6 +99,7 @@ pub async fn add_order(
                     &item.product_id,
                     &item.quantity,
                     &item.product_id,
+                    &currency_id,
                 ],
             )
             .await?;
@@ -393,7 +395,7 @@ pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i
     }
 }
 
-pub async fn is_items_from_single_shop(items: &Vec<NewOrderItem>, client: &Client) -> bool {
+pub async fn are_items_from_single_shop(items: &Vec<NewOrderItem>, client: &Client) -> bool {
     let product_ids: Vec<&i32> = items.iter().map(|item| &item.product_id).collect();
     let query =
         "SELECT DISTINCT shop_id FROM products WHERE deleted_at IS NULL AND product_id = ANY($1)";
@@ -402,6 +404,22 @@ pub async fn is_items_from_single_shop(items: &Vec<NewOrderItem>, client: &Clien
         Err(err) => {
             println!("{:?}", err);
             false
+        }
+    }
+}
+
+pub async fn are_items_same_currency_and_get_currency_id(
+    items: &Vec<NewOrderItem>,
+    client: &Client,
+) -> Option<i32> {
+    let product_ids: Vec<&i32> = items.iter().map(|item| &item.product_id).collect();
+    let query =
+        "SELECT DISTINCT currency_id FROM products WHERE deleted_at IS NULL AND product_id = ANY($1)";
+    match client.query_one(query, &[&product_ids]).await {
+        Ok(row) => Some(row.get("currency_id")),
+        Err(err) => {
+            println!("{:?}", err);
+            None
         }
     }
 }

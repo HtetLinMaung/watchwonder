@@ -8,7 +8,9 @@ use tokio_postgres::Client;
 use crate::{
     models::{
         notification,
-        order::{self, is_items_from_single_shop, NewOrder},
+        order::{
+            self, are_items_from_single_shop, are_items_same_currency_and_get_currency_id, NewOrder,
+        },
         product, seller_review, user,
     },
     utils::{
@@ -81,10 +83,23 @@ pub async fn add_order(
         });
     }
 
-    if !is_items_from_single_shop(&order.order_items, &client).await {
+    if !are_items_from_single_shop(&order.order_items, &client).await {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("You can only order items from one shop at a time. Please place separate orders for items from different shops!"),
+        });
+    }
+
+    let currency_id =
+        match are_items_same_currency_and_get_currency_id(&order.order_items, &client).await {
+            Some(cur_id) => cur_id,
+            None => 0,
+        };
+
+    if currency_id == 0 {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("You can only order items with the same currency at a time. Please place separate orders for items with different currencies!"),
         });
     }
 
@@ -105,7 +120,7 @@ pub async fn add_order(
         });
     }
 
-    match order::add_order(&order, user_id, &client).await {
+    match order::add_order(&order, user_id, currency_id, &client).await {
         Ok(order_id) => {
             let shop_id = order.shop_id.unwrap_or(0);
             let is_already_reviewed =
