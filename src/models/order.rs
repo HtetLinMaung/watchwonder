@@ -32,6 +32,7 @@ pub struct Order {
     pub rule_id: i32,
     pub rule_description: String,
     pub commission_amount: f64,
+    pub symbol: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -45,6 +46,7 @@ pub struct OrderItem {
     pub price: f64,
     pub amount: f64,
     pub product_images: Vec<String>,
+    pub symbol: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -145,7 +147,7 @@ pub async fn get_orders(
     client: &Client,
 ) -> Result<PaginationResult<Order>, Error> {
     let mut base_query =
-        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id left join insurance_options i on i.order_id = o.order_id left join commission_rules r on r.rule_id = i.rule_id where o.deleted_at is null and u.deleted_at is null and a.deleted_at is null and i.deleted_at is null and r.deleted_at is null"
+        "from orders o inner join users u on o.user_id = u.user_id inner join order_addresses a on o.shipping_address_id = a.address_id left join insurance_options i on i.order_id = o.order_id left join commission_rules r on r.rule_id = i.rule_id inner join currencies cur on cur.currency_id = o.currency_id where o.deleted_at is null and u.deleted_at is null and a.deleted_at is null and i.deleted_at is null and r.deleted_at is null and cur.deleted_at is null"
             .to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
@@ -183,7 +185,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol",
         base_query: &base_query,
         search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -239,6 +241,7 @@ pub async fn get_orders(
                 payslip_screenshot_path: row.get("payslip_screenshot_path"),
                 rule_id: row.get("rule_id"),
                 rule_description: row.get("rule_description"),
+                symbol: row.get("symbol"),
             };
         })
         .collect();
@@ -263,7 +266,7 @@ pub async fn get_order_items(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<OrderItem>, Error> {
-    let mut base_query = "from order_items oi inner join orders o on oi.order_id = o.order_id inner join products p on p.product_id = oi.product_id inner join brands b on b.brand_id = p.brand_id where oi.deleted_at is null and o.deleted_at is null and p.deleted_at is null".to_string();
+    let mut base_query = "from order_items oi inner join orders o on oi.order_id = o.order_id inner join products p on p.product_id = oi.product_id inner join brands b on b.brand_id = p.brand_id inner join currencies cur on cur.currency_id = oi.currency_id where oi.deleted_at is null and o.deleted_at is null and p.deleted_at is null and cur.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
     if role == "user" {
@@ -294,7 +297,7 @@ pub async fn get_order_items(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "oi.order_item_id, o.order_id, b.name brand, p.product_id, p.model, oi.quantity, oi.price::text, (oi.price * oi.quantity)::text as amount, oi.created_at",
+            "oi.order_item_id, o.order_id, b.name brand, p.product_id, p.model, oi.quantity, oi.price::text, (oi.price * oi.quantity)::text as amount, oi.created_at, cur.symbol",
         base_query: &base_query,
         search_columns: vec!["b.name", "p.model"],
         search: search.as_deref(),
@@ -343,6 +346,7 @@ pub async fn get_order_items(
             amount,
             created_at: row.get("created_at"),
             product_images,
+            symbol: row.get("symbol"),
         });
     }
 
