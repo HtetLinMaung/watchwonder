@@ -309,6 +309,10 @@ pub async fn add_product(
     creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut condition = "".to_string();
+    if let Some(c) = &data.condition {
+        condition = c.to_string();
+    }
     let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, currency_id, condition, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17, $18, $19) returning product_id", &data.price);
     let result = client
         .query_one(
@@ -331,7 +335,7 @@ pub async fn add_product(
                 &data.stock_quantity,
                 &data.is_top_model,
                 &currency_id,
-                &data.condition,
+                &condition,
                 &creator_id,
             ],
         )
@@ -431,7 +435,11 @@ pub async fn update_product(
     currency_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17 where product_id = $18", &data.price);
+    let mut condition = "".to_string();
+    if let Some(c) = &data.condition {
+        condition = c.to_string();
+    }
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18 where product_id = $19", &data.price);
     client
         .execute(
             &query,
@@ -453,6 +461,7 @@ pub async fn update_product(
                 &data.stock_quantity,
                 &data.is_top_model,
                 &currency_id,
+                &condition,
                 &product_id,
             ],
         )
