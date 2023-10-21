@@ -240,6 +240,7 @@ CREATE TABLE products
     dimensions VARCHAR(50),
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
+    condition VARCHAR(255) DEFAULT '',
     is_top_model BOOLEAN DEFAULT FALSE,
     creator_id INT REFERENCES users(user_id),
     currency_id INT REFERENCES currencies(currency_id) DEFAULT 1,
