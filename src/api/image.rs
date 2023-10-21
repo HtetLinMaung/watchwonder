@@ -60,6 +60,16 @@ pub async fn upload(
                     let img_path = format!("./images/{}", filename);
                     match image::open(img_path) {
                         Ok(img) => {
+                            // Check if the original image dimensions are smaller than the target dimensions
+                            if img.width() < width || img.height() < height {
+                                let url = format!("/images/{}", filename);
+                                return Ok(HttpResponse::Ok().json(UploadResponse {
+                                    code: 200,
+                                    message: "Original image resolution is lower than the given resolution. No resizing performed.".to_string(),
+                                    url
+                                }));
+                            }
+
                             let resized =
                                 img.resize(width, height, image::imageops::FilterType::Lanczos3);
                             // Determine the format based on the original image's format
