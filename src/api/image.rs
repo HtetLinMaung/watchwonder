@@ -60,11 +60,8 @@ pub async fn upload(
                     let img_path = format!("./images/{}", filename);
                     match image::open(img_path) {
                         Ok(img) => {
-                            let resized = img.resize_exact(
-                                width,
-                                height,
-                                image::imageops::FilterType::Triangle,
-                            );
+                            let resized =
+                                img.resize(width, height, image::imageops::FilterType::Lanczos3);
                             // Determine the format based on the original image's format
                             let format = get_image_format_from_path(
                                 format!("./images/{}", filename).as_str(),
@@ -133,8 +130,7 @@ pub async fn resize_image(
             let img_path = &body.image_path;
             match image::open(img_path) {
                 Ok(img) => {
-                    let resized =
-                        img.resize_exact(width, height, image::imageops::FilterType::Triangle);
+                    let resized = img.resize(width, height, image::imageops::FilterType::Lanczos3);
 
                     // Determine the format based on the original image's format
                     let format =
