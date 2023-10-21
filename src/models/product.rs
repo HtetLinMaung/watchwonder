@@ -36,6 +36,7 @@ pub struct Product {
     pub currency_id: i32,
     pub currency_code: String,
     pub symbol: String,
+    pub condition: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -149,9 +150,9 @@ pub async fn get_products(
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.created_at",
+        select_columns: "p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.created_at",
         base_query: &base_query,
-        search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name"],
+        search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name", "p.condition"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -216,6 +217,7 @@ pub async fn get_products(
             currency_id: row.get("currency_id"),
             currency_code: row.get("currency_code"),
             symbol: row.get("symbol"),
+            condition: row.get("condition"),
             created_at: row.get("created_at"),
         });
     }
@@ -298,6 +300,7 @@ pub struct ProductRequest {
     pub is_top_model: bool,
     pub product_images: Vec<String>,
     pub currency_id: Option<i32>,
+    pub condition: Option<String>,
 }
 
 pub async fn add_product(
@@ -306,7 +309,7 @@ pub async fn add_product(
     creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, currency_id, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17, $18) returning product_id", &data.price);
+    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, currency_id, condition, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17, $18, $19) returning product_id", &data.price);
     let result = client
         .query_one(
             &query,
@@ -328,6 +331,7 @@ pub async fn add_product(
                 &data.stock_quantity,
                 &data.is_top_model,
                 &currency_id,
+                &data.condition,
                 &creator_id,
             ],
         )
@@ -367,7 +371,7 @@ pub async fn add_product(
 pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Product> {
     let result = client
         .query_one(
-            "select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and p.product_id = $1",
+            "select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and p.product_id = $1",
             &[&product_id],
         )
         .await;
@@ -412,6 +416,7 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 currency_id: row.get("currency_id"),
                 currency_code: row.get("currency_code"),
                 symbol: row.get("symbol"),
+                condition: row.get("condition"),
                 created_at: row.get("created_at"),
             })
         }
