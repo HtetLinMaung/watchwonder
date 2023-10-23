@@ -23,7 +23,7 @@ pub fn generate_pagination_query(options: PaginationOptions) -> PaginationQueryR
             let search_clauses: Vec<String> = options
                 .search_columns
                 .iter()
-                .map(|col| format!("{} LIKE '%{}%'", col, s))
+                .map(|col| format!("{} ILIKE '%{}%'", col, s))
                 .collect();
             let search_query = search_clauses.join(" OR ");
             // Check if the query already contains a WHERE clause
