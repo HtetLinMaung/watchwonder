@@ -37,7 +37,21 @@ pub async fn upload(
         let mut field = item?;
         let content_disposition = field.content_disposition();
         let original_name = content_disposition.get_filename().unwrap().to_string();
+        let path = Path::new(&original_name);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+
         let unique_id = Uuid::new_v4();
+
+        let original_filename = format!("{}_{}_original.{}", unique_id, stem, extension);
+        let original_filepath = format!("./images/{}", original_filename);
+
         let filename = format!("{}_{}", unique_id, original_name);
         let filepath = format!("./images/{}", filename);
 
@@ -49,6 +63,15 @@ pub async fn upload(
             file = web::block(move || file.write_all(&data).map(|_| file))
                 .await?
                 .unwrap();
+        }
+
+        match fs::copy(format!("./images/{}", filename), &original_filepath) {
+            Ok(_) => {
+                println!("File copied successfully!");
+            }
+            Err(e) => {
+                println!("Failed to copy file: {}", e);
+            }
         }
 
         // Resize the image if resolution parameter is provided
@@ -175,27 +198,82 @@ pub async fn remove_dangling_images(client: web::Data<Arc<Client>>) -> impl Resp
     let mut images: Vec<PathBuf> = vec![PathBuf::from("./images/policy.html")];
     let user_profile_images = user::get_profile_images(&client).await;
     for profile_image in user_profile_images {
-        images.push(PathBuf::from(profile_image.replace("/images", "./images")));
+        let profile_file_path = profile_image.replace("/images", "./images");
+        images.push(PathBuf::from(&profile_file_path));
+        let path = Path::new(&profile_file_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
     }
 
     let shop_cover_images = shop::get_cover_images(&client).await;
     for cover_image in shop_cover_images {
-        images.push(PathBuf::from(cover_image.replace("/images", "./images")));
+        let cover_image_path = cover_image.replace("/images", "./images");
+        images.push(PathBuf::from(&cover_image_path));
+        let path = Path::new(&cover_image_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
     }
 
     let category_cover_images = category::get_cover_images(&client).await;
     for cover_image in category_cover_images {
-        images.push(PathBuf::from(cover_image.replace("/images", "./images")));
+        let cover_image_path = cover_image.replace("/images", "./images");
+        images.push(PathBuf::from(&cover_image_path));
+        let path = Path::new(&cover_image_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
     }
 
     let brand_logo_urls = brand::get_logo_urls(&client).await;
     for logo_url in brand_logo_urls {
-        images.push(PathBuf::from(logo_url.replace("/images", "./images")));
+        let logo_url_path = logo_url.replace("/images", "./images");
+        images.push(PathBuf::from(&logo_url_path));
+        let path = Path::new(&logo_url_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
     }
 
     let product_images = product::get_product_images(&client).await;
     for product_image in product_images {
-        images.push(PathBuf::from(product_image.replace("/images", "./images")));
+        let product_image_path = product_image.replace("/images", "./images");
+        images.push(PathBuf::from(&product_image_path));
+        let path = Path::new(&product_image_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
     }
 
     let path = Path::new("./images");
