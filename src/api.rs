@@ -77,4 +77,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_review::get_seller_reviews);
     cfg.service(currency::get_currencies);
     cfg.service(image::remove_dangling_images);
+    cfg.service(auth::forgot_password);
 }

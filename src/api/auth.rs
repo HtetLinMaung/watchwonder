@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::models::notification;
 use crate::models::user::{self, get_user, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
 use crate::utils::jwt::{self, verify_token_and_get_sub};
@@ -302,4 +303,66 @@ pub async fn verify_token(body: web::Json<VerifyTokenRequest>) -> impl Responder
         code: 200,
         message: String::from("Token is valid."),
     });
+}
+
+#[derive(Deserialize)]
+pub struct ForgotPasswordRequest {
+    pub username: String,
+    pub email: String,
+    pub phone: String,
+}
+
+#[post("/api/auth/forgot-password")]
+pub async fn forgot_password(
+    body: web::Json<ForgotPasswordRequest>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let user = get_user(&body.username, &client).await;
+
+    match user {
+        Some(user) => {
+            if &user.account_status != "active" {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Your account has not been activated yet. Please wait for an admin to approve your account or contact support for further assistance!")
+                });
+            }
+
+            if &user.role == "admin"
+                || &user.username != &body.username
+                || &user.email != &body.email
+                || &user.phone != &user.phone
+            {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Unauthorized!"),
+                });
+            }
+            let message = format!("A password reset request was made for user {} ({}). Please verify legitimacy and monitor for any suspicious activity.",&body.username, &body.email);
+            match notification::add_notification_to_admins(
+                "Password Reset Alert",
+                &message,
+                &client,
+            )
+            .await
+            {
+                Ok(()) => {
+                    println!("Notification added successfully.");
+                }
+                Err(err) => {
+                    println!("Error adding notification: {:?}", err);
+                }
+            };
+            HttpResponse::Ok().json(BaseResponse {
+                code: 200,
+                message: String::from(
+                    "Your request to reset your password has been successfully submitted.",
+                ),
+            })
+        }
+        None => HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Invalid username!"),
+        }),
+    }
 }
