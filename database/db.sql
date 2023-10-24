@@ -237,6 +237,7 @@ CREATE TABLE products
     movement_type VARCHAR(50),
     water_resistance VARCHAR(50),
     warranty_period VARCHAR(50),
+    warranty_type_id INT REFERENCES warranty_types(warranty_type_id) DEFAULT 1,
     dimensions VARCHAR(50),
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
@@ -482,3 +483,41 @@ VALUES
     ('THB', 'Thai Baht', '฿'),
     ('CNY', 'China Yuan Renminbi', '¥'),
     ('MMK', 'Myanmar Kyat', 'Ks');
+
+
+CREATE TABLE bank_accounts
+(
+    account_id SERIAL PRIMARY KEY,
+    account_holder_name VARCHAR(255) NOT NULL,
+    account_number VARCHAR(50) NOT NULL,
+    bank_logo VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into bank_accounts
+    (account_holder_name, account_number, bank_logo)
+values
+    ('U La Min Tun', '002211188001232', '');
+insert into bank_accounts
+    (account_holder_name, account_number, bank_logo)
+values
+    ('Daw Yin Yin Myo', '27030127000219801', '');
+insert into bank_accounts
+    (account_holder_name, account_number, bank_logo)
+values
+    ('Daw Yin Yin Myo', '0014600100018578', '');
+
+CREATE TABLE warranty_types
+(
+    warranty_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into warranty_types (description) values ('Local Seller Warranty');
+insert into warranty_types (description) values ('International Warranty');
+insert into warranty_types (description) values ('Authorized Distributor Warranty');

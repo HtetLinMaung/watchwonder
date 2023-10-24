@@ -1,5 +1,6 @@
 mod address;
 mod auth;
+mod bank_account;
 mod brand;
 mod category;
 mod currency;
@@ -14,6 +15,7 @@ mod shop;
 mod terms_and_conditions;
 mod user;
 mod vector;
+mod warranty_type;
 
 use actix_web::web;
 
@@ -78,4 +80,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(currency::get_currencies);
     cfg.service(image::remove_dangling_images);
     cfg.service(auth::forgot_password);
+    cfg.service(bank_account::get_bank_accounts);
+    cfg.service(warranty_type::get_warranty_types);
 }

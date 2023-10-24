@@ -1,4 +1,5 @@
 pub mod address;
+pub mod bank_account;
 pub mod brand;
 pub mod category;
 pub mod currency;
@@ -11,3 +12,4 @@ pub mod seller_review;
 pub mod shop;
 pub mod terms_and_conditions;
 pub mod user;
+pub mod warranty_type;
