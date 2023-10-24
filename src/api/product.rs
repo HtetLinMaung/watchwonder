@@ -6,8 +6,9 @@ use tokio_postgres::Client;
 
 use crate::{
     models::{
-        currency,
+        category, currency,
         product::{self, ProductRequest},
+        shop,
     },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
@@ -281,6 +282,23 @@ pub async fn add_product(
         return HttpResponse::InternalServerError().json(BaseResponse {
             code: 500,
             message: String::from("Something went wrong with currency!"),
+        });
+    }
+
+    if shop::get_shop_by_id(body.shop_id, &client).await.is_none() {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("The shop ID provided does not exist. Please provide a valid shop ID to add a product!"),
+        });
+    }
+
+    if category::get_category_by_id(body.category_id, &client)
+        .await
+        .is_none()
+    {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("The category ID provided does not exist. Please provide a valid category ID to add a product!"),
         });
     }
 
