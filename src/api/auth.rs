@@ -307,7 +307,7 @@ pub async fn verify_token(body: web::Json<VerifyTokenRequest>) -> impl Responder
 
 #[derive(Deserialize)]
 pub struct ForgotPasswordRequest {
-    pub username: String,
+    pub username: Option<String>,
     pub email: String,
     pub phone: String,
 }
@@ -317,7 +317,7 @@ pub async fn forgot_password(
     body: web::Json<ForgotPasswordRequest>,
     client: web::Data<Arc<Client>>,
 ) -> impl Responder {
-    let user = get_user(&body.username, &client).await;
+    let user = get_user(&body.email, &client).await;
 
     match user {
         Some(user) => {
@@ -328,17 +328,13 @@ pub async fn forgot_password(
                 });
             }
 
-            if &user.role == "admin"
-                || &user.username != &body.username
-                || &user.email != &body.email
-                || &user.phone != &user.phone
-            {
+            if &user.role == "admin" || &user.email != &body.email || &user.phone != &user.phone {
                 return HttpResponse::Unauthorized().json(BaseResponse {
                     code: 401,
                     message: String::from("Unauthorized!"),
                 });
             }
-            let message = format!("A password reset request was made for user {} ({}). Please verify legitimacy and monitor for any suspicious activity.",&body.username, &body.email);
+            let message = format!("A password reset request was made for user {} ({}). Please verify legitimacy and monitor for any suspicious activity.",&user.name, &body.email);
             match notification::add_notification_to_admins(
                 "Password Reset Alert",
                 &message,
