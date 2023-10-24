@@ -1,6 +1,7 @@
 pub mod address;
 pub mod bank_account;
 pub mod brand;
+pub mod buyer_protection;
 pub mod category;
 pub mod currency;
 pub mod fcm;

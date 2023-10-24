@@ -518,6 +518,33 @@ CREATE TABLE warranty_types
     deleted_at TIMESTAMP DEFAULT NULL
 );
 
-insert into warranty_types (description) values ('Local Seller Warranty');
-insert into warranty_types (description) values ('International Warranty');
-insert into warranty_types (description) values ('Authorized Distributor Warranty');
+insert into warranty_types
+    (description)
+values
+    ('Local Seller Warranty');
+insert into warranty_types
+    (description)
+values
+    ('International Warranty');
+insert into warranty_types
+    (description)
+values
+    ('Authorized Distributor Warranty');
+
+CREATE TABLE buyer_protections
+(
+    buyer_protection_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into buyer_protections
+    (description)
+values
+    ('Authenticity Guarantee');
+insert into buyer_protections
+    (description)
+values
+    ('14-day money-back guarantee');

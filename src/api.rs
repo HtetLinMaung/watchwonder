@@ -2,6 +2,7 @@ mod address;
 mod auth;
 mod bank_account;
 mod brand;
+mod buyer_protection;
 mod category;
 mod currency;
 mod fcm;
@@ -82,4 +83,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(auth::forgot_password);
     cfg.service(bank_account::get_bank_accounts);
     cfg.service(warranty_type::get_warranty_types);
+    cfg.service(buyer_protection::add_buyer_protection);
+    cfg.service(buyer_protection::get_buyer_protections);
+    cfg.service(buyer_protection::get_buyer_protection_by_id);
+    cfg.service(buyer_protection::update_buyer_protection);
+    cfg.service(buyer_protection::delete_buyer_protection);
 }
