@@ -22,21 +22,21 @@ pub async fn get_categories(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
-    role: &str,
-    user_id: i32,
+
     client: &Client,
 ) -> Result<PaginationResult<Category>, Error> {
-    let mut base_query = "from categories where deleted_at is null".to_string();
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
-    let order_options = match role {
-        "user" => "name asc, created_at desc",
-        _ => "created_at desc",
-    };
+    let base_query = "from categories where deleted_at is null".to_string();
+    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    // let order_options = match role {
+    //     "user" => "name asc, created_at desc",
+    //     _ => "created_at desc",
+    // };
+    let order_options = "name";
 
-    if role == "agent" {
-        params.push(Box::new(user_id));
-        base_query = format!("{base_query} and creator_id = ${}", params.len());
-    }
+    // if role == "agent" {
+    //     params.push(Box::new(user_id));
+    //     base_query = format!("{base_query} and creator_id = ${}", params.len());
+    // }
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns: "category_id, name, description, cover_image, created_at",

@@ -52,39 +52,15 @@ pub async fn get_categories(
         None => "".to_string(),
     };
 
-    let mut role = "user".to_string();
-    let mut user_id = 0;
     if !token.is_empty() {
-        let sub = match verify_token_and_get_sub(&token) {
-            Some(s) => s,
-            None => {
-                return HttpResponse::Unauthorized().json(BaseResponse {
-                    code: 401,
-                    message: String::from("Invalid token"),
-                })
-            }
-        };
-        // Parse the `sub` value
-        let parsed_values: Vec<String> = sub.split(',').map(|s| s.to_string()).collect();
-        if parsed_values.len() != 2 {
-            return HttpResponse::InternalServerError().json(BaseResponse {
-                code: 500,
-                message: String::from("Invalid sub format in token"),
+        if verify_token_and_get_sub(&token).is_none() {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
             });
         }
-        user_id = parsed_values[0].parse().unwrap();
-        role = parsed_values[1].clone();
     }
-    match category::get_categories(
-        &query.search,
-        query.page,
-        query.per_page,
-        &role,
-        user_id,
-        &client,
-    )
-    .await
-    {
+    match category::get_categories(&query.search, query.page, query.per_page, &client).await {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),
