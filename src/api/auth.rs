@@ -81,6 +81,7 @@ pub async fn register(
                 &body.profile_image,
                 role,
                 account_status,
+                false,
                 &None,
                 &client,
             )
@@ -121,6 +122,7 @@ pub struct LoginData {
     pub name: String,
     pub profile_image: String,
     pub role: String,
+    pub can_modify_order_status: bool,
 }
 
 #[post("/api/auth/login")]
@@ -159,6 +161,7 @@ pub async fn login(
                         name: user.name,
                         profile_image: user.profile_image,
                         role: user.role,
+                        can_modify_order_status: user.can_modify_order_status,
                     }),
                 })
             } else {

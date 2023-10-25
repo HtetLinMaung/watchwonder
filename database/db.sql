@@ -12,6 +12,7 @@ CREATE TABLE users
     phone VARCHAR(15),
     profile_image VARCHAR(255),
     account_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    can_modify_order_status BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );

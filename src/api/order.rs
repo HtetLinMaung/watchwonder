@@ -445,6 +445,7 @@ pub async fn update_order(
         });
     }
 
+    let user_id: i32 = parsed_values[0].parse().unwrap();
     let role: &str = parsed_values[1];
 
     // if role != "admin" && role != "agent" {
@@ -454,6 +455,11 @@ pub async fn update_order(
     //     });
     // }
     if role == "user" && body.status.as_str() != "Cancelled" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    } else if role == "agent" && !user::can_modify_order_status(user_id, &client).await {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),

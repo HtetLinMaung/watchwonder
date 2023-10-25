@@ -121,6 +121,7 @@ pub struct AddUserRequest {
     pub profile_image: String,
     pub account_status: Option<String>,
     pub seller_information: Option<SellerInformationRequest>,
+    pub can_modify_order_status: Option<bool>,
 }
 
 #[post("/api/users")]
@@ -216,6 +217,11 @@ pub async fn add_user(
                 account_status = status;
             }
 
+            let mut can_modify_order_status = false;
+            if let Some(yes) = body.can_modify_order_status {
+                can_modify_order_status = yes;
+            }
+
             match user::add_user(
                 &body.name,
                 &body.username,
@@ -225,6 +231,7 @@ pub async fn add_user(
                 &body.profile_image,
                 &body.role,
                 account_status,
+                can_modify_order_status,
                 &body.seller_information,
                 &client,
             )
@@ -332,6 +339,7 @@ pub struct UpdateUserRequest {
     pub profile_image: String,
     pub account_status: Option<String>,
     pub seller_information: Option<SellerInformationRequest>,
+    pub can_modify_order_status: Option<bool>,
 }
 
 #[put("/api/users/{user_id}")]
@@ -425,6 +433,11 @@ pub async fn update_user(
                 account_status = status;
             }
 
+            let mut can_modify_order_status = false;
+            if let Some(yes) = body.can_modify_order_status {
+                can_modify_order_status = yes;
+            }
+
             match user::update_user(
                 user_id,
                 &body.name,
@@ -436,6 +449,7 @@ pub async fn update_user(
                 &body.profile_image,
                 &body.role,
                 account_status,
+                can_modify_order_status,
                 &body.seller_information,
                 &client,
             )
