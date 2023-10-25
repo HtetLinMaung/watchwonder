@@ -39,19 +39,22 @@ pub async fn get_shops(
 ) -> Result<PaginationResult<Shop>, Box<dyn std::error::Error>> {
     let mut base_query = "from shops where deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
-    let order_options = match role {
-        "user" => "name asc, created_at desc",
-        _ => "created_at desc",
+
+    let mut screen_view = "admin";
+    if let Some(v) = view {
+        screen_view = v.as_str();
+    }
+
+    let order_options = if role == "user" || (role == "agent" && screen_view == "user") {
+        "name asc, created_at desc"
+    } else {
+        "created_at desc"
     };
 
     if role == "agent" {
         params.push(Box::new(user_id));
-        if let Some(v) = view {
-            if v.as_str() == "user" {
-                base_query = format!("{base_query} and creator_id != ${}", params.len());
-            } else {
-                base_query = format!("{base_query} and creator_id = ${}", params.len());
-            }
+        if screen_view == "user" {
+            base_query = format!("{base_query} and creator_id != ${}", params.len());
         } else {
             base_query = format!("{base_query} and creator_id = ${}", params.len());
         }

@@ -29,6 +29,7 @@ pub struct GetProductsRequestBody {
     pub to_price: Option<f64>,
     pub is_top_model: Option<bool>,
     pub products: Option<Vec<i32>>,
+    pub view: Option<String>,
 }
 
 #[post("/api/get-products")]
@@ -86,6 +87,7 @@ pub async fn get_products(
         body.to_price,
         body.is_top_model,
         &body.products,
+        &body.view,
         &role,
         user_id,
         &client,

@@ -74,14 +74,15 @@ pub async fn get_products(
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
+    let mut screen_view = "admin";
+    if let Some(v) = view {
+        screen_view = v.as_str();
+    }
+
     if role == "agent" {
         params.push(Box::new(user_id));
-        if let Some(v) = view {
-            if v.as_str() == "user" {
-                base_query = format!("{base_query} and p.creator_id != ${}", params.len());
-            } else {
-                base_query = format!("{base_query} and p.creator_id = ${}", params.len());
-            }
+        if screen_view == "user" {
+            base_query = format!("{base_query} and p.creator_id != ${}", params.len());
         } else {
             base_query = format!("{base_query} and p.creator_id = ${}", params.len());
         }
@@ -167,9 +168,10 @@ pub async fn get_products(
         }
     }
 
-    let order_options = match role {
-        "user" => "p.model asc, p.created_at desc".to_string(),
-        _ => "p.created_at desc".to_string(),
+    let order_options = if role == "user" || (role == "agent" && screen_view == "user") {
+        "p.model asc, p.created_at desc".to_string()
+    } else {
+        "p.created_at desc".to_string()
     };
 
     let result=  generate_pagination_query(PaginationOptions {
