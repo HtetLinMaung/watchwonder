@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use crate::utils::{
     common_struct::PaginationResult,
@@ -650,6 +650,19 @@ pub async fn update_product(
                 Ok(_) => println!("File deleted successfully!"),
                 Err(e) => println!("Error deleting file: {}", e),
             };
+            let path = Path::new(&old_product_image);
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
+            let extension = path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
+            match fs::remove_file(format!("{stem}_original.{extension}")) {
+                Ok(_) => println!("Original file deleted successfully!"),
+                Err(e) => println!("Error deleting original file: {}", e),
+            };
         }
     }
     Ok(())
@@ -676,6 +689,19 @@ pub async fn delete_product(
         match fs::remove_file(old_product_image) {
             Ok(_) => println!("File deleted successfully!"),
             Err(e) => println!("Error deleting file: {}", e),
+        };
+        let path = Path::new(&old_product_image);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        match fs::remove_file(format!("{stem}_original.{extension}")) {
+            Ok(_) => println!("Original file deleted successfully!"),
+            Err(e) => println!("Error deleting original file: {}", e),
         };
     }
     Ok(())

@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use bcrypt::{hash, DEFAULT_COST};
 use chrono::NaiveDateTime;
@@ -122,6 +122,19 @@ pub async fn update_user(
             Ok(_) => println!("File deleted successfully!"),
             Err(e) => println!("Error deleting file: {}", e),
         };
+        let path = Path::new(&old_profile_image);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        match fs::remove_file(format!("{stem}_original.{extension}")) {
+            Ok(_) => println!("Original file deleted successfully!"),
+            Err(e) => println!("Error deleting original file: {}", e),
+        };
     }
 
     let mut hashed_password = password.to_string();
@@ -164,6 +177,19 @@ pub async fn delete_user(
     match fs::remove_file(old_profile_image) {
         Ok(_) => println!("File deleted successfully!"),
         Err(e) => println!("Error deleting file: {}", e),
+    };
+    let path = Path::new(&old_profile_image);
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    let extension = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    match fs::remove_file(format!("{stem}_original.{extension}")) {
+        Ok(_) => println!("Original file deleted successfully!"),
+        Err(e) => println!("Error deleting original file: {}", e),
     };
     client.execute(
         "update users set deleted_at = CURRENT_TIMESTAMP where user_id = $1 and deleted_at is null",
