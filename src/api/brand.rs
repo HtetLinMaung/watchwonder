@@ -122,11 +122,10 @@ pub async fn add_brand(
             message: String::from("Invalid sub format in token"),
         });
     }
-    let user_role: &str = "user";
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
-    let role_name: &str = parsed_values[1];
-    if role_name.contains(user_role) {
+    let role: &str = parsed_values[1];
+    if role != "admin" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -278,10 +277,9 @@ pub async fn update_brand(
             message: String::from("Invalid sub format in token"),
         });
     }
-    let user_role: &str = "user";
 
-    let role_name: &str = parsed_values[1];
-    if role_name.contains(user_role) {
+    let role: &str = parsed_values[1];
+    if role != "admin" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -375,7 +373,7 @@ pub async fn delete_brand(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" && role != "agent" {
+    if role != "admin" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
