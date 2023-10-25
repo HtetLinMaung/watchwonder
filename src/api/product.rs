@@ -505,12 +505,12 @@ pub async fn update_product(
             message: String::from("Warranty Period must not be empty!"),
         });
     }
-    if body.dimensions.is_empty() {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("Dimensions must not be empty!"),
-        });
-    }
+    // if body.dimensions.is_empty() {
+    //     return HttpResponse::BadRequest().json(BaseResponse {
+    //         code: 400,
+    //         message: String::from("Dimensions must not be empty!"),
+    //     });
+    // }
 
     let currency_id = match body.currency_id {
         Some(cur_id) => cur_id,
