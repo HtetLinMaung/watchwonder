@@ -447,7 +447,13 @@ pub async fn update_order(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" && role != "agent" {
+    // if role != "admin" && role != "agent" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
+    if role == "user" && body.status.as_str() != "Cancelled" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -475,50 +481,44 @@ pub async fn update_order(
     }
 
     match order::get_user_id_by_order_id(order_id, &client).await {
-        Some(client_id) => {
-            match order::update_order(order_id, &body.status, &client).await {
-                Ok(()) => {
-                    tokio::spawn(async move {
-                        let title = format!("Order {}", &body.status);
-                        let status: &str = &body.status;
-                        let message = match status {
-                            "Processing" => {
-                                format!(
-                                    "Your order #{order_id} is {}.",
-                                    &body.status.to_lowercase()
-                                )
-                            }
-                            _ => format!(
-                                "Your order #{order_id} has been {}.",
-                                &body.status.to_lowercase()
-                            ),
-                        };
+        Some(client_id) => match order::update_order(order_id, &body.status, &client).await {
+            Ok(()) => {
+                tokio::spawn(async move {
+                    let title = format!("Order {}", &body.status);
+                    let status: &str = &body.status;
+                    let message = match status {
+                        "Processing" => {
+                            format!("Your order #{order_id} is {}.", &body.status.to_lowercase())
+                        }
+                        _ => format!(
+                            "Your order #{order_id} has been {}.",
+                            &body.status.to_lowercase()
+                        ),
+                    };
 
-                        match notification::add_notification(client_id, &title, &message, &client)
-                            .await
-                        {
-                            Ok(()) => {
-                                println!("Notification added successfully.");
-                            }
-                            Err(err) => {
-                                println!("Error adding notification: {:?}", err);
-                            }
-                        };
-                    });
-                    return HttpResponse::Ok().json(BaseResponse {
-                        code: 200,
-                        message: String::from("Order updated successfully"),
-                    });
-                }
-                Err(e) => {
-                    eprintln!("User updating error: {}", e);
-                    return HttpResponse::InternalServerError().json(BaseResponse {
-                        code: 500,
-                        message: String::from("Error updating order!"),
-                    });
-                }
+                    match notification::add_notification(client_id, &title, &message, &client).await
+                    {
+                        Ok(()) => {
+                            println!("Notification added successfully.");
+                        }
+                        Err(err) => {
+                            println!("Error adding notification: {:?}", err);
+                        }
+                    };
+                });
+                return HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("Order updated successfully"),
+                });
             }
-        }
+            Err(e) => {
+                eprintln!("User updating error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error updating order!"),
+                });
+            }
+        },
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
             message: String::from("Order not found!"),
