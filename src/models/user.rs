@@ -66,6 +66,8 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
                 active_since_year: row.get("active_since_year"),
                 location: row.get("location"),
                 offline_trader: row.get("offline_trader"),
+                product_counts: 0,
+                sold_product_counts: 0,
             }),
         }),
         Err(_) => None,
