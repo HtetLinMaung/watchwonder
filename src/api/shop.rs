@@ -20,6 +20,7 @@ pub struct GetShopsQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub view: Option<String>,
 }
 
 #[get("/api/shops")]
@@ -69,6 +70,7 @@ pub async fn get_shops(
         &query.search,
         query.page,
         query.per_page,
+        &query.view,
         &role,
         user_id,
         &client,

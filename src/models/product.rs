@@ -66,6 +66,7 @@ pub async fn get_products(
     to_price: Option<f64>,
     is_top_model: Option<bool>,
     products: &Option<Vec<i32>>,
+    view: &Option<String>,
     role: &str,
     user_id: i32,
     client: &Client,
@@ -75,7 +76,15 @@ pub async fn get_products(
 
     if role == "agent" {
         params.push(Box::new(user_id));
-        base_query = format!("{base_query} and p.creator_id = ${}", params.len());
+        if let Some(v) = view {
+            if v.as_str() == "user" {
+                base_query = format!("{base_query} and p.creator_id != ${}", params.len());
+            } else {
+                base_query = format!("{base_query} and p.creator_id = ${}", params.len());
+            }
+        } else {
+            base_query = format!("{base_query} and p.creator_id = ${}", params.len());
+        }
     }
 
     if let Some(s) = shop_id {

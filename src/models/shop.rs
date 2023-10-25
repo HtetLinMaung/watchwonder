@@ -32,6 +32,7 @@ pub async fn get_shops(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    view: &Option<String>,
     role: &str,
     user_id: i32,
     client: &Client,
@@ -45,7 +46,15 @@ pub async fn get_shops(
 
     if role == "agent" {
         params.push(Box::new(user_id));
-        base_query = format!("{base_query} and creator_id = ${}", params.len());
+        if let Some(v) = view {
+            if v.as_str() == "user" {
+                base_query = format!("{base_query} and creator_id != ${}", params.len());
+            } else {
+                base_query = format!("{base_query} and creator_id = ${}", params.len());
+            }
+        } else {
+            base_query = format!("{base_query} and creator_id = ${}", params.len());
+        }
     }
 
     let result=  generate_pagination_query(PaginationOptions {
