@@ -4,12 +4,16 @@ mod bank_account;
 mod brand;
 mod buyer_protection;
 mod category;
+mod condition;
 mod currency;
+mod dial_glass_type;
 mod fcm;
+mod gender;
 mod image;
 mod insurance;
 mod notification;
 mod order;
+mod other_accessories_type;
 mod product;
 mod seller_review;
 mod shop;
@@ -88,4 +92,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(buyer_protection::get_buyer_protection_by_id);
     cfg.service(buyer_protection::update_buyer_protection);
     cfg.service(buyer_protection::delete_buyer_protection);
+    cfg.service(dial_glass_type::get_dial_glass_types);
+    cfg.service(condition::get_conditions);
+    cfg.service(other_accessories_type::get_other_accessories_types);
+    cfg.service(gender::get_genders);
 }

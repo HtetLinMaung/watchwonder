@@ -238,7 +238,14 @@ CREATE TABLE products
     water_resistance VARCHAR(50),
     warranty_period VARCHAR(50),
     warranty_type_id INT REFERENCES warranty_types(warranty_type_id) DEFAULT 1,
+    dial_glass_type_id INT REFERENCES dial_glass_types(dial_glass_type_id) DEFAULT 1,
+    other_accessories_type_id INT REFERENCES other_accessories_types(other_accessories_type_id) DEFAULT 1,
+    gender_id INT REFERENCES genders(gender_id) DEFAULT 1,
+    waiting_time VARCHAR(50) DEFAULT '',
     dimensions VARCHAR(50),
+    case_diameter VARCHAR(50) default '',
+    case_depth VARCHAR(50) default '',
+    case_width VARCHAR(50) default '',
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
     condition VARCHAR(255) DEFAULT '',
@@ -548,3 +555,126 @@ insert into buyer_protections
     (description)
 values
     ('14-day money-back guarantee');
+
+
+CREATE TABLE seller_informations
+(
+    seller_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    professional_title VARCHAR(255) NOT NULL,
+    active_since_year INT NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    offline_trader BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE dial_glass_types
+(
+    dial_glass_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into dial_glass_types
+    (description)
+values
+    ('Sapphire Crystal');
+insert into dial_glass_types
+    (description)
+values
+    ('Hardlex Crystal');
+insert into dial_glass_types
+    (description)
+values
+    ('Mineral Glass');
+insert into dial_glass_types
+    (description)
+values
+    ('Acrylic Crystal');
+
+CREATE TABLE conditions
+(
+    condition_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into conditions
+    (description)
+values
+    ('Brand New');
+insert into conditions
+    (description)
+values
+    ('Unworn');
+insert into conditions
+    (description)
+values
+    ('Very Good');
+insert into conditions
+    (description)
+values
+    ('Good');
+insert into conditions
+    (description)
+values
+    ('Fair');
+insert into conditions
+    (description)
+values
+    ('Poor');
+insert into conditions
+    (description)
+values
+    ('Incomplete');
+
+CREATE TABLE other_accessories_types
+(
+    other_accessories_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into other_accessories_types
+    (description)
+values
+    ('Original box, warranty card, manual book');
+insert into other_accessories_types
+    (description)
+values
+    ('No original box, warranty card, manual book');
+insert into other_accessories_types
+    (description)
+values
+    ('Only original box');
+insert into other_accessories_types
+    (description)
+values
+    ('Watch only');
+
+CREATE TABLE genders
+(
+    gender_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into genders
+    (description)
+values
+    ('Men');
+insert into genders
+    (description)
+values
+    ('Women');
+insert into genders
+    (description)
+values
+    ('Unisex');
