@@ -86,6 +86,10 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(image::remove_dangling_images);
     cfg.service(auth::forgot_password);
     cfg.service(bank_account::get_bank_accounts);
+    cfg.service(bank_account::add_bank_account);
+    cfg.service(bank_account::get_bank_account_by_id);
+    cfg.service(bank_account::update_bank_account);
+    cfg.service(bank_account::delete_bank_account);
     cfg.service(warranty_type::get_warranty_types);
     cfg.service(buyer_protection::add_buyer_protection);
     cfg.service(buyer_protection::get_buyer_protections);

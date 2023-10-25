@@ -498,6 +498,7 @@ VALUES
 CREATE TABLE bank_accounts
 (
     account_id SERIAL PRIMARY KEY,
+    account_type VARCHAR(255) DEFAULT 'mbanking',
     account_holder_name VARCHAR(255) NOT NULL,
     account_number VARCHAR(50) NOT NULL,
     bank_logo VARCHAR(255) NOT NULL,

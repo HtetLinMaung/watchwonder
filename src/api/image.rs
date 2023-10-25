@@ -1,5 +1,5 @@
 use crate::{
-    models::{brand, category, product, shop, user},
+    models::{bank_account, brand, category, product, shop, user},
     utils::{common_struct::BaseResponse, image::get_image_format_from_path},
 };
 use actix_multipart::Multipart;
@@ -201,6 +201,21 @@ pub async fn remove_dangling_images(client: web::Data<Arc<Client>>) -> impl Resp
         let profile_file_path = profile_image.replace("/images", "./images");
         images.push(PathBuf::from(&profile_file_path));
         let path = Path::new(&profile_file_path);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        images.push(PathBuf::from(format!("{stem}_original.{extension}")));
+    }
+    let bank_logos = bank_account::get_bank_logos(&client).await;
+    for bank_logo in bank_logos {
+        let bank_logo_path = bank_logo.replace("/images", "./images");
+        images.push(PathBuf::from(&bank_logo_path));
+        let path = Path::new(&bank_logo_path);
         let stem = path
             .file_stem()
             .and_then(|s| s.to_str())
