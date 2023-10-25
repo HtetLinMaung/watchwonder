@@ -565,10 +565,14 @@ CREATE TABLE seller_informations
 (
     seller_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id),
+    company_name VARCHAR(255) NOT NULL,
     professional_title VARCHAR(255) NOT NULL,
     active_since_year INT NOT NULL,
     location VARCHAR(255) NOT NULL,
-    offline_trader BOOLEAN DEFAULT FALSE
+    offline_trader BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
 );
 
 CREATE TABLE dial_glass_types

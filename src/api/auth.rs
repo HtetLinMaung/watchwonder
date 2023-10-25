@@ -81,6 +81,7 @@ pub async fn register(
                 &body.profile_image,
                 role,
                 account_status,
+                &None,
                 &client,
             )
             .await

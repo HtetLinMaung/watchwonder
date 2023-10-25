@@ -15,6 +15,7 @@ mod notification;
 mod order;
 mod other_accessories_type;
 mod product;
+mod seller_information;
 mod seller_review;
 mod shop;
 mod terms_and_conditions;
@@ -100,4 +101,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(condition::get_conditions);
     cfg.service(other_accessories_type::get_other_accessories_types);
     cfg.service(gender::get_genders);
+    cfg.service(seller_information::get_seller_information);
 }

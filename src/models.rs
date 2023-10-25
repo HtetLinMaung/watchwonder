@@ -13,6 +13,7 @@ pub mod notification;
 pub mod order;
 pub mod other_accessories_type;
 pub mod product;
+pub mod seller_information;
 pub mod seller_review;
 pub mod shop;
 pub mod terms_and_conditions;

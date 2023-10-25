@@ -5,7 +5,10 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::user::{self, UserProfile},
+    models::{
+        seller_information::SellerInformationRequest,
+        user::{self, UserProfile},
+    },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -117,6 +120,7 @@ pub struct AddUserRequest {
     pub role: String,
     pub profile_image: String,
     pub account_status: Option<String>,
+    pub seller_information: Option<SellerInformationRequest>,
 }
 
 #[post("/api/users")]
@@ -221,6 +225,7 @@ pub async fn add_user(
                 &body.profile_image,
                 &body.role,
                 account_status,
+                &body.seller_information,
                 &client,
             )
             .await
@@ -325,6 +330,8 @@ pub struct UpdateUserRequest {
     pub phone: String,
     pub role: String,
     pub profile_image: String,
+    pub account_status: Option<String>,
+    pub seller_information: Option<SellerInformationRequest>,
 }
 
 #[put("/api/users/{user_id}")]
@@ -412,6 +419,12 @@ pub async fn update_user(
         Some(u) => {
             let old_password: &str = &u.password;
             let old_profile_image: &str = &u.profile_image;
+
+            let mut account_status = "active";
+            if let Some(status) = &body.account_status {
+                account_status = status;
+            }
+
             match user::update_user(
                 user_id,
                 &body.name,
@@ -422,6 +435,8 @@ pub async fn update_user(
                 old_profile_image,
                 &body.profile_image,
                 &body.role,
+                account_status,
+                &body.seller_information,
                 &client,
             )
             .await
