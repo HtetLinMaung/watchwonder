@@ -687,3 +687,48 @@ insert into genders
     (description)
 values
     ('Unisex');
+
+CREATE TABLE chats
+(
+    chat_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    agent_id INT REFERENCES users(user_id),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE audio_messages
+(
+    audio_message_id SERIAL PRIMARY KEY,
+    audio_url VARCHAR(255) NOT NULL,
+    duration INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+
+CREATE TABLE messages
+(
+    message_id SERIAL PRIMARY KEY,
+    chat_id INT REFERENCES chats(chat_id),
+    sender_id INT REFERENCES users(user_id),
+    message_text TEXT,
+    audio_message_id INT REFERENCES audio_messages(audio_message_id),
+    status VARCHAR(50) DEFAULT 'sent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE message_images
+(
+    message_image_id SERIAL PRIMARY KEY,
+    message_id INT REFERENCES messages(message_id),
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);

@@ -3,6 +3,7 @@ pub mod bank_account;
 pub mod brand;
 pub mod buyer_protection;
 pub mod category;
+pub mod chat;
 pub mod condition;
 pub mod currency;
 pub mod dial_glass_type;
