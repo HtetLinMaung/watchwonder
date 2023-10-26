@@ -4,6 +4,7 @@ mod bank_account;
 mod brand;
 mod buyer_protection;
 mod category;
+mod chat;
 mod condition;
 mod currency;
 mod dial_glass_type;
