@@ -20,6 +20,7 @@ pub struct GetShopsQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub status: Option<String>,
     pub view: Option<String>,
 }
 
@@ -70,6 +71,7 @@ pub async fn get_shops(
         &query.search,
         query.page,
         query.per_page,
+        &query.status,
         &query.view,
         &role,
         user_id,
@@ -182,7 +184,7 @@ pub async fn add_shop(
         });
     }
 
-    match shop::add_shop(&body, user_id, &client).await {
+    match shop::add_shop(&body, user_id, role, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Shop added successfully"),
@@ -353,19 +355,27 @@ pub async fn update_shop(
     }
 
     match shop::get_shop_by_id(shop_id, &client).await {
-        Some(s) => match shop::update_shop(shop_id, &s.cover_image, &body, &client).await {
-            Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                code: 200,
-                message: String::from("Shop updated successfully"),
-            }),
-            Err(e) => {
-                eprintln!("Shop updating error: {}", e);
-                return HttpResponse::InternalServerError().json(BaseResponse {
-                    code: 500,
-                    message: String::from("Error updating shop!"),
+        Some(s) => {
+            if &s.status != "Pending Approval" {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Your shop has been approved by the admin and can no longer be updated. If you need to make changes, please contact customer support!"),
                 });
             }
-        },
+            match shop::update_shop(shop_id, &s.cover_image, &body, role, &client).await {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                    code: 200,
+                    message: String::from("Shop updated successfully"),
+                }),
+                Err(e) => {
+                    eprintln!("Shop updating error: {}", e);
+                    return HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error updating shop!"),
+                    });
+                }
+            }
+        }
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
             message: String::from("Shop not found!"),
@@ -448,19 +458,27 @@ pub async fn delete_shop(
     }
 
     match shop::get_shop_by_id(shop_id, &client).await {
-        Some(s) => match shop::delete_shop(shop_id, &s.cover_image, &client).await {
-            Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                code: 204,
-                message: String::from("Shop deleted successfully"),
-            }),
-            Err(e) => {
-                eprintln!("Shop deleting error: {}", e);
-                return HttpResponse::InternalServerError().json(BaseResponse {
-                    code: 500,
-                    message: String::from("Error deleting shop!"),
+        Some(s) => {
+            if &s.status != "Pending Approval" {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Your shop has been approved by the admin and can no longer be deleted. If you need to make changes, please contact customer support!"),
                 });
             }
-        },
+            match shop::delete_shop(shop_id, &s.cover_image, &client).await {
+                Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                    code: 204,
+                    message: String::from("Shop deleted successfully"),
+                }),
+                Err(e) => {
+                    eprintln!("Shop deleting error: {}", e);
+                    return HttpResponse::InternalServerError().json(BaseResponse {
+                        code: 500,
+                        message: String::from("Error deleting shop!"),
+                    });
+                }
+            }
+        }
         None => HttpResponse::NotFound().json(BaseResponse {
             code: 404,
             message: String::from("Shop not found!"),

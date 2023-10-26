@@ -32,6 +32,7 @@ pub async fn get_shops(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    status: &Option<String>,
     view: &Option<String>,
     role: &str,
     user_id: i32,
@@ -54,10 +55,20 @@ pub async fn get_shops(
     if role == "agent" {
         params.push(Box::new(user_id));
         if screen_view == "user" {
-            base_query = format!("{base_query} and creator_id != ${}", params.len());
+            base_query = format!(
+                "{base_query} and creator_id != ${} and status != 'Pending Approval'",
+                params.len()
+            );
         } else {
             base_query = format!("{base_query} and creator_id = ${}", params.len());
         }
+    } else if role == "admin" {
+        if let Some(s) = status {
+            params.push(Box::new(s));
+            base_query = format!("{base_query} and status = ${}", params.len());
+        }
+    } else {
+        base_query = format!("{base_query} and status != 'Pending Approval'");
     }
 
     let result=  generate_pagination_query(PaginationOptions {
@@ -141,8 +152,13 @@ pub struct ShopRequest {
 pub async fn add_shop(
     data: &ShopRequest,
     creator_id: i32,
+    role: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut status = data.status.as_str();
+    if role == "agent" {
+        status = "Pending Approval";
+    }
     client
         .execute(
             "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
@@ -159,7 +175,7 @@ pub async fn add_shop(
                 &data.email,
                 &data.website_url,
                 &data.operating_hours,
-                &data.status,
+                &status,
                 &creator_id
             ],
         )
@@ -201,8 +217,13 @@ pub async fn update_shop(
     shop_id: i32,
     old_cover_image: &str,
     data: &ShopRequest,
+    role: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut status = data.status.as_str();
+    if role == "agent" {
+        status = "Pending Approval";
+    }
     client
         .execute(
             "update shops set name = $1, description = $2, cover_image = $3, address = $4, city = $5, state = $6, postal_code = $7, country = $8, phone = $9, email = $10, website_url = $11, operating_hours = $12, status = $13 where shop_id = $14",
@@ -219,7 +240,7 @@ pub async fn update_shop(
                 &data.email,
                 &data.website_url,
                 &data.operating_hours,
-                &data.status,
+                &status,
                 &shop_id,
             ],
         )
