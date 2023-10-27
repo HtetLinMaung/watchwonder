@@ -152,9 +152,9 @@ pub async fn add_order(
                     items.push(product_shop_name.product_name.clone());
                     shops.push(product_shop_name.shop_name.clone());
                 }
+                let title = format!("New Order #{order_id}");
                 let message = format!("{user_name} has placed a {} order for {} from {}. Please review and process the order.",&order.payment_type.to_lowercase(), items.join(", "), shops.join(", "));
-                match notification::add_notification_to_admins("New Order", &message, &client).await
-                {
+                match notification::add_notification_to_admins(&title, &message, &client).await {
                     Ok(()) => {
                         println!("Notification added successfully.");
                     }
@@ -168,7 +168,7 @@ pub async fn add_order(
                 {
                     match notification::add_notification(
                         product_creator_id,
-                        "New Order",
+                        &title,
                         &message,
                         &client,
                     )

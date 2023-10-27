@@ -6,8 +6,9 @@ use tokio_postgres::Client;
 
 use crate::{
     models::{
-        product,
+        notification, product,
         shop::{self, ShopRequest},
+        user,
     },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
@@ -185,10 +186,31 @@ pub async fn add_shop(
     }
 
     match shop::add_shop(&body, user_id, role, &client).await {
-        Ok(()) => HttpResponse::Created().json(BaseResponse {
-            code: 201,
-            message: String::from("Shop added successfully"),
-        }),
+        Ok(()) => {
+            if role == "agent" {
+                tokio::spawn(async move {
+                    let name = user::get_user_name(user_id, &client).await.unwrap();
+                    let title = format!("Shop Approval Required");
+                    let message = format!(
+                        "{name} has added a new shop, {}. Please review and approve.",
+                        &body.name
+                    );
+                    match notification::add_notification_to_admins(&title, &message, &client).await
+                    {
+                        Ok(()) => {
+                            println!("Notification added successfully.");
+                        }
+                        Err(err) => {
+                            println!("Error adding notification: {:?}", err);
+                        }
+                    };
+                });
+            }
+            HttpResponse::Created().json(BaseResponse {
+                code: 201,
+                message: String::from("Shop added successfully"),
+            })
+        }
         Err(e) => {
             eprintln!("Shop adding error: {}", e);
             return HttpResponse::InternalServerError().json(BaseResponse {
@@ -363,10 +385,29 @@ pub async fn update_shop(
                 });
             }
             match shop::update_shop(shop_id, &s.cover_image, &body, role, &client).await {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                    code: 200,
-                    message: String::from("Shop updated successfully"),
-                }),
+                Ok(()) => {
+                    tokio::spawn(async move {
+                        let title = format!("Shop Approved");
+                        let message = format!(
+                            "Your shop, {}, has been approved and is now live!",
+                            &body.name
+                        );
+                        match notification::add_notification_to_admins(&title, &message, &client)
+                            .await
+                        {
+                            Ok(()) => {
+                                println!("Notification added successfully.");
+                            }
+                            Err(err) => {
+                                println!("Error adding notification: {:?}", err);
+                            }
+                        };
+                    });
+                    HttpResponse::Ok().json(BaseResponse {
+                        code: 200,
+                        message: String::from("Shop updated successfully"),
+                    })
+                }
                 Err(e) => {
                     eprintln!("Shop updating error: {}", e);
                     return HttpResponse::InternalServerError().json(BaseResponse {
