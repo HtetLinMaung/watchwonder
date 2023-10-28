@@ -289,11 +289,7 @@ pub async fn get_order_items(
         );
     }
 
-    let order_options = match role {
-        "admin" => "oi.created_at desc".to_string(),
-        "user" => "b.name, p.model".to_string(),
-        _ => "".to_string(),
-    };
+    let order_options = "b.name, p.model".to_string();
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
