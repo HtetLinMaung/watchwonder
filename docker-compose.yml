@@ -13,6 +13,7 @@ services:
       - FIREBASE_FCM_URL=https://fcm.googleapis.com/fcm/send
       - FIREBASE_FCM_AUTH=key=AAAAP89u1s0:APA91bHf2dDH0XrJt1u71o8UrNsmOt57A4TJhQzj_MtSygfHoBJ_6VXvjriacwhcNeLSHp4Ix947YmtZO_f2IwJL_9zqU2UkKH6gSzbpJ86YXXghiCfLoLpJ9Iz4Hsj8SMQ8XhjrcAC1
       - PYVECFINDER_URL=http://pyvecfinder:5000
+      - PLATFORM_REQUIRED_SIGNIN=ios
     volumes:
       - ./images:/images
   pyvecfinder:
