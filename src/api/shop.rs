@@ -378,7 +378,7 @@ pub async fn update_shop(
 
     match shop::get_shop_by_id(shop_id, &client).await {
         Some(s) => {
-            if &s.status != "Pending Approval" {
+            if &s.status != "Pending Approval" && role == "agent" {
                 return HttpResponse::BadRequest().json(BaseResponse {
                     code: 400,
                     message: String::from("Your shop has been approved by the admin and can no longer be updated. If you need to make changes, please contact customer support!"),
@@ -500,7 +500,7 @@ pub async fn delete_shop(
 
     match shop::get_shop_by_id(shop_id, &client).await {
         Some(s) => {
-            if &s.status != "Pending Approval" {
+            if &s.status != "Pending Approval" && role == "agent" {
                 return HttpResponse::BadRequest().json(BaseResponse {
                     code: 400,
                     message: String::from("Your shop has been approved by the admin and can no longer be deleted. If you need to make changes, please contact customer support!"),
