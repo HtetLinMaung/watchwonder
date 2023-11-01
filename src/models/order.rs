@@ -156,7 +156,7 @@ pub async fn get_orders(
         base_query = format!("{base_query} and o.user_id = ${}", params.len());
     } else if role == "agent" {
         params.push(Box::new(user_id));
-        base_query = format!("{base_query} and o.order_id in (select o.order_id from order_items oi inner join products p on p.product_id = oi.product_id where p.creator_id = ${} and p.deleted_at is null and oi.deleted_at is null)", params.len());
+        base_query = format!("{base_query} and o.order_id in (select oi.order_id from order_items oi inner join products p on p.product_id = oi.product_id where p.creator_id = ${} and p.deleted_at is null and oi.deleted_at is null)", params.len());
     }
 
     if from_date.is_some() && to_date.is_some() {
