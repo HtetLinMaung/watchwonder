@@ -6,6 +6,7 @@ use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
+    setting::get_demo_user_id,
     sql::{generate_pagination_query, PaginationOptions},
 };
 
@@ -22,15 +23,23 @@ pub async fn get_brands(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<Brand>, Error> {
-    let base_query = "from brands where deleted_at is null".to_string();
+    let mut base_query = "from brands where deleted_at is null".to_string();
     let params: Vec<Box<dyn ToSql + Sync>> = vec![];
     // let order_options = match role {
     //     "user" => "name asc, created_at desc",
     //     _ => "created_at desc",
     // };
     let order_options = "name asc";
+
+    let demo_user_id = get_demo_user_id().await;
+    if demo_user_id > 0 && user_id == demo_user_id {
+        base_query = format!("{base_query} and is_demo = true");
+    } else {
+        base_query = format!("{base_query} and is_demo = false");
+    }
 
     // if role == "agent" {
     //     params.push(Box::new(user_id));

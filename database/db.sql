@@ -59,6 +59,7 @@ CREATE TABLE shops
     operating_hours TEXT,
     status VARCHAR(50) DEFAULT 'Active',
     creator_id INT REFERENCES users(user_id),
+    is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -136,6 +137,7 @@ CREATE TABLE categories
     description TEXT,
     cover_image VARCHAR(255),
     creator_id INT REFERENCES users(user_id),
+    is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -175,6 +177,7 @@ CREATE TABLE brands
     description TEXT,
     logo_url VARCHAR(255),
     creator_id INT REFERENCES users(user_id),
+    is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -256,6 +259,7 @@ CREATE TABLE products
     (user_id),
     currency_id INT REFERENCES currencies
     (currency_id) DEFAULT 1,
+    is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );

@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 
 use crate::utils::{
     common_struct::PaginationResult,
+    setting::get_demo_user_id,
     sql::{generate_pagination_query, PaginationOptions},
     vector_finder::add_vector,
 };
@@ -166,6 +167,13 @@ pub async fn get_products(
                 base_query = format!("{base_query} and p.product_id = ${}", params.len());
             }
         }
+    }
+
+    let demo_user_id = get_demo_user_id().await;
+    if demo_user_id > 0 && user_id == demo_user_id {
+        base_query = format!("{base_query} and p.is_demo = true");
+    } else {
+        base_query = format!("{base_query} and p.is_demo = false");
     }
 
     let order_options = if role == "user" || (role == "agent" && screen_view == "user") {
