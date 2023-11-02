@@ -159,7 +159,7 @@ pub async fn get_chat_sessions(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "c.chat_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text as last_message_text, m.status, m.created_at",
+            "c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at",
         base_query: &base_query,
         search_columns: vec!["m.message_text", "u.name"],
         search: search.as_deref(),
@@ -189,11 +189,13 @@ pub async fn get_chat_sessions(
         let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
         let mut chat_participants: Vec<ChatParticipant> = vec![];
         let mut chat_name = String::new();
+        let mut profile_image = String::new();
         for cp_row in &cp_rows {
             let cp_user_id: i32 = cp_row.get("user_id");
             let cp_name: String = cp_row.get("name");
             if user_id != cp_user_id {
                 chat_name = cp_name;
+                profile_image = cp_row.get("profile_image");
             }
             chat_participants.push(ChatParticipant {
                 user_id: cp_row.get("user_id"),
@@ -214,7 +216,7 @@ pub async fn get_chat_sessions(
             chat_name,
             sender_id: row.get("sender_id"),
             sender_name: row.get("sender_name"),
-            profile_image: row.get("profile_image"),
+            profile_image,
             last_message_text: row.get("last_message_text"),
             status: row.get("status"),
             created_at: row.get("created_at"),
@@ -236,6 +238,8 @@ pub async fn get_chat_sessions(
 pub struct ChatMessage {
     pub message_id: i32,
     pub sender_id: i32,
+    pub sender_name: String,
+    pub profile_image: String,
     pub message_text: String,
     pub status: String,
     pub image_urls: Vec<String>,
@@ -257,7 +261,7 @@ pub async fn get_chat_messages(
     let order_options = "m.created_at desc";
 
     let result = generate_pagination_query(PaginationOptions {
-        select_columns: "m.message_id, m.sender_id, m.message_text, m.status, m.created_at",
+        select_columns: "m.message_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text, m.status, m.created_at",
         base_query: &base_query,
         search_columns: vec!["m.message_text"],
         search: search.as_deref(),
@@ -294,6 +298,8 @@ pub async fn get_chat_messages(
         chat_messages.push(ChatMessage {
             message_id,
             sender_id: row.get("sender_id"),
+            sender_name: row.get("sender_name"),
+            profile_image: row.get("profile_image"),
             message_text: row.get("message_text"),
             status: row.get("status"),
             image_urls: image_rows

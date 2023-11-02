@@ -332,8 +332,9 @@ pub async fn delete_message(
     }
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
+    let role: &str = parsed_values[1];
 
-    if !chat::is_own_message(message_id, user_id, &client).await {
+    if role != "admin" && !chat::is_own_message(message_id, user_id, &client).await {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
