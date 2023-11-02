@@ -24,7 +24,6 @@ pub struct MessageRequest {
 pub async fn add_message(
     data: &MessageRequest,
     sender_id: i32,
-    role: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut chat_id = data.chat_id;
@@ -35,24 +34,27 @@ pub async fn add_message(
         )
         .await?;
     let total: i64 = row.get("total");
-    let agent_id = if role == "agent" {
-        sender_id
-    } else {
-        data.receiver_id
-    };
-    let user_id = if role != "agent" {
-        sender_id
-    } else {
-        data.receiver_id
-    };
+
     if total == 0 {
         let row = client
             .query_one(
-                "insert into chats (user_id, agent_id) values ($1, $2) returning chat_id",
-                &[&user_id, &agent_id],
+                "insert into chats (is_group) values (FALSE) returning chat_id",
+                &[],
             )
             .await?;
         chat_id = row.get("chat_id");
+        client
+            .execute(
+                "insert into chat_participants (chat_id, user_id) values ($1, $2)",
+                &[&sender_id, &chat_id],
+            )
+            .await?;
+        client
+            .execute(
+                "insert into chat_participants (chat_id, user_id) values ($1, $2)",
+                &[&data.receiver_id, &chat_id],
+            )
+            .await?;
     }
 
     let row =client
@@ -71,14 +73,17 @@ pub async fn add_message(
             .await?;
     }
 
-    let fcm_tokens = fcm::get_fcm_tokens(user_id, client).await?;
+    let fcm_tokens = fcm::get_fcm_tokens(data.receiver_id, client).await?;
     let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
     let sender_name = user::get_user_name(sender_id, client).await.unwrap();
     let message_text = data.message_text.clone();
     tokio::spawn(async move {
         for fcm_token in &fcm_tokens {
             let mut map = HashMap::new();
-            map.insert("event".to_string(), Value::String("fetch".to_string()));
+            map.insert(
+                "event".to_string(),
+                Value::String("new-message".to_string()),
+            );
             match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
                 Ok(_) => {
                     println!("notification message sent successfully.");
@@ -90,7 +95,10 @@ pub async fn add_message(
         }
         for fcm_token in &admin_fcm_tokens {
             let mut map = HashMap::new();
-            map.insert("event".to_string(), Value::String("fetch".to_string()));
+            map.insert(
+                "event".to_string(),
+                Value::String("new-message".to_string()),
+            );
             match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
                 Ok(_) => {
                     println!("notification message sent successfully.");
@@ -104,14 +112,24 @@ pub async fn add_message(
 
     Ok(())
 }
+
+#[derive(Serialize)]
+pub struct ChatParticipant {
+    pub user_id: i32,
+    pub name: String,
+    pub profile_image: String,
+}
+
 #[derive(Serialize)]
 pub struct ChatSession {
     pub chat_id: i32,
-    pub user_name: String,
-    pub agent_id: i32,
-    pub agent_name: String,
+    pub sender_id: i32,
+    pub sender_name: String,
+    pub profile_image: String,
     pub last_message_text: String,
+    pub status: String,
     pub created_at: NaiveDateTime,
+    pub chat_participants: Vec<ChatParticipant>,
 }
 
 pub async fn get_chat_sessions(
@@ -122,15 +140,13 @@ pub async fn get_chat_sessions(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
-    let mut base_query = "from chats c join users u on c.user_id = u.user_id join users a ON c.agent_id = a.user_id join (select message_text, created_at from messages where deleted_at is null order by created_at desc limit 1) as m on m.chat_id = c.chat_id where c.deleted_at is null".to_string();
+    let mut base_query = "from chats c join (select message_text, created_at, sender_id from messages where deleted_at is null order by created_at desc limit 1) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
     if role != "admin" {
         params.push(Box::new(user_id));
-        params.push(Box::new(user_id));
         base_query = format!(
-            "{base_query} and (c.user_id = ${} or c.agent_id = ${})",
-            params.len() - 1,
+            "{base_query} and c.chat_id in (select chat_id from chat_participants where user_id = ${})",
             params.len()
         );
     }
@@ -139,9 +155,9 @@ pub async fn get_chat_sessions(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "c.chat_id, u.user_id as user_id, u.name as user_name, a.user_id as agent_id, a.name as agent_name, m.message_text as last_message_text, m.status, m.created_at",
+            "c.chat_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text as last_message_text, m.status, m.created_at",
         base_query: &base_query,
-        search_columns: vec!["u.name", "a.name"],
+        search_columns: vec!["m.message_text", "u.name"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,
@@ -162,19 +178,31 @@ pub async fn get_chat_sessions(
         page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
-    let chat_sessions: Vec<ChatSession> = client
-        .query(&result.query, &params_slice)
-        .await?
-        .iter()
-        .map(|row| ChatSession {
-            chat_id: row.get("chat_id"),
-            user_name: row.get("user_name"),
-            agent_id: row.get("agent_id"),
-            agent_name: row.get("agent_name"),
+    let mut chat_sessions: Vec<ChatSession> = vec![];
+    for row in client.query(&result.query, &params_slice).await? {
+        let chat_id: i32 = row.get("chat_id");
+
+        let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users on u.user_id = cp.user_id", &[&chat_id]).await?;
+        let mut chat_participants: Vec<ChatParticipant> = vec![];
+        for cp_row in &cp_rows {
+            chat_participants.push(ChatParticipant {
+                user_id: cp_row.get("user_id"),
+                name: cp_row.get("name"),
+                profile_image: cp_row.get("profile_image"),
+            })
+        }
+
+        chat_sessions.push(ChatSession {
+            chat_id,
+            sender_id: row.get("sender_id"),
+            sender_name: row.get("sender_name"),
+            profile_image: row.get("profile_image"),
             last_message_text: row.get("last_message_text"),
+            status: row.get("status"),
             created_at: row.get("created_at"),
+            chat_participants,
         })
-        .collect();
+    }
 
     Ok(PaginationResult {
         data: chat_sessions,

@@ -695,12 +695,18 @@ values
 CREATE TABLE chats
 (
     chat_id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(user_id),
-    agent_id INT REFERENCES users(user_id),
+    is_group BOOLEAN DEFAULT FALSE,
     status VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE chat_participants
+(
+    chat_id INT REFERENCES chats(chat_id),
+    user_id INT REFERENCES users(user_id),
+    PRIMARY KEY (chat_id, user_id)
 );
 
 CREATE TABLE audio_messages
@@ -726,6 +732,26 @@ CREATE TABLE messages
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+-- Sent: The message has been sent from the user’s device and received by the server, but it has not yet been delivered to the recipient's device.
+
+-- Delivered: The message has been sent from the user’s device, received by the server, and successfully delivered to the recipient’s device. However, it has not been read yet.
+
+-- Read: The message has been read by the recipient. This status implies that the message was also delivered.
+
+-- Failed: The message could not be sent. This status could be due to a variety of reasons, such as network issues, server problems, or other technical issues.
+
+-- Pending: The message is in the process of being sent but has not been fully transmitted to the server yet. This status could be used when there is a network delay or other issue preventing immediate sending.
+
+-- Deleted: The message has been deleted by the sender or recipient. The application might implement this as a "soft delete," where the message is marked as deleted but not actually removed from the database.
+
+-- Edited: The message has been edited after it was sent. This status could be used in conjunction with a timestamp to indicate when the message was last edited.
+
+-- Archived: The message has been archived, meaning it is no longer active in the chat but is retained for historical purposes.
+
+-- Flagged: The message has been flagged, possibly by a user or an automated system, for review due to potentially inappropriate content or behavior.
+
+-- Recalled/Revoked: The message has been recalled or revoked by the sender after it was sent. Depending on the application’s functionality, this might make the message disappear from the recipient’s view or be replaced with a notice that the message was recalled.
 
 CREATE TABLE message_images
 (
