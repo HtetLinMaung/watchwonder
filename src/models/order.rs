@@ -423,3 +423,13 @@ pub async fn are_items_same_currency_and_get_currency_id(
         }
     }
 }
+
+pub async fn get_order_shop_name(order_id: i32, client: &Client) -> String {
+    match client.query_one("select s.name from order_items oi join products p on p.product_id = oi.product_id join shops s on s.shop_id = p.shop_id where s.deleted_at is null and oi.deleted_at is null and p.deleted_at is null and oi.order_id = $1 limit 1", &[&order_id]).await {
+        Ok(row) => row.get("name"),
+        Err(err) => {
+            println!("{:?}", err);
+            "".to_string()
+        }
+    }
+}

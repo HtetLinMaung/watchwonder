@@ -105,4 +105,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(gender::get_genders);
     cfg.service(seller_information::get_seller_information);
     cfg.service(setting::get_settings);
+    cfg.service(order::get_order_shop_name);
 }

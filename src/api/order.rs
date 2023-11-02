@@ -14,7 +14,7 @@ use crate::{
         product, seller_review, user,
     },
     utils::{
-        common_struct::{BaseResponse, PaginationResponse},
+        common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
     },
 };
@@ -530,4 +530,47 @@ pub async fn update_order(
             message: String::from("Order not found!"),
         }),
     }
+}
+
+#[get("/api/orders/{order_id}/shop-name")]
+pub async fn get_order_shop_name(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let order_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    if verify_token_and_get_sub(token).is_none() {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Invalid token"),
+        });
+    }
+
+    let shop_name = order::get_order_shop_name(order_id, &client).await;
+    HttpResponse::Ok().json(DataResponse {
+        code: 200,
+        message: String::from("Successful."),
+        data: Some(shop_name),
+    })
 }
