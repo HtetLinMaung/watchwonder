@@ -365,3 +365,24 @@ pub async fn delete_message(
     }
     Ok(())
 }
+
+pub async fn get_total_unread_counts(
+    role: &str,
+    user_id: i32,
+    client: &Client,
+) -> Result<i64, Box<dyn std::error::Error>> {
+    let mut query = "select count(*) as unread_counts from messages where deleted_at is null and status != 'read'".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    if role != "admin" {
+        params.push(Box::new(user_id));
+        query = format!(
+            "{query} and chat_id in (select chat_id from chat_participants where user_id = ${})",
+            params.len()
+        );
+    }
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+    let row = client.query_one(&query, &params_slice).await?;
+    Ok(row.get("unread_counts"))
+}
