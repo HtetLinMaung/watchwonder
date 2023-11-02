@@ -39,12 +39,12 @@ pub async fn get_categories(
     //     base_query = format!("{base_query} and creator_id = ${}", params.len());
     // }
 
-    let demo_user_id = get_demo_user_id().await;
-    if demo_user_id > 0 && user_id == demo_user_id {
-        base_query = format!("{base_query} and is_demo = true");
-    } else {
-        base_query = format!("{base_query} and is_demo = false");
-    }
+    // let demo_user_id = get_demo_user_id().await;
+    // if demo_user_id > 0 && user_id == demo_user_id {
+    //     base_query = format!("{base_query} and is_demo = true");
+    // } else {
+    //     base_query = format!("{base_query} and is_demo = false");
+    // }
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns: "category_id, name, description, cover_image, created_at",
