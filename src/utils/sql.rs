@@ -50,7 +50,7 @@ pub fn generate_pagination_query(options: PaginationOptions) -> PaginationQueryR
         let offset = (page - 1) * per_page;
         query = format!("{} LIMIT {} OFFSET {}", query, per_page, offset);
     }
-    // println!("query: {query}");
+    println!("query: {query}");
     // println!("count_query: {count_query}");
     PaginationQueryResult { query, count_query }
 }

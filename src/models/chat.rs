@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,7 @@ pub async fn add_message(
     data: &MessageRequest,
     sender_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<i32, Box<dyn std::error::Error>> {
     let mut chat_id = data.chat_id;
     let row = client
         .query_one(
@@ -46,13 +46,13 @@ pub async fn add_message(
         client
             .execute(
                 "insert into chat_participants (chat_id, user_id) values ($1, $2)",
-                &[&sender_id, &chat_id],
+                &[&chat_id, &sender_id],
             )
             .await?;
         client
             .execute(
                 "insert into chat_participants (chat_id, user_id) values ($1, $2)",
-                &[&data.receiver_id, &chat_id],
+                &[&chat_id, &data.receiver_id],
             )
             .await?;
     }
@@ -84,6 +84,7 @@ pub async fn add_message(
                 "event".to_string(),
                 Value::String("new-message".to_string()),
             );
+            map.insert("message_id".to_string(), Value::Number(message_id.into()));
             match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
                 Ok(_) => {
                     println!("notification message sent successfully.");
@@ -99,6 +100,7 @@ pub async fn add_message(
                 "event".to_string(),
                 Value::String("new-message".to_string()),
             );
+            map.insert("message_id".to_string(), Value::Number(message_id.into()));
             match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
                 Ok(_) => {
                     println!("notification message sent successfully.");
@@ -110,7 +112,7 @@ pub async fn add_message(
         }
     });
 
-    Ok(())
+    Ok(chat_id)
 }
 
 #[derive(Serialize)]
@@ -123,6 +125,7 @@ pub struct ChatParticipant {
 #[derive(Serialize)]
 pub struct ChatSession {
     pub chat_id: i32,
+    pub chat_name: String,
     pub sender_id: i32,
     pub sender_name: String,
     pub profile_image: String,
@@ -130,6 +133,7 @@ pub struct ChatSession {
     pub status: String,
     pub created_at: NaiveDateTime,
     pub chat_participants: Vec<ChatParticipant>,
+    pub unread_counts: i64,
 }
 
 pub async fn get_chat_sessions(
@@ -140,7 +144,7 @@ pub async fn get_chat_sessions(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
-    let mut base_query = "from chats c join (select message_text, created_at, sender_id from messages where deleted_at is null order by created_at desc limit 1) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null".to_string();
+    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null order by created_at desc limit 1) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
     if role != "admin" {
@@ -182,9 +186,15 @@ pub async fn get_chat_sessions(
     for row in client.query(&result.query, &params_slice).await? {
         let chat_id: i32 = row.get("chat_id");
 
-        let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users on u.user_id = cp.user_id", &[&chat_id]).await?;
+        let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
         let mut chat_participants: Vec<ChatParticipant> = vec![];
+        let mut chat_name = String::new();
         for cp_row in &cp_rows {
+            let cp_user_id: i32 = cp_row.get("user_id");
+            let cp_name: String = cp_row.get("name");
+            if user_id != cp_user_id {
+                chat_name = cp_name;
+            }
             chat_participants.push(ChatParticipant {
                 user_id: cp_row.get("user_id"),
                 name: cp_row.get("name"),
@@ -192,8 +202,16 @@ pub async fn get_chat_sessions(
             })
         }
 
+        let message_row = client
+            .query_one(
+                "select count(*) as unread_counts from messages where chat_id = $1 and deleted_at is null and status != 'read'",
+                &[&chat_id],
+            )
+            .await?;
+
         chat_sessions.push(ChatSession {
             chat_id,
+            chat_name,
             sender_id: row.get("sender_id"),
             sender_name: row.get("sender_name"),
             profile_image: row.get("profile_image"),
@@ -201,6 +219,7 @@ pub async fn get_chat_sessions(
             status: row.get("status"),
             created_at: row.get("created_at"),
             chat_participants,
+            unread_counts: message_row.get("unread_counts"),
         })
     }
 
@@ -292,4 +311,51 @@ pub async fn get_chat_messages(
         per_page: limit,
         page_counts,
     })
+}
+
+pub async fn update_message_status(
+    message_id: i32,
+    status: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "update messages set status = $1 where message_id = $2",
+            &[&status, &message_id],
+        )
+        .await?;
+    Ok(())
+}
+
+pub async fn is_own_message(message_id: i32, user_id: i32, client: &Client) -> bool {
+    let row= client.query_one("select count(*) as total from messages where message_id = $1 and sender_id = $2 and deleted_at is null", &[&message_id, &user_id]).await.unwrap();
+    let total: i64 = row.get("total");
+    total > 0
+}
+
+pub async fn delete_message(
+    message_id: i32,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .execute(
+            "update messages set deleted_at = CURRENT_TIMESTAMP where message_id = $1",
+            &[&message_id],
+        )
+        .await?;
+    let rows = client
+        .query(
+            "select image_url from message_images where deleted_at is null and message_id = $1",
+            &[&message_id],
+        )
+        .await?;
+    for row in &rows {
+        let image_url: String = row.get("image_url");
+        let image_path = image_url.replace("/image", "./image");
+        match fs::remove_file(image_path) {
+            Ok(_) => println!("File deleted successfully!"),
+            Err(e) => println!("Error deleting file: {}", e),
+        };
+    }
+    Ok(())
 }

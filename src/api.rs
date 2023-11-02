@@ -106,4 +106,10 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_information::get_seller_information);
     cfg.service(setting::get_settings);
     cfg.service(order::get_order_shop_name);
+    cfg.service(chat::send_message);
+    cfg.service(chat::get_chat_sessions);
+    cfg.service(chat::update_message_status);
+    cfg.service(chat::get_chat_messages);
+    cfg.service(chat::update_message_status);
+    cfg.service(chat::delete_message);
 }
