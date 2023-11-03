@@ -295,17 +295,37 @@ pub struct VerifyTokenRequest {
     pub token: String,
 }
 
+#[derive(Serialize)]
+pub struct VerifyTokenData {
+    pub room: i32,
+}
+
 #[post("/api/auth/verify-token")]
 pub async fn verify_token(body: web::Json<VerifyTokenRequest>) -> impl Responder {
-    if verify_token_and_get_sub(&body.token).is_none() {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Token is invalid!"),
-        });
+    let sub = match verify_token_and_get_sub(&body.token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
     };
-    return HttpResponse::Ok().json(BaseResponse {
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let user_id: i32 = parsed_values[0].parse().unwrap();
+    return HttpResponse::Ok().json(DataResponse {
         code: 200,
         message: String::from("Token is valid."),
+        data: Some(VerifyTokenData { room: user_id }),
     });
 }
 

@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   web:
+    restart: always
     build: .
     ports:
       - "8001:8080"
@@ -18,12 +19,20 @@ services:
     volumes:
       - ./images:/images
   pyvecfinder:
+    restart: always
     image: htetlinmaung/pyvecfinder
     ports:
       - "5000:5000"
     volumes:
       - ./store:/usr/src/app/store
       - ./images:/usr/src/app/images
+  instantio:
+    restart: always
+    image: htetlinmaung/instantio
+    ports:
+      - "8002:3000"
+    environment:
+      TOKEN_VERIFICATION_WEB_HOOK: "http://web/api/auth/verify-token"
 
   # db:
   #   image: postgres:13
