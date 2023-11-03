@@ -232,9 +232,9 @@ pub async fn send_message(
     }
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
-    // let role: &str = parsed_values[1];
+    let role: &str = parsed_values[1];
 
-    match chat::add_message(&body, user_id, &client).await {
+    match chat::add_message(&body, user_id, role, &client).await {
         Ok(chat_id) => HttpResponse::Created().json(DataResponse {
             code: 201,
             message: String::from("Message sent successfully"),

@@ -25,6 +25,7 @@ pub struct MessageRequest {
 pub async fn add_message(
     data: &MessageRequest,
     sender_id: i32,
+    role: &str,
     client: &Client,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     let mut chat_id = data.chat_id;
@@ -66,75 +67,91 @@ pub async fn add_message(
             }
         };
     }
+    let row = client
+        .query_one(
+            "select count(*) as total from chat_participants where user_id = $1",
+            &[],
+        )
+        .await?;
+    let total: i64 = row.get("total");
+    if total == 0 && role == "admin" {
+        client
+            .execute(
+                "insert into chat_participants (chat_id, user_id) values ($1, $2)",
+                &[&chat_id, &sender_id],
+            )
+            .await?;
+    }
 
-    let row =client
+    if total > 0 || role == "admin" {
+        let row =client
         .query_one(
             "insert into messages (chat_id, sender_id, message_text) values ($1, $2, $3) returning message_id",
             &[&chat_id, &sender_id, &data.message_text],
         )
         .await?;
-    let message_id: i32 = row.get("message_id");
-    for image_url in &data.image_urls {
-        client
-            .execute(
-                "insert into message_images (message_id, image_url) values ($1, $2)",
-                &[&message_id, &image_url],
-            )
-            .await?;
+        let message_id: i32 = row.get("message_id");
+        for image_url in &data.image_urls {
+            client
+                .execute(
+                    "insert into message_images (message_id, image_url) values ($1, $2)",
+                    &[&message_id, &image_url],
+                )
+                .await?;
+        }
+
+        let mut rooms = get_admin_ids(client).await?;
+        rooms.push(data.receiver_id);
+        tokio::spawn(async move {
+            match socketio::emit("new-message", &rooms, message_id).await {
+                Ok(_) => {
+                    println!("event sent successfully.");
+                }
+                Err(err) => {
+                    println!("{:?}", err);
+                }
+            };
+        });
+
+        let fcm_tokens = fcm::get_fcm_tokens(data.receiver_id, client).await?;
+        let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
+        let sender_name = user::get_user_name(sender_id, client).await.unwrap();
+        let message_text = data.message_text.clone();
+        tokio::spawn(async move {
+            for fcm_token in &fcm_tokens {
+                let mut map = HashMap::new();
+                map.insert(
+                    "event".to_string(),
+                    Value::String("new-message".to_string()),
+                );
+                map.insert("message_id".to_string(), Value::Number(message_id.into()));
+                match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
+                    Ok(_) => {
+                        println!("notification message sent successfully.");
+                    }
+                    Err(err) => {
+                        println!("{:?}", err);
+                    }
+                };
+            }
+            for fcm_token in &admin_fcm_tokens {
+                let mut map = HashMap::new();
+                map.insert(
+                    "event".to_string(),
+                    Value::String("new-message".to_string()),
+                );
+                map.insert("message_id".to_string(), Value::Number(message_id.into()));
+                match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
+                    Ok(_) => {
+                        println!("notification message sent successfully.");
+                    }
+                    Err(err) => {
+                        println!("{:?}", err);
+                    }
+                };
+            }
+        });
     }
-
-    let mut rooms = get_admin_ids(client).await?;
-    rooms.push(data.receiver_id);
-    tokio::spawn(async move {
-        match socketio::emit("new-message", &rooms, message_id).await {
-            Ok(_) => {
-                println!("event sent successfully.");
-            }
-            Err(err) => {
-                println!("{:?}", err);
-            }
-        };
-    });
-
-    let fcm_tokens = fcm::get_fcm_tokens(data.receiver_id, client).await?;
-    let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
-    let sender_name = user::get_user_name(sender_id, client).await.unwrap();
-    let message_text = data.message_text.clone();
-    tokio::spawn(async move {
-        for fcm_token in &fcm_tokens {
-            let mut map = HashMap::new();
-            map.insert(
-                "event".to_string(),
-                Value::String("new-message".to_string()),
-            );
-            map.insert("message_id".to_string(), Value::Number(message_id.into()));
-            match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
-                Ok(_) => {
-                    println!("notification message sent successfully.");
-                }
-                Err(err) => {
-                    println!("{:?}", err);
-                }
-            };
-        }
-        for fcm_token in &admin_fcm_tokens {
-            let mut map = HashMap::new();
-            map.insert(
-                "event".to_string(),
-                Value::String("new-message".to_string()),
-            );
-            map.insert("message_id".to_string(), Value::Number(message_id.into()));
-            match send_notification(&sender_name, &message_text, fcm_token, Some(map)).await {
-                Ok(_) => {
-                    println!("notification message sent successfully.");
-                }
-                Err(err) => {
-                    println!("{:?}", err);
-                }
-            };
-        }
-    });
-
     Ok(chat_id)
 }
 
