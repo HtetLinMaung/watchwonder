@@ -21,6 +21,7 @@ pub struct GetShopsQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub platform: Option<String>,
     pub status: Option<String>,
     pub view: Option<String>,
 }
@@ -68,10 +69,15 @@ pub async fn get_shops(
         role = parsed_values[1].clone();
     }
 
+    let platform = match &query.platform {
+        Some(p) => p.as_str(),
+        None => "",
+    };
     match shop::get_shops(
         &query.search,
         query.page,
         query.per_page,
+        platform,
         &query.status,
         &query.view,
         &role,

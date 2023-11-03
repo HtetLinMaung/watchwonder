@@ -6,7 +6,7 @@ use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
-    setting::get_demo_user_id,
+    setting::{get_demo_platform, get_demo_user_id},
     sql::{generate_pagination_query, PaginationOptions},
 };
 
@@ -23,6 +23,7 @@ pub async fn get_brands(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    platform: &str,
     user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<Brand>, Error> {
@@ -34,8 +35,8 @@ pub async fn get_brands(
     // };
     let order_options = "name asc";
 
-    let demo_user_id = get_demo_user_id().await;
-    if demo_user_id > 0 && user_id == demo_user_id {
+    let demo_user_id = get_demo_user_id();
+    if platform == get_demo_platform().as_str() || (demo_user_id > 0 && user_id == demo_user_id) {
         base_query = format!("{base_query} and is_demo = true");
     } else {
         base_query = format!("{base_query} and is_demo = false");

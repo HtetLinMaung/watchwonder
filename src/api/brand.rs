@@ -27,6 +27,7 @@ pub struct GetBrandsQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub platform: Option<String>,
 }
 
 #[get("/api/brands")]
@@ -71,7 +72,20 @@ pub async fn get_brands(
         user_id = parsed_values[0].parse().unwrap();
         // role = parsed_values[1].clone();
     }
-    match brand::get_brands(&query.search, query.page, query.per_page, user_id, &client).await {
+    let platform = match &query.platform {
+        Some(p) => p.as_str(),
+        None => "",
+    };
+    match brand::get_brands(
+        &query.search,
+        query.page,
+        query.per_page,
+        platform,
+        user_id,
+        &client,
+    )
+    .await
+    {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
             message: String::from("Successful."),

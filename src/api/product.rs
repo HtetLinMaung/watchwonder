@@ -21,6 +21,7 @@ pub struct GetProductsRequestBody {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub platform: Option<String>,
     pub shop_id: Option<i32>,
     pub category_id: Option<i32>,
     pub brands: Option<Vec<i32>>,
@@ -75,10 +76,15 @@ pub async fn get_products(
         role = parsed_values[1].clone();
     }
 
+    let platform = match &body.platform {
+        Some(p) => p.as_str(),
+        None => "",
+    };
     match product::get_products(
         &body.search,
         body.page,
         body.per_page,
+        platform,
         body.shop_id,
         body.category_id,
         &body.brands,
