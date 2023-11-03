@@ -34,6 +34,7 @@ services:
       - "8002:3000"
     environment:
       TOKEN_VERIFICATION_WEB_HOOK: "http://web:8080/api/auth/verify-token"
+      TZ: "Asia/Yangon"
 
   # db:
   #   image: postgres:13
