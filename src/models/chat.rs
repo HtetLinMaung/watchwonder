@@ -70,7 +70,7 @@ pub async fn add_message(
     let row = client
         .query_one(
             "select count(*) as total from chat_participants where user_id = $1",
-            &[],
+            &[&sender_id],
         )
         .await?;
     let total: i64 = row.get("total");
