@@ -16,6 +16,7 @@ services:
       - PYVECFINDER_URL=http://pyvecfinder:5000
       - PLATFORM_REQUIRED_SIGNIN=ios
       - DEMO_USER_ID=14
+      - INSTANT_IO_URL=http://instantio:3000/instantio/emit
     volumes:
       - ./images:/images
   pyvecfinder:

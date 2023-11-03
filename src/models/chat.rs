@@ -37,25 +37,34 @@ pub async fn add_message(
     let total: i64 = row.get("total");
 
     if total == 0 {
-        let row = client
-            .query_one(
-                "insert into chats (is_group) values (FALSE) returning chat_id",
-                &[],
-            )
-            .await?;
-        chat_id = row.get("chat_id");
-        client
-            .execute(
-                "insert into chat_participants (chat_id, user_id) values ($1, $2)",
-                &[&chat_id, &sender_id],
-            )
-            .await?;
-        client
-            .execute(
-                "insert into chat_participants (chat_id, user_id) values ($1, $2)",
-                &[&chat_id, &data.receiver_id],
-            )
-            .await?;
+        let chat_exists_query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", sender_id, data.receiver_id);
+        match client.query_one(&chat_exists_query, &[]).await {
+            Ok(ce_row) => {
+                chat_id = ce_row.get("chat_id");
+            }
+            Err(err) => {
+                println!("{:?}", err);
+                let row = client
+                    .query_one(
+                        "insert into chats (is_group) values (FALSE) returning chat_id",
+                        &[],
+                    )
+                    .await?;
+                chat_id = row.get("chat_id");
+                client
+                    .execute(
+                        "insert into chat_participants (chat_id, user_id) values ($1, $2)",
+                        &[&chat_id, &sender_id],
+                    )
+                    .await?;
+                client
+                    .execute(
+                        "insert into chat_participants (chat_id, user_id) values ($1, $2)",
+                        &[&chat_id, &data.receiver_id],
+                    )
+                    .await?;
+            }
+        };
     }
 
     let row =client
