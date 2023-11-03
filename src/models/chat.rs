@@ -265,6 +265,7 @@ pub struct ChatMessage {
     pub profile_image: String,
     pub message_text: String,
     pub status: String,
+    pub is_my_message: bool,
     pub image_urls: Vec<String>,
     pub created_at: NaiveDateTime,
 }
@@ -274,6 +275,7 @@ pub async fn get_chat_messages(
     page: Option<usize>,
     per_page: Option<usize>,
     chat_id: i32,
+    user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<ChatMessage>, Box<dyn std::error::Error>> {
     let base_query =
@@ -318,9 +320,10 @@ pub async fn get_chat_messages(
                 &[&message_id],
             )
             .await?;
+        let sender_id = row.get("sender_id");
         chat_messages.push(ChatMessage {
             message_id,
-            sender_id: row.get("sender_id"),
+            sender_id,
             sender_name: row.get("sender_name"),
             profile_image: row.get("profile_image"),
             message_text: row.get("message_text"),
@@ -329,6 +332,7 @@ pub async fn get_chat_messages(
                 .iter()
                 .map(|image_row| image_row.get("image_url"))
                 .collect(),
+            is_my_message: sender_id == user_id,
             created_at: row.get("created_at"),
         });
     }

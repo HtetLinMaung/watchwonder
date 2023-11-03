@@ -134,14 +134,36 @@ pub async fn get_chat_messages(
         }
     };
 
-    if verify_token_and_get_sub(token).is_none() {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Invalid token"),
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
         });
     }
 
-    match chat::get_chat_messages(&query.search, query.page, query.per_page, chat_id, &client).await
+    let user_id: i32 = parsed_values[0].parse().unwrap();
+
+    match chat::get_chat_messages(
+        &query.search,
+        query.page,
+        query.per_page,
+        chat_id,
+        user_id,
+        &client,
+    )
+    .await
     {
         Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
             code: 200,
