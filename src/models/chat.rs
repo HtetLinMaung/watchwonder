@@ -8,6 +8,7 @@ use tokio_postgres::{types::ToSql, Client};
 use crate::utils::{
     common_struct::PaginationResult,
     fcm::send_notification,
+    socketio,
     sql::{generate_pagination_query, PaginationOptions},
 };
 
@@ -72,6 +73,19 @@ pub async fn add_message(
             )
             .await?;
     }
+
+    let mut rooms = get_admin_ids(client).await?;
+    rooms.push(data.receiver_id);
+    tokio::spawn(async move {
+        match socketio::emit("new-message", &rooms, message_id).await {
+            Ok(_) => {
+                println!("event sent successfully.");
+            }
+            Err(err) => {
+                println!("{:?}", err);
+            }
+        };
+    });
 
     let fcm_tokens = fcm::get_fcm_tokens(data.receiver_id, client).await?;
     let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
@@ -385,4 +399,14 @@ pub async fn get_total_unread_counts(
     let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
     let row = client.query_one(&query, &params_slice).await?;
     Ok(row.get("unread_counts"))
+}
+
+pub async fn get_admin_ids(client: &Client) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+    let rows = client
+        .query(
+            "select user_id from users where role = 'admin' and deleted_at is null",
+            &[],
+        )
+        .await?;
+    Ok(rows.iter().map(|row| row.get("user_id")).collect())
 }

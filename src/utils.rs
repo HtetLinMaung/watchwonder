@@ -3,6 +3,7 @@ pub mod fcm;
 pub mod image;
 pub mod jwt;
 pub mod setting;
+pub mod socketio;
 pub mod sql;
 pub mod tokio_postgres_helper;
 pub mod validator;
