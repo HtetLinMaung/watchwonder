@@ -113,4 +113,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(chat::update_message_status);
     cfg.service(chat::delete_message);
     cfg.service(chat::get_total_unread_counts);
+    cfg.service(chat::update_instantio_state);
+    cfg.service(chat::get_last_active_at);
 }

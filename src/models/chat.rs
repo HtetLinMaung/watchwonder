@@ -160,6 +160,7 @@ pub struct ChatParticipant {
     pub user_id: i32,
     pub name: String,
     pub profile_image: String,
+    pub is_me: bool,
 }
 
 #[derive(Serialize)]
@@ -237,10 +238,12 @@ pub async fn get_chat_sessions(
                 chat_name = cp_name;
                 profile_image = cp_row.get("profile_image");
             }
+            let cp_user_id: i32 = cp_row.get("user_id");
             chat_participants.push(ChatParticipant {
                 user_id: cp_row.get("user_id"),
                 name: cp_row.get("name"),
                 profile_image: cp_row.get("profile_image"),
+                is_me: cp_user_id == user_id,
             })
         }
 
@@ -439,4 +442,55 @@ pub async fn get_admin_ids(client: &Client) -> Result<Vec<i32>, Box<dyn std::err
         )
         .await?;
     Ok(rows.iter().map(|row| row.get("user_id")).collect())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateStateData {
+    pub room: Option<i32>,
+    pub from: Option<i32>,
+    pub to: Option<Vec<i32>>,
+    pub payload: Option<Value>, // This will hold the arbitrary JSON data
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateStateRequest {
+    pub event: String,
+    pub data: UpdateStateData,
+}
+
+pub async fn update_instantio_state(
+    body: &UpdateStateRequest,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if body.event == "disconnect" {
+        let user_id = body.data.room.unwrap();
+        client
+            .execute(
+                "update users set is_online = false, last_active_at = CURRENT_TIMESTAMP where user_id = $1",
+                &[&user_id],
+            )
+            .await?;
+    } else if body.event == "join" {
+        let user_id = body.data.room.unwrap();
+        client
+            .execute(
+                "update users set is_online = true where user_id = $1",
+                &[&user_id],
+            )
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn get_last_active_at(
+    user_id: i32,
+    client: &Client,
+) -> Result<Option<NaiveDateTime>, Box<dyn std::error::Error>> {
+    let row = client
+        .query_one(
+            "select last_active_at from users where user_id = $1",
+            &[&user_id],
+        )
+        .await?;
+    Ok(row.get("last_active_at"))
 }

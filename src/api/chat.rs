@@ -5,7 +5,7 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::chat::{self, MessageRequest},
+    models::chat::{self, MessageRequest, UpdateStateRequest},
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
@@ -437,6 +437,77 @@ pub async fn get_total_unread_counts(
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
                 message: String::from("Error fetching total unread counts"),
+            })
+        }
+    }
+}
+
+#[post("/api/update-instantio-state")]
+pub async fn update_instantio_state(
+    body: web::Json<UpdateStateRequest>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    match chat::update_instantio_state(&body, &client).await {
+        Ok(_) => HttpResponse::Ok().json(BaseResponse {
+            code: 200,
+            message: "InstantIO state updated".to_string(),
+        }),
+        Err(err) => {
+            println!("{:?}", err);
+            HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: "Error updating InstantIO state".to_string(),
+            })
+        }
+    }
+}
+
+#[get("/api/users/{user_id}/last-active-at")]
+pub async fn get_last_active_at(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let user_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    if verify_token_and_get_sub(token).is_none() {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Invalid token"),
+        });
+    }
+
+    match chat::get_last_active_at(user_id, &client).await {
+        Ok(last_active_at) => HttpResponse::Ok().json(DataResponse {
+            code: 200,
+            message: String::from("Successful."),
+            data: Some(last_active_at),
+        }),
+        Err(err) => {
+            println!("{:?}", err);
+            HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error fetching last active at"),
             })
         }
     }

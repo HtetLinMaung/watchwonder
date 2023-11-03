@@ -13,6 +13,8 @@ CREATE TABLE users
     profile_image VARCHAR(255),
     account_status VARCHAR(50) NOT NULL DEFAULT 'pending',
     can_modify_order_status BOOLEAN DEFAULT FALSE,
+    last_active_at TIMESTAMP,
+    is_online BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
