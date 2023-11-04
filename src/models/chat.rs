@@ -534,12 +534,15 @@ pub async fn update_message_status(
         .await?;
     let chat_id = row.get("chat_id");
     let rooms = get_receiver_ids_from_chat_id(chat_id, user_id, client).await?;
+    let receiver_ids = rooms.clone();
     let status = status.to_string().clone();
+    let another_status = status.clone();
+
     tokio::spawn(async move {
         let mut payload = HashMap::new();
         payload.insert("chat_id".to_string(), Value::Number(chat_id.into()));
         payload.insert("message_id".to_string(), Value::Number(message_id.into()));
-        payload.insert("status".to_string(), Value::String(status));
+        payload.insert("status".to_string(), Value::String(status.clone()));
         match socketio::emit("update-message-status", &rooms, Some(payload)).await {
             Ok(_) => {
                 println!("event sent successfully.");
@@ -548,6 +551,32 @@ pub async fn update_message_status(
                 println!("{:?}", err);
             }
         };
+    });
+
+    let mut fcm_tokens: Vec<String> = vec![];
+    for receiver_id in receiver_ids {
+        fcm_tokens.append(&mut fcm::get_fcm_tokens(receiver_id, client).await?);
+    }
+
+    tokio::spawn(async move {
+        for fcm_token in &fcm_tokens {
+            let mut map = HashMap::new();
+            map.insert(
+                "event".to_string(),
+                Value::String("update-message-status".to_string()),
+            );
+            map.insert("chat_id".to_string(), Value::Number(chat_id.into()));
+            map.insert("message_id".to_string(), Value::Number(message_id.into()));
+            map.insert("status".to_string(), Value::String(another_status.clone()));
+            match send_notification("", "", fcm_token, Some(map)).await {
+                Ok(_) => {
+                    println!("notification message sent successfully.");
+                }
+                Err(err) => {
+                    println!("{:?}", err);
+                }
+            };
+        }
     });
     Ok(())
 }
