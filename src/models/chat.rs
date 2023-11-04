@@ -359,6 +359,7 @@ pub async fn get_chat_session_by_id(
 
 #[derive(Serialize)]
 pub struct ChatMessage {
+    pub chat_id: i32,
     pub message_id: i32,
     pub sender_id: i32,
     pub sender_name: String,
@@ -399,7 +400,7 @@ pub async fn get_chat_messages(
     let order_options = "m.created_at desc";
 
     let result = generate_pagination_query(PaginationOptions {
-        select_columns: "m.message_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text, m.status, m.created_at",
+        select_columns: "m.chat_id, m.message_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text, m.status, m.created_at",
         base_query: &base_query,
         search_columns: vec!["m.message_text"],
         search: search.as_deref(),
@@ -435,6 +436,7 @@ pub async fn get_chat_messages(
             .await?;
         let sender_id = row.get("sender_id");
         chat_messages.push(ChatMessage {
+            chat_id: row.get("chat_id"),
             message_id,
             sender_id,
             sender_name: row.get("sender_name"),
@@ -456,6 +458,38 @@ pub async fn get_chat_messages(
         page: current_page,
         per_page: limit,
         page_counts,
+    })
+}
+
+pub async fn get_chat_message_by_id(
+    message_id: i32,
+    user_id: i32,
+    client: &Client,
+) -> Result<ChatMessage, Box<dyn std::error::Error>> {
+    let row = client.query_one("select m.chat_id, m.message_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text, m.status, m.created_at from messages m join users u on u.user_id = m.sender_id where m.deleted_at is null and m.message_id = $1", &[&message_id]).await?;
+
+    let message_id: i32 = row.get("message_id");
+    let image_rows = client
+        .query(
+            "select image_url from message_images where deleted_at is null and message_id = $1",
+            &[&message_id],
+        )
+        .await?;
+    let sender_id = row.get("sender_id");
+    Ok(ChatMessage {
+        chat_id: row.get("chat_id"),
+        message_id,
+        sender_id,
+        sender_name: row.get("sender_name"),
+        profile_image: row.get("profile_image"),
+        message_text: row.get("message_text"),
+        status: row.get("status"),
+        image_urls: image_rows
+            .iter()
+            .map(|image_row| image_row.get("image_url"))
+            .collect(),
+        is_my_message: sender_id == user_id,
+        created_at: row.get("created_at"),
     })
 }
 
