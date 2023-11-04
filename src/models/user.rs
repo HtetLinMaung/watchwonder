@@ -70,6 +70,8 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
                 offline_trader: row.get("offline_trader"),
                 product_counts: 0,
                 sold_product_counts: 0,
+                seller_name: row.get("name"),
+                seller_profile_image: row.get("profile_image"),
             }),
         }),
         Err(_) => None,
