@@ -267,8 +267,8 @@ pub async fn get_chat_sessions(
 
         let message_row = client
             .query_one(
-                "select count(*) as unread_counts from messages where chat_id = $1 and deleted_at is null and status != 'read'",
-                &[&chat_id],
+                "select count(*) as unread_counts from messages where chat_id = $1 and sender_id != $2 and deleted_at is null and status != 'read'",
+                &[&chat_id, &user_id],
             )
             .await?;
 
@@ -338,8 +338,8 @@ pub async fn get_chat_session_by_id(
 
     let message_row = client
       .query_one(
-          "select count(*) as unread_counts from messages where chat_id = $1 and deleted_at is null and status != 'read'",
-          &[&chat_id],
+          "select count(*) as unread_counts from messages where chat_id = $1 and sender_id != $2 deleted_at is null and status != 'read'",
+          &[&chat_id, &user_id],
       )
       .await?;
 
@@ -545,8 +545,8 @@ pub async fn get_total_unread_counts(
     user_id: i32,
     client: &Client,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut query = "select count(*) as unread_counts from messages where deleted_at is null and status != 'read'".to_string();
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut query = "select count(*) as unread_counts from messages where deleted_at is null and status != 'read' and sender_id != $1".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
     if role != "admin" {
         params.push(Box::new(user_id));
