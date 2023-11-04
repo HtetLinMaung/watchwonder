@@ -30,7 +30,7 @@ pub async fn add_message(
     sender_id: i32,
     role: &str,
     client: &Client,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<(i32, i32), Box<dyn std::error::Error>> {
     let mut chat_id = data.chat_id;
     let row = client
         .query_one(
@@ -100,6 +100,7 @@ pub async fn add_message(
             .await?;
     }
 
+    let mut message_id = 0;
     if total > 0 || role == "admin" {
         let row =client
         .query_one(
@@ -107,6 +108,7 @@ pub async fn add_message(
             &[&chat_id, &sender_id, &data.message_text],
         )
         .await?;
+        message_id = row.get("message_id");
         let message_id: i32 = row.get("message_id");
         for image_url in &data.image_urls {
             client
@@ -184,7 +186,7 @@ pub async fn add_message(
             }
         });
     }
-    Ok(chat_id)
+    Ok((chat_id, message_id))
 }
 
 #[derive(Serialize)]

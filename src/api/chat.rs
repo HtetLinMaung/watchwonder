@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
 use crate::{
@@ -191,6 +191,14 @@ pub async fn get_chat_messages(
     }
 }
 
+#[derive(Serialize)]
+pub struct SendMessageResponse {
+    pub code: u16,
+    pub message: String,
+    pub data: Option<i32>,
+    pub message_id: i32,
+}
+
 #[post("/api/send-message")]
 pub async fn send_message(
     req: HttpRequest,
@@ -241,10 +249,11 @@ pub async fn send_message(
     let role: &str = parsed_values[1];
 
     match chat::add_message(&body, user_id, role, &client).await {
-        Ok(chat_id) => HttpResponse::Created().json(DataResponse {
+        Ok((chat_id, message_id)) => HttpResponse::Created().json(SendMessageResponse {
             code: 201,
             message: String::from("Message sent successfully"),
             data: Some(chat_id),
+            message_id,
         }),
         Err(e) => {
             eprintln!("Message sending error: {}", e);
