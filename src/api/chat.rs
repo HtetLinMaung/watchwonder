@@ -103,6 +103,7 @@ pub struct GetChatMessagesQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub receiver_id: Option<i32>,
 }
 
 #[get("/api/chat-sessions/{chat_id}/chat-messages")]
@@ -154,6 +155,10 @@ pub async fn get_chat_messages(
     }
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
+    let mut receiver_id = 0;
+    if let Some(r_id) = query.receiver_id {
+        receiver_id = r_id;
+    }
 
     match chat::get_chat_messages(
         &query.search,
@@ -161,6 +166,7 @@ pub async fn get_chat_messages(
         query.per_page,
         chat_id,
         user_id,
+        receiver_id,
         &client,
     )
     .await

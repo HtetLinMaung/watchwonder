@@ -229,14 +229,14 @@ pub async fn get_chat_sessions(
 
         let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
         let mut chat_participants: Vec<ChatParticipant> = vec![];
-        let mut chat_name = String::new();
-        let mut profile_image = String::new();
+        let mut chat_names: Vec<String> = vec![];
+        let mut profile_images: Vec<String> = vec![];
         for cp_row in &cp_rows {
             let cp_user_id: i32 = cp_row.get("user_id");
             let cp_name: String = cp_row.get("name");
             if user_id != cp_user_id {
-                chat_name = cp_name;
-                profile_image = cp_row.get("profile_image");
+                chat_names.push(cp_name);
+                profile_images.push(cp_row.get("profile_image"));
             }
             let cp_user_id: i32 = cp_row.get("user_id");
             chat_participants.push(ChatParticipant {
@@ -246,6 +246,8 @@ pub async fn get_chat_sessions(
                 is_me: cp_user_id == user_id,
             })
         }
+        let chat_name = chat_names.join(", ");
+        let profile_image = profile_images.join(", ");
 
         let message_row = client
             .query_one(
@@ -296,8 +298,21 @@ pub async fn get_chat_messages(
     per_page: Option<usize>,
     chat_id: i32,
     user_id: i32,
+    receiver_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<ChatMessage>, Box<dyn std::error::Error>> {
+    let chat_id = if chat_id == 0 {
+        let query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", user_id, receiver_id);
+        match client.query_one(&query, &[]).await {
+            Ok(row) => row.get("chat_id"),
+            Err(err) => {
+                println!("{:?}", err);
+                0
+            }
+        }
+    } else {
+        chat_id
+    };
     let base_query =
         "from messages m join users u on u.user_id = m.sender_id where m.deleted_at is null and m.chat_id = $1"
             .to_string();
