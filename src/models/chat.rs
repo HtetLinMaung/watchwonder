@@ -532,6 +532,7 @@ pub async fn update_message_status(
     let status = status.to_string().clone();
     tokio::spawn(async move {
         let mut payload = HashMap::new();
+        payload.insert("chat_id".to_string(), Value::Number(chat_id.into()));
         payload.insert("message_id".to_string(), Value::Number(message_id.into()));
         payload.insert("status".to_string(), Value::String(status));
         match socketio::emit("update-message-status", &rooms, Some(payload)).await {
