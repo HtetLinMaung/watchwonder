@@ -290,14 +290,28 @@ pub async fn update_message_status(
         }
     };
 
-    if verify_token_and_get_sub(token).is_none() {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Invalid token"),
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
         });
     }
 
-    match chat::update_message_status(message_id, &body.status, &client).await {
+    let user_id: i32 = parsed_values[0].parse().unwrap();
+
+    match chat::update_message_status(message_id, &body.status, user_id, &client).await {
         Ok(()) => HttpResponse::Ok().json(BaseResponse {
             code: 200,
             message: String::from("Message updated successfully."),

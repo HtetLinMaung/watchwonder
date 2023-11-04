@@ -512,6 +512,7 @@ pub async fn get_chat_message_by_id(
 pub async fn update_message_status(
     message_id: i32,
     status: &str,
+    user_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
@@ -520,6 +521,28 @@ pub async fn update_message_status(
             &[&status, &message_id],
         )
         .await?;
+    let row = client
+        .query_one(
+            "select chat_id from messages where message_id = $1",
+            &[&message_id],
+        )
+        .await?;
+    let chat_id = row.get("chat_id");
+    let rooms = get_receiver_ids_from_chat_id(chat_id, user_id, client).await?;
+    let status = status.to_string().clone();
+    tokio::spawn(async move {
+        let mut payload = HashMap::new();
+        payload.insert("message_id".to_string(), Value::Number(message_id.into()));
+        payload.insert("status".to_string(), Value::String(status));
+        match socketio::emit("update-message-status", &rooms, Some(payload)).await {
+            Ok(_) => {
+                println!("event sent successfully.");
+            }
+            Err(err) => {
+                println!("{:?}", err);
+            }
+        };
+    });
     Ok(())
 }
 
