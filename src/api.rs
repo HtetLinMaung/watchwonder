@@ -115,4 +115,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(chat::get_total_unread_counts);
     cfg.service(chat::update_instantio_state);
     cfg.service(chat::get_last_active_at);
+    cfg.service(chat::get_chat_session_by_id);
 }

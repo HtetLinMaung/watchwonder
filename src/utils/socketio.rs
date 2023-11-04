@@ -3,13 +3,18 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env;
 
-pub async fn emit(event: &str, rooms: &Vec<i32>, message_id: i32) -> Result<Value, reqwest::Error> {
+pub async fn emit(
+    event: &str,
+    rooms: &Vec<i32>,
+    payload: Option<HashMap<String, Value>>,
+) -> Result<Value, reqwest::Error> {
     let instant_io_url = env::var("INSTANT_IO_URL")
         .unwrap_or_else(|_| String::from("http://localhost:3000/instantio/emit"));
 
-    // Sample data for the notification
-    let mut payload = HashMap::new();
-    payload.insert("message_id".to_string(), Value::Number(message_id.into()));
+    let payload = match payload {
+        Some(p) => p,
+        None => HashMap::new(),
+    };
 
     println!("instant_io_url: {instant_io_url}");
     println!("event: {event}");

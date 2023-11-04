@@ -64,6 +64,20 @@ pub async fn add_message(
                         &[&chat_id, &data.receiver_id],
                     )
                     .await?;
+                let mut rooms = get_admin_ids(client).await?;
+                rooms.push(data.receiver_id);
+                tokio::spawn(async move {
+                    let mut payload: HashMap<String, Value> = HashMap::new();
+                    payload.insert("chat_id".to_string(), Value::Number(chat_id.into()));
+                    match socketio::emit("new-chat", &rooms, Some(payload)).await {
+                        Ok(_) => {
+                            println!("event sent successfully.");
+                        }
+                        Err(err) => {
+                            println!("{:?}", err);
+                        }
+                    };
+                });
             }
         };
     }
@@ -103,7 +117,9 @@ pub async fn add_message(
         let mut rooms = get_admin_ids(client).await?;
         rooms.push(data.receiver_id);
         tokio::spawn(async move {
-            match socketio::emit("new-message", &rooms, message_id).await {
+            let mut payload = HashMap::new();
+            payload.insert("message_id".to_string(), Value::Number(message_id.into()));
+            match socketio::emit("new-message", &rooms, Some(payload)).await {
                 Ok(_) => {
                     println!("event sent successfully.");
                 }
@@ -276,6 +292,68 @@ pub async fn get_chat_sessions(
         page: current_page,
         per_page: limit,
         page_counts,
+    })
+}
+
+pub async fn get_chat_session_by_id(
+    chat_id: i32,
+    user_id: i32,
+    receiver_id: i32,
+    client: &Client,
+) -> Result<ChatSession, Box<dyn std::error::Error>> {
+    let chat_id = if chat_id == 0 {
+        let query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", user_id, receiver_id);
+        match client.query_one(&query, &[]).await {
+            Ok(row) => row.get("chat_id"),
+            Err(err) => {
+                println!("{:?}", err);
+                0
+            }
+        }
+    } else {
+        chat_id
+    };
+    let row =  client.query_one("select c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null order by created_at desc limit 1) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id = $1", &[&chat_id]).await?;
+    let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
+    let mut chat_participants: Vec<ChatParticipant> = vec![];
+    let mut chat_names: Vec<String> = vec![];
+    let mut profile_images: Vec<String> = vec![];
+    for cp_row in &cp_rows {
+        let cp_user_id: i32 = cp_row.get("user_id");
+        let cp_name: String = cp_row.get("name");
+        if user_id != cp_user_id {
+            chat_names.push(cp_name);
+            profile_images.push(cp_row.get("profile_image"));
+        }
+        let cp_user_id: i32 = cp_row.get("user_id");
+        chat_participants.push(ChatParticipant {
+            user_id: cp_row.get("user_id"),
+            name: cp_row.get("name"),
+            profile_image: cp_row.get("profile_image"),
+            is_me: cp_user_id == user_id,
+        })
+    }
+    let chat_name = chat_names.join(", ");
+    let profile_image = profile_images.join(", ");
+
+    let message_row = client
+      .query_one(
+          "select count(*) as unread_counts from messages where chat_id = $1 and deleted_at is null and status != 'read'",
+          &[&chat_id],
+      )
+      .await?;
+
+    Ok(ChatSession {
+        chat_id,
+        chat_name,
+        sender_id: row.get("sender_id"),
+        sender_name: row.get("sender_name"),
+        profile_image,
+        last_message_text: row.get("last_message_text"),
+        status: row.get("status"),
+        created_at: row.get("created_at"),
+        chat_participants,
+        unread_counts: message_row.get("unread_counts"),
     })
 }
 
