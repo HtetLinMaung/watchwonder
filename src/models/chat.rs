@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -114,8 +117,18 @@ pub async fn add_message(
                 .await?;
         }
 
+        let mut receiver_ids = if data.receiver_id == 0 {
+            get_receiver_ids_from_chat_id(chat_id, sender_id, client).await?
+        } else {
+            vec![data.receiver_id]
+        };
         let mut rooms = get_admin_ids(client).await?;
-        rooms.push(data.receiver_id);
+        rooms.append(&mut receiver_ids);
+        // Use a HashSet to remove duplicates:
+        let unique_rooms: HashSet<_> = rooms.drain(..).collect(); // This removes duplicates
+
+        // If you need a Vec again, you can convert it back:
+        rooms = unique_rooms.into_iter().collect();
         tokio::spawn(async move {
             let mut payload = HashMap::new();
             payload.insert("message_id".to_string(), Value::Number(message_id.into()));
@@ -129,7 +142,10 @@ pub async fn add_message(
             };
         });
 
-        let fcm_tokens = fcm::get_fcm_tokens(data.receiver_id, client).await?;
+        let mut fcm_tokens: Vec<String> = vec![];
+        for receiver_id in receiver_ids {
+            fcm_tokens.append(&mut fcm::get_fcm_tokens(receiver_id, client).await?);
+        }
         let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
         let sender_name = user::get_user_name(sender_id, client).await.unwrap();
         let message_text = data.message_text.clone();
@@ -620,4 +636,18 @@ pub async fn get_last_active_at(
         )
         .await?;
     Ok(row.get("last_active_at"))
+}
+
+pub async fn get_receiver_ids_from_chat_id(
+    chat_id: i32,
+    user_id: i32,
+    client: &Client,
+) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+    let rows = client
+        .query(
+            "select user_id from chat_participants where chat_id = $1 and user_id != $2",
+            &[&chat_id, &user_id],
+        )
+        .await?;
+    Ok(rows.iter().map(|row| row.get("user_id")).collect())
 }
