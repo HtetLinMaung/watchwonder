@@ -133,6 +133,7 @@ pub async fn add_message(
         rooms = unique_rooms.into_iter().collect();
         tokio::spawn(async move {
             let mut payload = HashMap::new();
+            payload.insert("chat_id".to_string(), Value::Number(chat_id.into()));
             payload.insert("message_id".to_string(), Value::Number(message_id.into()));
             match socketio::emit("new-message", &rooms, Some(payload)).await {
                 Ok(_) => {
