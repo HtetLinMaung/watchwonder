@@ -398,6 +398,7 @@ pub async fn get_chat_messages(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    status: &Option<String>,
     chat_id: i32,
     user_id: i32,
     receiver_id: i32,
@@ -415,10 +416,15 @@ pub async fn get_chat_messages(
     } else {
         chat_id
     };
-    let base_query =
+    let mut base_query =
         "from messages m join users u on u.user_id = m.sender_id where m.deleted_at is null and m.chat_id = $1"
             .to_string();
-    let params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(chat_id)];
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(chat_id)];
+
+    if let Some(s) = status {
+        params.push(Box::new(s));
+        base_query = format!("{base_query} and m.status = ${}", params.len());
+    }
 
     let order_options = "m.created_at desc";
 

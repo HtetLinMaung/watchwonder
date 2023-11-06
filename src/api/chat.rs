@@ -103,6 +103,7 @@ pub struct GetChatMessagesQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub status: Option<String>,
     pub receiver_id: Option<i32>,
 }
 
@@ -164,6 +165,7 @@ pub async fn get_chat_messages(
         &query.search,
         query.page,
         query.per_page,
+        &query.status,
         chat_id,
         user_id,
         receiver_id,
