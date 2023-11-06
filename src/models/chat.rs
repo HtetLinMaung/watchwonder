@@ -124,6 +124,7 @@ pub async fn add_message(
         } else {
             vec![data.receiver_id]
         };
+        let cloned_receiver_ids = receiver_ids.clone();
         let mut rooms = get_admin_ids(client).await?;
         rooms.append(&mut receiver_ids);
         // Use a HashSet to remove duplicates:
@@ -146,9 +147,10 @@ pub async fn add_message(
         });
 
         let mut fcm_tokens: Vec<String> = vec![];
-        for receiver_id in receiver_ids {
+        for receiver_id in cloned_receiver_ids {
             fcm_tokens.append(&mut fcm::get_fcm_tokens(receiver_id, client).await?);
         }
+
         let admin_fcm_tokens = fcm::get_admin_fcm_tokens(client).await?;
         let sender_name = user::get_user_name(sender_id, client).await.unwrap();
         let message_text = data.message_text.clone();
