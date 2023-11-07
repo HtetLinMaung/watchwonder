@@ -679,6 +679,18 @@ pub async fn update_instantio_state(
                 &[&user_id],
             )
             .await?;
+        tokio::spawn(async move {
+            let mut payload: HashMap<String, Value> = HashMap::new();
+            payload.insert("user_id".to_string(), Value::Number(user_id.into()));
+            match socketio::emit("offline-user", &vec![], Some(payload)).await {
+                Ok(_) => {
+                    println!("event sent successfully.");
+                }
+                Err(err) => {
+                    println!("{:?}", err);
+                }
+            };
+        });
     } else if body.event == "join" {
         let user_id = body.data.room.unwrap();
         client
@@ -687,6 +699,18 @@ pub async fn update_instantio_state(
                 &[&user_id],
             )
             .await?;
+        tokio::spawn(async move {
+            let mut payload: HashMap<String, Value> = HashMap::new();
+            payload.insert("user_id".to_string(), Value::Number(user_id.into()));
+            match socketio::emit("online-user", &vec![], Some(payload)).await {
+                Ok(_) => {
+                    println!("event sent successfully.");
+                }
+                Err(err) => {
+                    println!("{:?}", err);
+                }
+            };
+        });
     }
     Ok(())
 }
