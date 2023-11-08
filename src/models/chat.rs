@@ -230,7 +230,7 @@ pub async fn get_chat_sessions(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
-    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1)".to_string();
+    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where c.deleted_at is null and cd.chat_id is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
     if role != "admin" {
@@ -331,7 +331,7 @@ pub async fn get_chat_session_by_id(
     client: &Client,
 ) -> Result<ChatSession, Box<dyn std::error::Error>> {
     let chat_id = if chat_id == 0 {
-        let query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", user_id, receiver_id);
+        let query = format!("select cp.chat_id from chat_participants cp join chats c on c.chat_id = cp.chat_id where cp.user_id in ({}, {}) and c.deleted_at is null group by cp.chat_id having count(distinct cp.user_id) = 2", user_id, receiver_id);
         match client.query_one(&query, &[]).await {
             Ok(row) => row.get("chat_id"),
             Err(err) => {
@@ -342,7 +342,8 @@ pub async fn get_chat_session_by_id(
     } else {
         chat_id
     };
-    let row =  client.query_one("select c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1) and c.chat_id = $2", &[&user_id, &chat_id]).await?;
+
+    let row =  client.query_one("select c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where c.deleted_at is null and cd.chat_id is null and u.deleted_at is null and c.chat_id = $2", &[&user_id, &chat_id]).await?;
     let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
     let mut chat_participants: Vec<ChatParticipant> = vec![];
     let mut chat_names: Vec<String> = vec![];
@@ -368,7 +369,7 @@ pub async fn get_chat_session_by_id(
     let message_row = client
       .query_one(
           "select count(*) as unread_counts from messages where chat_id = $1 and sender_id != $2 and deleted_at is null and status != 'read'",
-          &[&chat_id, &user_id, &user_id],
+          &[&chat_id, &user_id],
       )
       .await?;
 
@@ -411,7 +412,7 @@ pub async fn get_chat_messages(
     client: &Client,
 ) -> Result<PaginationResult<ChatMessage>, Box<dyn std::error::Error>> {
     let chat_id = if chat_id == 0 {
-        let query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", user_id, receiver_id);
+        let query = format!("select cp.chat_id from chat_participants cp join chats c on c.chat_id = cp.chat_id where cp.user_id in ({}, {}) and c.deleted_at is null group by cp.chat_id having count(distinct cp.user_id) = 2", user_id, receiver_id);
         match client.query_one(&query, &[]).await {
             Ok(row) => row.get("chat_id"),
             Err(err) => {
@@ -633,9 +634,8 @@ pub async fn get_total_unread_counts(
     user_id: i32,
     client: &Client,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id where m.deleted_at is null and c.deleted_at is null and m.status != 'read' and m.chat_id not in (select chat_id from chat_deletes where user_id = $1) and m.sender_id != $2".to_string();
+    let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where m.deleted_at is null and c.deleted_at is null and cd.deleted_at is null and m.status != 'read' and chat_id = m.chat_id) and m.sender_id != $2".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id), Box::new(user_id)];
-    // "select m.chat_id, count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id where m.deleted_at is null and c.deleted_at is null and m.status != 'read' and m.chat_id not in (select chat_id from chat_deletes where user_id = 48) and m.sender_id != 48 and m.chat_id in (select chat_id from chat_participants where user_id = 48) group by m.chat_id;"
 
     if role != "admin" {
         params.push(Box::new(user_id));
