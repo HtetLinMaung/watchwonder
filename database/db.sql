@@ -704,6 +704,14 @@ CREATE TABLE chats
     deleted_at TIMESTAMP DEFAULT NULL
 );
 
+CREATE TABLE chat_deletes
+(
+    chat_delete_id SERIAL PRIMARY KEY,
+    chat_id INT REFERENCES chats(chat_id),
+    user_id INT REFERENCES users(user_id),
+    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE chat_participants
 (
     chat_id INT REFERENCES chats(chat_id),
@@ -764,3 +772,5 @@ CREATE TABLE message_images
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+

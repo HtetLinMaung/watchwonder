@@ -224,8 +224,8 @@ pub async fn get_chat_sessions(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
-    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null".to_string();
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1)".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
     if role != "admin" {
         params.push(Box::new(user_id));
@@ -336,7 +336,7 @@ pub async fn get_chat_session_by_id(
     } else {
         chat_id
     };
-    let row =  client.query_one("select c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id = $1", &[&chat_id]).await?;
+    let row =  client.query_one("select c.chat_id, m.sender_id, u.name as sender_name, m.message_text as last_message_text, m.status, m.created_at from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1) and c.chat_id = $2", &[&user_id, &chat_id]).await?;
     let cp_rows=  client.query("select cp.user_id, u.name, u.profile_image from chat_participants cp join users u on u.user_id = cp.user_id where cp.chat_id = $1", &[&chat_id]).await?;
     let mut chat_participants: Vec<ChatParticipant> = vec![];
     let mut chat_names: Vec<String> = vec![];
@@ -740,4 +740,26 @@ pub async fn get_receiver_ids_from_chat_id(
         )
         .await?;
     Ok(rows.iter().map(|row| row.get("user_id")).collect())
+}
+
+pub async fn delete_chat_session(
+    chat_id: i32,
+    user_id: i32,
+    role: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if role == "admin" {
+        client.execute(
+            "update chats set deleted_at = CURRENT_TIMESTAMP where chat_id = $1 and deleted_at is null",
+            &[&chat_id],
+        ).await?;
+    } else {
+        client
+            .execute(
+                "insert into chat_deletes (chat_id, user_id) values ($1, $2)",
+                &[&chat_id, &user_id],
+            )
+            .await?;
+    }
+    Ok(())
 }

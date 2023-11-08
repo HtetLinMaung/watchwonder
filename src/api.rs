@@ -117,4 +117,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(chat::get_last_active_at);
     cfg.service(chat::get_chat_session_by_id);
     cfg.service(chat::get_chat_message_by_id);
+    cfg.service(chat::delete_chat_session);
 }
