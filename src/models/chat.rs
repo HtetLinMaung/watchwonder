@@ -35,15 +35,16 @@ pub async fn add_message(
     let row = client
         .query_one(
             "select count(*) as total from chats where chat_id = $1 and deleted_at is null",
-            &[&data.chat_id],
+            &[&chat_id],
         )
         .await?;
     let total: i64 = row.get("total");
 
     if total == 0 {
-        let chat_exists_query = format!("select chat_id from chat_participants where user_id in ({}, {}) group by chat_id having count(distinct user_id) = 2", sender_id, data.receiver_id);
+        let chat_exists_query = format!("select cp.chat_id from chat_participants cp join chats c on c.chat_id = cp.chat_id where cp.user_id in ({}, {}) and c.deleted_at is null group by cp.chat_id having count(distinct cp.user_id) = 2", sender_id, data.receiver_id);
         match client.query_one(&chat_exists_query, &[]).await {
             Ok(ce_row) => {
+                println!("chat id exists");
                 chat_id = ce_row.get("chat_id");
             }
             Err(err) => {
@@ -86,8 +87,8 @@ pub async fn add_message(
     }
     let row = client
         .query_one(
-            "select count(*) as total from chat_participants where user_id = $1",
-            &[&sender_id],
+            "select count(*) as total from chat_participants where user_id = $1 and chat_id = $2",
+            &[&sender_id, &chat_id],
         )
         .await?;
     let total: i64 = row.get("total");
@@ -191,6 +192,11 @@ pub async fn add_message(
             }
         });
     }
+    let delete_query = format!(
+        "delete from chat_deletes where chat_id = $1 and user_id in ({sender_id}, {})",
+        data.receiver_id
+    );
+    client.execute(&delete_query, &[&chat_id]).await?;
     Ok((chat_id, message_id))
 }
 
