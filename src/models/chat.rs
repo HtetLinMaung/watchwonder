@@ -634,7 +634,7 @@ pub async fn get_total_unread_counts(
     user_id: i32,
     client: &Client,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where m.deleted_at is null and c.deleted_at is null and cd.deleted_at is null and m.status != 'read' and chat_id = m.chat_id) and m.sender_id != $2".to_string();
+    let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where m.deleted_at is null and c.deleted_at is null and cd.chat_id is null and m.status != 'read' and m.sender_id != $2".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id), Box::new(user_id)];
 
     if role != "admin" {
