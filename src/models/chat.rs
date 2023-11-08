@@ -224,7 +224,7 @@ pub async fn get_chat_sessions(
     role: &str,
     client: &Client,
 ) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
-    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and u.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1)".to_string();
+    let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id where c.deleted_at is null and c.chat_id not in (select chat_id from chat_deletes where user_id = $1)".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
     if role != "admin" {
@@ -362,7 +362,7 @@ pub async fn get_chat_session_by_id(
     let message_row = client
       .query_one(
           "select count(*) as unread_counts from messages where chat_id = $1 and sender_id != $2 and deleted_at is null and status != 'read'",
-          &[&chat_id, &user_id],
+          &[&chat_id, &user_id, &user_id],
       )
       .await?;
 
@@ -627,13 +627,14 @@ pub async fn get_total_unread_counts(
     user_id: i32,
     client: &Client,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut query = "select count(*) as unread_counts from messages where deleted_at is null and status != 'read' and sender_id != $1".to_string();
-    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
+    let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id where m.deleted_at is null and c.deleted_at is null and m.status != 'read' and m.chat_id not in (select chat_id from chat_deletes where user_id = $1) and m.sender_id != $2".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id), Box::new(user_id)];
+    // "select m.chat_id, count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id where m.deleted_at is null and c.deleted_at is null and m.status != 'read' and m.chat_id not in (select chat_id from chat_deletes where user_id = 48) and m.sender_id != 48 and m.chat_id in (select chat_id from chat_participants where user_id = 48) group by m.chat_id;"
 
     if role != "admin" {
         params.push(Box::new(user_id));
         query = format!(
-            "{query} and chat_id in (select chat_id from chat_participants where user_id = ${})",
+            "{query} and m.chat_id in (select chat_id from chat_participants where user_id = ${})",
             params.len()
         );
     }
