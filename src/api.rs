@@ -24,6 +24,7 @@ mod seller_information;
 mod seller_review;
 mod setting;
 mod shop;
+mod stock_quantity;
 mod strap_material;
 mod terms_and_conditions;
 mod user;
@@ -128,4 +129,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(movement_type::get_movement_types);
     cfg.service(strap_material::get_strap_materials);
     cfg.service(case_material::get_case_materials);
+    cfg.service(stock_quantity::get_stock_quantities);
 }
