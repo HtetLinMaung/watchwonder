@@ -255,6 +255,7 @@ CREATE TABLE products
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
     condition VARCHAR(255) DEFAULT '',
+    movement_caliber VARCHAR(255) DEFAULT '',
     is_top_model BOOLEAN DEFAULT FALSE,
     is_preorder BOOLEAN DEFAULT FALSE,
     creator_id INT REFERENCES users
@@ -773,4 +774,71 @@ CREATE TABLE message_images
     deleted_at TIMESTAMP DEFAULT NULL
 );
 
-
+CREATE TABLE movement_types
+(
+    movement_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Automatic with manual winding');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Automatic with self-winding');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Digital');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Mechanical');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Japanese Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Chinese Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('German Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Russian Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('American Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Swiss Quartz');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Smart');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Chronograph');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Solar');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Analog');
+INSERT INTO movement_types
+    (description)
+VALUES
+    ('Kinetic');

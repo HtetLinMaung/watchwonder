@@ -50,6 +50,7 @@ pub struct Product {
     pub case_diameter: String,
     pub case_depth: String,
     pub case_width: String,
+    pub movement_caliber: String,
     pub is_preorder: bool,
     pub creator_id: i32,
     pub created_at: NaiveDateTime,
@@ -184,7 +185,7 @@ pub async fn get_products(
     };
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.created_at",
+        select_columns: "p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.created_at",
         base_query: &base_query,
         search_columns: vec!["b.name", "p.model", "p.description", "p.color", "p.strap_material", "p.strap_color", "p.case_material", "p.dial_color", "p.movement_type", "p.water_resistance", "p.warranty_period", "p.dimensions", "b.name", "c.name", "s.name", "p.condition", "wt.description", "dgt.description", "oat.description", "g.description"],
         search: search.as_deref(),
@@ -264,6 +265,7 @@ pub async fn get_products(
             case_diameter: row.get("case_diameter"),
             case_depth: row.get("case_depth"),
             case_width: row.get("case_width"),
+            movement_caliber: row.get("movement_caliber"),
             is_preorder: row.get("is_preorder"),
             creator_id: row.get("creator_id"),
             created_at: row.get("created_at"),
@@ -358,6 +360,7 @@ pub struct ProductRequest {
     pub case_depth: Option<String>,
     pub case_width: Option<String>,
     pub is_preorder: Option<bool>,
+    pub movement_caliber: Option<String>,
 }
 
 pub async fn add_product(
@@ -406,7 +409,11 @@ pub async fn add_product(
     if let Some(yes) = data.is_preorder {
         is_preorder = yes;
     }
-    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, currency_id, condition, warranty_type_id, dial_glass_type_id, other_accessories_type_id, gender_id, waiting_time, case_diameter, case_depth, case_width, is_preorder, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) returning product_id", &data.price);
+    let mut movement_caliber = "".to_string();
+    if let Some(mc) = &data.movement_caliber {
+        movement_caliber = mc.to_string();
+    }
+    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, stock_quantity, is_top_model, currency_id, condition, warranty_type_id, dial_glass_type_id, other_accessories_type_id, gender_id, waiting_time, case_diameter, case_depth, case_width, movement_caliber, is_preorder, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) returning product_id", &data.price);
     let result = client
         .query_one(
             &query,
@@ -437,6 +444,7 @@ pub async fn add_product(
                 &case_diameter,
                 &case_depth,
                 &case_width,
+                &movement_caliber,
                 &is_preorder,
                 &creator_id,
             ],
@@ -477,7 +485,7 @@ pub async fn add_product(
 pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Product> {
     let result = client
         .query_one(
-            "select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.is_preorder, p.creator_id, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
+            "select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.is_preorder, p.creator_id, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
             &[&product_id],
         )
         .await;
@@ -535,6 +543,7 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 case_diameter: row.get("case_diameter"),
                 case_depth: row.get("case_depth"),
                 case_width: row.get("case_width"),
+                movement_caliber: row.get("movement_caliber"),
                 is_preorder: row.get("is_preorder"),
                 creator_id: row.get("creator_id"),
                 created_at: row.get("created_at"),
@@ -594,7 +603,11 @@ pub async fn update_product(
     if let Some(yes) = data.is_preorder {
         is_preorder = yes;
     }
-    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27 where product_id = $28", &data.price);
+    let mut movement_caliber = "".to_string();
+    if let Some(mc) = &data.movement_caliber {
+        movement_caliber = mc.to_string();
+    }
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27, movement_caliber = $28 where product_id = $29", &data.price);
     client
         .execute(
             &query,
@@ -626,6 +639,7 @@ pub async fn update_product(
                 &case_depth,
                 &case_width,
                 &is_preorder,
+                &movement_caliber,
                 &product_id,
             ],
         )

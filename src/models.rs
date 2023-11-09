@@ -10,6 +10,7 @@ pub mod dial_glass_type;
 pub mod fcm;
 pub mod gender;
 pub mod insurance;
+pub mod movement_type;
 pub mod notification;
 pub mod order;
 pub mod other_accessories_type;
