@@ -3,6 +3,7 @@ mod auth;
 mod bank_account;
 mod brand;
 mod buyer_protection;
+mod case_diameter;
 mod category;
 mod chat;
 mod condition;
@@ -118,4 +119,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(chat::get_chat_session_by_id);
     cfg.service(chat::get_chat_message_by_id);
     cfg.service(chat::delete_chat_session);
+    cfg.service(case_diameter::get_case_diameters);
 }
