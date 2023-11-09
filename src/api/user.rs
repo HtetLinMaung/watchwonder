@@ -7,7 +7,7 @@ use tokio_postgres::Client;
 use crate::{
     models::{
         seller_information::SellerInformationRequest,
-        user::{self, UserProfile},
+        user::{self, is_phone_existed, UserProfile},
     },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
@@ -201,6 +201,12 @@ pub async fn add_user(
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Invalid phone!"),
+        });
+    }
+    if is_phone_existed(&body.phone, &client).await {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Phone number is already in use!"),
         });
     }
     match user::user_exists(&body.username, &client).await {
@@ -425,6 +431,12 @@ pub async fn update_user(
     }
     match user::get_user_by_id(user_id, &client).await {
         Some(u) => {
+            if &u.phone != &body.phone && is_phone_existed(&body.phone, &client).await {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Phone number is already in use!"),
+                });
+            }
             let old_password: &str = &u.password;
             let old_profile_image: &str = &u.profile_image;
 
