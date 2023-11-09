@@ -842,3 +842,134 @@ INSERT INTO movement_types
     (description)
 VALUES
     ('Kinetic');
+
+CREATE TABLE strap_materials
+(
+    strap_material_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Stainless steel');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Steel');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Brass');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Artificial leather');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Alloy');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Titanium');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Leather');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Metal');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Fabric');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Plastic');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Rubber');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Wood');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Ceramic');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Nylon');
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Silicone');
+-- Corrected from 'Silicon'
+INSERT INTO strap_materials
+    (description)
+VALUES
+    ('Carbon fiber');
+
+CREATE TABLE case_materials
+(
+    case_material_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+insert into case_materials
+    (description)
+values
+    ('Stainless steel');
+insert into case_materials
+    (description)
+values
+    ('Steel');
+insert into case_materials
+    (description)
+values
+    ('Titanium');
+insert into case_materials
+    (description)
+values
+    ('Carbon');
+insert into case_materials
+    (description)
+values
+    ('Wood');
+insert into case_materials
+    (description)
+values
+    ('Alloy');
+insert into case_materials
+    (description)
+values
+    ('Plastic');
+insert into case_materials
+    (description)
+values
+    ('Bronze');
+insert into case_materials
+    (description)
+values
+    ('Pure gold');
+insert into case_materials
+    (description)
+values
+    ('Ceramic');
+insert into case_materials
+    (description)
+values
+    ('Platinum');
+insert into case_materials
+    (description)
+values
+    ('Diamond');

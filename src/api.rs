@@ -4,6 +4,7 @@ mod bank_account;
 mod brand;
 mod buyer_protection;
 mod case_diameter;
+mod case_material;
 mod case_width;
 mod category;
 mod chat;
@@ -23,10 +24,12 @@ mod seller_information;
 mod seller_review;
 mod setting;
 mod shop;
+mod strap_material;
 mod terms_and_conditions;
 mod user;
 mod vector;
 mod warranty_type;
+
 use actix_web::web;
 
 pub fn init(cfg: &mut web::ServiceConfig) {
@@ -123,4 +126,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(case_diameter::get_case_diameters);
     cfg.service(case_width::get_case_widths);
     cfg.service(movement_type::get_movement_types);
+    cfg.service(strap_material::get_strap_materials);
+    cfg.service(case_material::get_case_materials);
 }
