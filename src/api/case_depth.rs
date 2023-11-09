@@ -1,21 +1,16 @@
-use std::sync::Arc;
+use actix_web::{get, HttpRequest, HttpResponse, Responder};
 
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
-use tokio_postgres::Client;
-
-use crate::{
-    models::case_material,
-    utils::{
-        common_struct::{BaseResponse, DataResponse},
-        jwt::verify_token_and_get_sub,
-    },
+use crate::utils::{
+    common_struct::{BaseResponse, DataResponse},
+    jwt::verify_token_and_get_sub,
 };
 
-#[get("/api/case-materials")]
-pub async fn get_case_materials(
-    req: HttpRequest,
-    client: web::Data<Arc<Client>>,
-) -> impl Responder {
+fn generate_mm_array() -> Vec<i32> {
+    (1..=50).collect()
+}
+
+#[get("/api/case-depths")]
+pub async fn get_case_depths(req: HttpRequest) -> impl Responder {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -65,18 +60,14 @@ pub async fn get_case_materials(
         });
     }
 
-    match case_material::get_case_materials(&client).await {
-        Ok(strap_materials) => HttpResponse::Ok().json(DataResponse {
-            code: 200,
-            message: String::from("Case materials fetched successfully."),
-            data: Some(strap_materials),
-        }),
-        Err(err) => {
-            println!("{:?}", err);
-            HttpResponse::InternalServerError().json(BaseResponse {
-                code: 500,
-                message: String::from("Error fetching case materials"),
-            })
-        }
+    let mm_array = generate_mm_array();
+    let mut data: Vec<String> = vec![];
+    for mm in mm_array {
+        data.push(format!("{mm} mm"));
     }
+    HttpResponse::Ok().json(DataResponse {
+        code: 200,
+        message: String::from("Case diameters fetched successfully."),
+        data: Some(data),
+    })
 }

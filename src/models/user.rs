@@ -420,3 +420,17 @@ pub async fn can_modify_order_status(user_id: i32, client: &Client) -> bool {
         }
     }
 }
+
+pub async fn is_phone_existed(phone: &str, client: &Client) -> bool {
+    let total: i64=  match client.query_one(
+        "select count(*) as total from users where phone = $1 and deleted_at is null and account_status = 'active'",
+        &[&phone],
+    ).await {
+        Ok(row) => row.get("total"),
+        Err(err) => {
+            println!("{:?}", err);
+            0
+        }
+    };
+    total > 0
+}

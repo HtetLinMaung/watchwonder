@@ -58,7 +58,7 @@ pub async fn get_strap_materials(
 
     let role: &str = parsed_values[1];
 
-    if role != "admin" {
+    if role != "admin" && role != "agent" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),

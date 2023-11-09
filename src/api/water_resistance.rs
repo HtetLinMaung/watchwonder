@@ -4,15 +4,15 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 use tokio_postgres::Client;
 
 use crate::{
-    models::case_material,
+    models::water_resistance,
     utils::{
         common_struct::{BaseResponse, DataResponse},
         jwt::verify_token_and_get_sub,
     },
 };
 
-#[get("/api/case-materials")]
-pub async fn get_case_materials(
+#[get("/api/water-resistances")]
+pub async fn get_water_resistances(
     req: HttpRequest,
     client: web::Data<Arc<Client>>,
 ) -> impl Responder {
@@ -65,17 +65,17 @@ pub async fn get_case_materials(
         });
     }
 
-    match case_material::get_case_materials(&client).await {
-        Ok(strap_materials) => HttpResponse::Ok().json(DataResponse {
+    match water_resistance::get_water_resistances(&client).await {
+        Ok(water_resistances) => HttpResponse::Ok().json(DataResponse {
             code: 200,
-            message: String::from("Case materials fetched successfully."),
-            data: Some(strap_materials),
+            message: String::from("Water resistances fetched successfully."),
+            data: Some(water_resistances),
         }),
         Err(err) => {
             println!("{:?}", err);
             HttpResponse::InternalServerError().json(BaseResponse {
                 code: 500,
-                message: String::from("Error fetching case materials"),
+                message: String::from("Error fetching water resistances"),
             })
         }
     }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::notification;
-use crate::models::user::{self, get_user, user_exists};
+use crate::models::user::{self, get_user, is_phone_existed, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
 use crate::utils::jwt::{self, verify_token_and_get_sub};
 use crate::utils::validator::{validate_email, validate_mobile};
@@ -44,6 +44,12 @@ pub async fn register(
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Invalid phone!"),
+        });
+    }
+    if is_phone_existed(&body.phone, &client).await {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Phone number is already in use!"),
         });
     }
 

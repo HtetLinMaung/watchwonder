@@ -256,6 +256,7 @@ CREATE TABLE products
     stock_quantity INT DEFAULT 0,
     condition VARCHAR(255) DEFAULT '',
     movement_caliber VARCHAR(255) DEFAULT '',
+    movement_country VARCHAR(255) DEFAULT '',
     is_top_model BOOLEAN DEFAULT FALSE,
     is_preorder BOOLEAN DEFAULT FALSE,
     creator_id INT REFERENCES users
@@ -973,3 +974,130 @@ insert into case_materials
     (description)
 values
     ('Diamond');
+
+CREATE TABLE water_resistances
+(
+    water_resistance_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('3 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('5 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('10 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('30 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('100 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('300 bar');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('3ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('5ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('10ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('20ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('50ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('100ATM');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('30m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('50m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('100m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('200m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('300m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('500m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('1000m');
+INSERT INTO water_resistances
+    (description)
+VALUES
+    ('2000m');
+
+
+CREATE TABLE movement_countries
+(
+    movement_country_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('Switzerland');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('Japan');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('China');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('USA');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('Russia');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('Germany');
+INSERT INTO movement_countries
+    (description)
+VALUES
+    ('Others');
