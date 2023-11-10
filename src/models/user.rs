@@ -100,7 +100,7 @@ pub async fn add_user(
         &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status],
     ).await?;
 
-    if account_status == "active" && role == "agent" {
+    if role == "agent" {
         let user_id: i32 = row.get("user_id");
         if let Some(si) = seller_information {
             client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader]).await?;
@@ -157,10 +157,18 @@ pub async fn update_user(
         &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &user_id],
     ).await?;
 
-    if account_status == "active" && role == "agent" {
+    if role == "agent" {
         if let Some(si) = seller_information {
             println!("si: {:?}", si);
-            client
+            let row = client
+                .query_one(
+                    "select count(*) as total from seller_informations where user_id = $1 and deleted_at is null",
+                    &[&user_id],
+                )
+                .await?;
+            let total: i64 = row.get("total");
+            if total > 0 {
+                client
                 .execute(
                     "update seller_informations set company_name = $1, professional_title = $2, location = $3, offline_trader = $4 where user_id = $5 and deleted_at is null",
                     &[
@@ -172,6 +180,9 @@ pub async fn update_user(
                     ],
                 )
                 .await?;
+            } else {
+                client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader]).await?;
+            }
         }
     }
     Ok(())
