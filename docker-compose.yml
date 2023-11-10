@@ -37,6 +37,7 @@ services:
       TOKEN_VERIFICATION_WEB_HOOK: "http://web:8080/api/auth/verify-token"
       INSTANTIO_WEB_HOOK: "http://web:8080/api/update-instantio-state"
       TZ: "Asia/Yangon"
+      SOCKETIO_NAMESPACES: "/pos"
 
   # db:
   #   image: postgres:13
