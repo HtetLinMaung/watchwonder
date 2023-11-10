@@ -17,7 +17,7 @@ services:
       - PLATFORM_REQUIRED_SIGNIN=none
       - DEMO_USER_ID=14
       - INSTANT_IO_URL=http://instantio:3000/instantio/emit
-      - DEMO_PLATFORM=ios
+      - DEMO_PLATFORM=none
     volumes:
       - ./images:/images
   pyvecfinder:
