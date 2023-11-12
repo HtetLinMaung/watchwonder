@@ -23,6 +23,7 @@ mod order;
 mod other_accessories_type;
 mod product;
 mod seller_information;
+mod seller_report;
 mod seller_review;
 mod setting;
 mod shop;
@@ -136,4 +137,8 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(stock_quantity::get_stock_quantities);
     cfg.service(water_resistance::get_water_resistances);
     cfg.service(movement_country::get_movement_countries);
+    cfg.service(seller_report::get_report_subjects);
+    cfg.service(seller_report::get_seller_reports);
+    cfg.service(seller_report::add_seller_report);
+    cfg.service(seller_report::get_seller_report_by_id);
 }

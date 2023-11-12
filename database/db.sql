@@ -1101,3 +1101,50 @@ INSERT INTO movement_countries
     (description)
 VALUES
     ('Others');
+
+CREATE TABLE report_subjects
+(
+    subject_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('Suspicious vendor');
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('Counterfeit watch');
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('Inaccurate listing');
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('This watch is unavailable');
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('The dealer hasn''t responded');
+INSERT INTO report_subjects
+    (description)
+VALUES
+    ('Other');
+
+
+CREATE TABLE seller_reports
+(
+    report_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    seller_id INT REFERENCES users(user_id),
+    subject_id INT REFERENCES report_subjects(subject_id),
+    message TEXT DEFAULT '',
+    phone VARCHAR(15) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
