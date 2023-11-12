@@ -1,11 +1,16 @@
 use actix_web::{get, HttpResponse, Responder};
 use serde::Serialize;
 
-use crate::utils::common_struct::DataResponse;
+use crate::utils::{
+    common_struct::DataResponse,
+    setting::{get_android_version, get_ios_version},
+};
 
 #[derive(Serialize)]
 pub struct Setting {
     pub platform_required_signin: String,
+    pub android_version: String,
+    pub ios_version: String,
 }
 
 #[get("/api/settings")]
@@ -17,6 +22,8 @@ pub async fn get_settings() -> impl Responder {
         message: String::from("Successful."),
         data: Some(Setting {
             platform_required_signin,
+            android_version: get_android_version(),
+            ios_version: get_ios_version(),
         }),
     })
 }

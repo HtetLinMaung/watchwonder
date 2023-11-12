@@ -141,4 +141,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_report::get_seller_reports);
     cfg.service(seller_report::add_seller_report);
     cfg.service(seller_report::get_seller_report_by_id);
+    cfg.service(fcm::notify_all);
 }
