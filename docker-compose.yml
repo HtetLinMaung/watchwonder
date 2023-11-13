@@ -18,6 +18,7 @@ services:
       - DEMO_USER_ID=14
       - INSTANT_IO_URL=http://instantio:3000/instantio/emit
       - DEMO_PLATFORM=none
+      - "VERSION_UPDATE_MESSAGE=New features and improvements await in the latest version of Watch Vault by Diggie! Update now for a better experience."
     volumes:
       - ./images:/images
   pyvecfinder:

@@ -19,3 +19,8 @@ pub fn get_ios_version() -> String {
     let ios_version = std::env::var("IOS_VERSION").unwrap_or("0.0.0".to_string());
     ios_version
 }
+
+pub fn get_version_update_message() -> String {
+    let version_update_message = std::env::var("VERSION_UPDATE_MESSAGE").unwrap_or("".to_string());
+    version_update_message
+}
