@@ -5,7 +5,10 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
-    models::fcm::{self, Fcm},
+    models::{
+        fcm::{self, Fcm},
+        notification,
+    },
     utils::{common_struct::BaseResponse, fcm::send_notification, jwt::verify_token_and_get_sub},
 };
 
@@ -88,7 +91,11 @@ pub struct NotifyAllRequest {
 }
 
 #[post("/api/fcm/notify-all")]
-pub async fn notify_all(req: HttpRequest, body: web::Json<NotifyAllRequest>) -> impl Responder {
+pub async fn notify_all(
+    req: HttpRequest,
+    body: web::Json<NotifyAllRequest>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -141,6 +148,22 @@ pub async fn notify_all(req: HttpRequest, body: web::Json<NotifyAllRequest>) -> 
     match send_notification(&body.title, &body.message, "/topics/all", None).await {
         Ok(_) => {
             println!("notification message sent successfully.");
+            tokio::spawn(async move {
+                match notification::add_notifications_for_all_users(
+                    &body.title,
+                    &body.message,
+                    &client,
+                )
+                .await
+                {
+                    Ok(()) => {
+                        println!("Notification added successfully.");
+                    }
+                    Err(err) => {
+                        println!("Error adding notification: {:?}", err);
+                    }
+                };
+            });
             HttpResponse::Ok().json(BaseResponse {
                 code: 200,
                 message: "Notification message sent successfully.".to_string(),

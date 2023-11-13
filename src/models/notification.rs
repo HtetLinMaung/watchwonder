@@ -136,6 +136,29 @@ pub async fn add_notification_to_admins(
     Ok(())
 }
 
+pub async fn add_notifications_for_all_users(
+    title: &str,
+    message: &str,
+    client: &Client,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rows = client
+        .query(
+            "select user_id from users where deleted_at is null and role != 'admin'",
+            &[],
+        )
+        .await?;
+    for row in &rows {
+        let user_id: i32 = row.get("user_id");
+        client
+            .execute(
+                "insert into notifications (user_id, title, message) values ($1, $2, $3)",
+                &[&user_id, &title, &message],
+            )
+            .await?;
+    }
+    Ok(())
+}
+
 pub async fn add_notification(
     user_id: i32,
     title: &str,
