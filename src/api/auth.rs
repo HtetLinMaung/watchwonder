@@ -149,13 +149,25 @@ pub async fn login(
             }
 
             if verify(&credentials.password, &user.password).unwrap() {
+                // let now = SystemTime::now()
+                //     .duration_since(UNIX_EPOCH)
+                //     .expect("Time went backwards")
+                //     .as_secs() as usize;
+                // let token = jwt::sign_token(&jwt::Claims {
+                //     sub: format!("{},{}", &user.user_id, &user.role),
+                //     exp: now + (3600 * 24),
+                // })
+                // .unwrap();
+
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .expect("Time went backwards")
                     .as_secs() as usize;
+                // Setting a far future expiration time
+                let far_future_exp = now + (3600 * 24 * 365 * 100); // 100 years into the future
                 let token = jwt::sign_token(&jwt::Claims {
-                    sub: format!("{},{}", &user.user_id, &user.role),
-                    exp: now + (3600 * 24),
+                    sub: format!("{},{},{}", &user.id, &user.role_name, &user.shop_id),
+                    exp: far_future_exp,
                 })
                 .unwrap();
                 // let token = create_token(&user.username).unwrap();
