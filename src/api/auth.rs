@@ -166,7 +166,7 @@ pub async fn login(
                 // Setting a far future expiration time
                 let far_future_exp = now + (3600 * 24 * 365 * 100); // 100 years into the future
                 let token = jwt::sign_token(&jwt::Claims {
-                    sub: format!("{},{},{}", &user.id, &user.role_name, &user.shop_id),
+                    sub: format!("{},{}", &user.user_id, &user.role),
                     exp: far_future_exp,
                 })
                 .unwrap();
