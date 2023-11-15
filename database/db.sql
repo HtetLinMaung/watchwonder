@@ -264,6 +264,7 @@ CREATE TABLE products
     currency_id INT REFERENCES currencies
     (currency_id) DEFAULT 1,
     is_demo BOOLEAN DEFAULT FALSE,
+    discount_percent DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
