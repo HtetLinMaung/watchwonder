@@ -16,6 +16,7 @@ pub mod movement_type;
 pub mod notification;
 pub mod order;
 pub mod other_accessories_type;
+pub mod payment_type;
 pub mod product;
 pub mod seller_information;
 pub mod seller_report;

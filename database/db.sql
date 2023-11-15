@@ -1149,3 +1149,24 @@ CREATE TABLE seller_reports
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+CREATE TABLE payment_types
+(
+    payment_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+insert into payment_types
+    (description)
+values
+    ('Cash on Delivery');
+insert into payment_types
+    (description)
+values
+    ('Half Prepaid');
+insert into payment_types
+    (description)
+values
+    ('Full Prepaid'); 

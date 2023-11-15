@@ -103,17 +103,17 @@ pub async fn add_order(
         });
     }
 
-    let payment_types: Vec<&str> = vec!["Preorder", "Cash on Delivery"];
+    let payment_types: Vec<&str> = vec!["Full Prepaid", "Half Prepaid", "Cash on Delivery"];
     if !payment_types.contains(&order.payment_type.as_str()) {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from(
-                "Please select a valid payment type: Preorder, or Cash on Delivery.",
+                "Please select a valid payment type: Full Prepaid, Half Prepaid, or Cash on Delivery.",
             ),
         });
     }
 
-    if &order.payment_type == "Preorder" && order.payslip_screenshot_path.is_empty() {
+    if &order.payment_type != "Cash on Delivery" && order.payslip_screenshot_path.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
             message: String::from("Please provide your payment slip."),
