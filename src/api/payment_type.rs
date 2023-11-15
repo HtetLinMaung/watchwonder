@@ -34,32 +34,10 @@ pub async fn get_payment_types(req: HttpRequest, client: web::Data<Arc<Client>>)
         }
     };
 
-    let sub = match verify_token_and_get_sub(token) {
-        Some(s) => s,
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Invalid token"),
-            })
-        }
-    };
-
-    // Parse the `sub` value
-    let parsed_values: Vec<&str> = sub.split(',').collect();
-    if parsed_values.len() != 2 {
-        return HttpResponse::InternalServerError().json(BaseResponse {
-            code: 500,
-            message: String::from("Invalid sub format in token"),
-        });
-    }
-
-    // let user_id: i32 = parsed_values[0].parse().unwrap();
-    let role: &str = parsed_values[1];
-
-    if role != "admin" && role != "agent" {
+    if verify_token_and_get_sub(token).is_none() {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
-            message: String::from("Unauthorized!"),
+            message: String::from("Invalid token"),
         });
     }
 
