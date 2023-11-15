@@ -6,7 +6,7 @@ use crate::utils::{
 };
 
 fn generate_mm_array() -> Vec<i32> {
-    (1..=100).collect()
+    (0..=100).collect()
 }
 
 #[get("/api/stock-quantities")]
