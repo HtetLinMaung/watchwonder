@@ -580,6 +580,22 @@ CREATE TABLE seller_informations
     active_since_year INT NOT NULL,
     location VARCHAR(255) NOT NULL,
     offline_trader BOOLEAN DEFAULT FALSE,
+
+    facebook_profile_image VARCHAR(255) DEFAULT '',
+    shop_or_page_name VARCHAR(255) DEFAULT '',
+    facebook_page_image VARCHAR(255) DEFAULT '',
+    bussiness_phone VARCHAR(15) DEFAULT '',
+    address TEXT DEFAULT '',
+    nrc VARCHAR(255) DEFAULT '',
+    nrc_front_image VARCHAR(255) DEFAULT '',
+    bank_code VARCHAR(15) DEFAULT '',
+    bank_account VARCHAR(255) DEFAULT '',
+    bank_account_image VARCHAR(255) DEFAULT '',
+    wallet_type VARCHAR(15) DEFAULT '',
+    wallet_account VARCHAR(255) DEFAULT '',
+    charges_model VARCHAR(255) DEFAULT '',
+    transaction_screenshot VARCHAR(255) DEFAULT '',
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
