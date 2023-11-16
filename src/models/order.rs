@@ -366,6 +366,23 @@ pub async fn update_order(
             &[&status, &order_id],
         )
         .await?;
+    if status == "Cancelled" {
+        let rows=   client
+            .query(
+                "select product_id, quantity from order_items where order_id = $1 and deleted_at is null",
+                &[&order_id],
+            )
+            .await?;
+        for row in &rows {
+            let product_id: i32 = row.get("product_id");
+            let quantity: i32 = row.get("quantity");
+
+            client.execute(
+                "update products set stock_quantity = stock_quantity + $1 WHERE product_id = $2",
+                &[&quantity, &product_id]
+            ).await?;
+        }
+    }
     Ok(())
 }
 
