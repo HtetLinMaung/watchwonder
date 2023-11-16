@@ -433,3 +433,40 @@ pub async fn get_order_shop_name(order_id: i32, client: &Client) -> String {
         }
     }
 }
+
+pub async fn update_stocks(
+    items: &Vec<NewOrderItem>,
+    client: &Client,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    // Start the transaction
+    client.execute("BEGIN", &[]).await?;
+
+    for item in items {
+        // Lock the row and check the stock quantity
+        let row = client
+            .query_one(
+                "SELECT stock_quantity FROM products WHERE product_id = $1 FOR UPDATE",
+                &[&item.product_id],
+            )
+            .await?;
+
+        let stock_quantity: i32 = row.get(0);
+
+        // Check if there is enough stock
+        if stock_quantity >= item.quantity {
+            // Update the stock quantity
+            client.execute(
+                "UPDATE products SET stock_quantity = stock_quantity - $1 WHERE product_id = $2",
+                &[&item.quantity, &item.product_id]
+            ).await?;
+        } else {
+            // Not enough stock, rollback the transaction
+            client.execute("ROLLBACK", &[]).await?;
+            return Ok(false);
+        }
+    }
+
+    // If all updates are successful, commit the transaction
+    client.execute("COMMIT", &[]).await?;
+    Ok(true)
+}

@@ -120,6 +120,24 @@ pub async fn add_order(
         });
     }
 
+    match order::update_stocks(&order.order_items, &client).await {
+        Ok(success) => {
+            if !success {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Insufficient stock!"),
+                });
+            }
+        }
+        Err(err) => {
+            println!("{:?}", err);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error updating stocks!"),
+            });
+        }
+    };
+
     match order::add_order(&order, user_id, currency_id, &client).await {
         Ok(order_id) => {
             let shop_id = order.shop_id.unwrap_or(0);
