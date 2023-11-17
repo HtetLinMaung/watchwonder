@@ -1218,3 +1218,15 @@ INSERT INTO reason_types
 VALUES
     ('Quality Not as Described in App');
 
+
+CREATE TABLE refund_reasons
+(
+    refund_reason_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    user_id INT REFERENCES users(user_id),
+    reason_type_id INT REFERENCES reason_types(reason_type_id),
+    comment TEXT DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);

@@ -19,6 +19,7 @@ pub mod other_accessories_type;
 pub mod payment_type;
 pub mod product;
 pub mod reason_type;
+pub mod refund_reason;
 pub mod seller_information;
 pub mod seller_report;
 pub mod seller_review;
