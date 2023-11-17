@@ -360,16 +360,31 @@ pub async fn update_order(
     status: &str,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Start a transaction
+    client.execute("BEGIN", &[]).await?;
+
+    // Lock the order row and get the current status
+    let row = client
+        .query_one(
+            "SELECT status AS old_status FROM orders WHERE order_id = $1 AND deleted_at IS NULL FOR UPDATE",
+            &[&order_id],
+        )
+        .await?;
+    let old_status: &str = row.get("old_status");
+
+    // Update the order status
     client
         .execute(
-            "update orders set status = $1 where order_id = $2 and deleted_at is null",
+            "UPDATE orders SET status = $1 WHERE order_id = $2 AND deleted_at IS NULL",
             &[&status, &order_id],
         )
         .await?;
-    if status == "Cancelled" {
-        let rows=   client
+
+    // Additional logic for cancelled orders
+    if status == "Cancelled" && old_status != "Cancelled" {
+        let rows = client
             .query(
-                "select product_id, quantity from order_items where order_id = $1 and deleted_at is null",
+                "SELECT product_id, quantity FROM order_items WHERE order_id = $1 AND deleted_at IS NULL",
                 &[&order_id],
             )
             .await?;
@@ -378,11 +393,15 @@ pub async fn update_order(
             let quantity: i32 = row.get("quantity");
 
             client.execute(
-                "update products set stock_quantity = stock_quantity + $1 WHERE product_id = $2",
+                "UPDATE products SET stock_quantity = stock_quantity + $1 WHERE product_id = $2",
                 &[&quantity, &product_id]
             ).await?;
         }
     }
+
+    // Commit the transaction
+    client.execute("COMMIT", &[]).await?;
+
     Ok(())
 }
 
@@ -402,7 +421,7 @@ pub async fn update_order(
 pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i32> {
     match client
         .query_one(
-            "select user_id from orders where order_id = $1 and deleted_at is null",
+            "select user_id, status from orders where order_id = $1 and deleted_at is null",
             &[&order_id],
         )
         .await
