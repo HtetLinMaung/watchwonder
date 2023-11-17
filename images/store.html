@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My App</title>
+    <script type="text/javascript">
+      function redirectToStore() {
+        var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+          // iOS device -> Redirect to Apple App Store
+          window.location.href =
+            "https://apps.apple.com/mm/app/watch-vault-by-diggie/id6469529196";
+        } else {
+          // Android or other device -> Redirect to Google Play Store
+          window.location.href =
+            "https://play.google.com/store/apps/details?id=com.watchvault.app001";
+        }
+      }
+    </script>
+  </head>
+  <body onload="redirectToStore()">
+    <p>Redirecting to the store...</p>
+    <!-- You can add additional content or styling here -->
+  </body>
+</html>
