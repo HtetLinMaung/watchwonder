@@ -595,7 +595,7 @@ CREATE TABLE seller_informations
     wallet_account VARCHAR(255) DEFAULT '',
     charges_model VARCHAR(255) DEFAULT '',
     transaction_screenshot VARCHAR(255) DEFAULT '',
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
@@ -1185,4 +1185,36 @@ values
 insert into payment_types
     (description)
 values
-    ('Full Prepaid'); 
+    ('Full Prepaid');
+
+
+CREATE TABLE reason_types
+(
+    reason_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+INSERT INTO reason_types
+    (description)
+VALUES
+    ('Incorrect Product Specifications');
+INSERT INTO reason_types
+    (description)
+VALUES
+    ('Product is Defective or Damaged');
+INSERT INTO reason_types
+    (description)
+VALUES
+    ('The Watch is Not Working');
+INSERT INTO reason_types
+    (description)
+VALUES
+    ('Watch Not Received');
+INSERT INTO reason_types
+    (description)
+VALUES
+    ('Quality Not as Described in App');
+

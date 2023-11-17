@@ -18,6 +18,7 @@ pub mod order;
 pub mod other_accessories_type;
 pub mod payment_type;
 pub mod product;
+pub mod reason_type;
 pub mod seller_information;
 pub mod seller_report;
 pub mod seller_review;

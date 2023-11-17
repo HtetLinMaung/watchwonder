@@ -23,6 +23,7 @@ mod order;
 mod other_accessories_type;
 mod payment_type;
 mod product;
+mod reason_type;
 mod seller_information;
 mod seller_report;
 mod seller_review;
@@ -144,4 +145,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_report::get_seller_report_by_id);
     cfg.service(fcm::notify_all);
     cfg.service(payment_type::get_payment_types);
+    cfg.service(reason_type::get_reason_types);
 }
