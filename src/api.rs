@@ -24,6 +24,7 @@ mod other_accessories_type;
 mod payment_type;
 mod product;
 mod reason_type;
+mod refund_reason;
 mod seller_information;
 mod seller_report;
 mod seller_review;
@@ -146,4 +147,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(fcm::notify_all);
     cfg.service(payment_type::get_payment_types);
     cfg.service(reason_type::get_reason_types);
+    cfg.service(refund_reason::add_refund_reason);
+    cfg.service(order::get_order_refund_reason);
 }

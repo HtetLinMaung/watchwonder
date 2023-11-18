@@ -904,6 +904,16 @@ pub async fn get_product_creator_id(product_id: i32, client: &Client) -> Option<
     }
 }
 
+pub async fn get_product_creator_id_from_order_id(order_id: i32, client: &Client) -> i32 {
+    match  client.query_one("select p.creator_id from products p join order_items oi on oi.product_id = p.product_id where oi.order_id = $1 and deleted_at is null limit 1", &[&order_id]).await {
+        Ok(row) => row.get("creator_id"),
+        Err(err) => {
+            println!("{:?}", err);
+            0
+        }
+    }
+}
+
 pub async fn is_products_exist(
     key: &str,
     id: i32,

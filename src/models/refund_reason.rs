@@ -1,7 +1,6 @@
-use serde::Deserialize;
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
-
-use super::notification;
 
 #[derive(Deserialize)]
 pub struct RefundReasonRequest {
@@ -10,10 +9,33 @@ pub struct RefundReasonRequest {
     pub comment: String,
 }
 
+#[derive(Serialize)]
+pub struct RefundReason {
+    customer_name: String,
+    reason_type_description: String,
+    comment: String,
+    created_at: NaiveDateTime,
+}
+
+pub async fn get_refund_reason_by_order_id(order_id: i32, client: &Client) -> Option<RefundReason> {
+    match client.query_one("select u.name customer_name, rt.description reason_type_description, rs.comment, rs.created_at from refund_reasons rs join users u on u.user_id = rs.user_id join reason_types rt on rt.reason_type_id = rs.reason_type_id where rs.order_id = $1 and rs.deleted_at is null and rt.deleted_at is null and u.deleted_at is null", &[&order_id]).await {
+    Ok(row) => Some(RefundReason {
+        customer_name: row.get("customer_name"),
+        reason_type_description: row.get("reason_type_description"),
+        comment: row.get("comment"),
+        created_at: row.get("created_at"),
+    }),
+    Err(err) => {
+        println!("{:?}",err);
+        None
+    }
+  }
+}
+
 pub async fn add_refund_reason(
     data: &RefundReasonRequest,
     user_id: i32,
-    client: Client,
+    client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .execute(
@@ -21,25 +43,5 @@ pub async fn add_refund_reason(
             &[&data.order_id, &data.reason_type_id, &data.comment, &user_id],
         )
         .await?;
-    let row = client
-        .query_one(
-            "select name from users where user_id = $1 and deleted_at is null",
-            &[&user_id],
-        )
-        .await?;
-    let name: &str = row.get("name");
-    let title = format!("Refund Request Submitted");
-    let message = format!(
-        "Refund requested by {name} for Order ID #{} - please review and process.",
-        &data.order_id
-    );
-    match notification::add_notification_to_admins(&title, &message, &client).await {
-        Ok(()) => {
-            println!("Notification added successfully.");
-        }
-        Err(err) => {
-            println!("Error adding notification: {:?}", err);
-        }
-    };
     Ok(())
 }

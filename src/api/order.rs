@@ -11,7 +11,7 @@ use crate::{
         order::{
             self, are_items_from_single_shop, are_items_same_currency_and_get_currency_id, NewOrder,
         },
-        product, seller_review, user,
+        product, refund_reason, seller_review, user,
     },
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
@@ -472,7 +472,7 @@ pub async fn update_order(
     //         message: String::from("Unauthorized!"),
     //     });
     // }
-    if role == "user" && body.status.as_str() != "Cancelled" {
+    if role == "user" && body.status.as_str() != "Cancelled" && body.status.as_str() != "Returned" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -591,4 +591,52 @@ pub async fn get_order_shop_name(
         message: String::from("Successful."),
         data: Some(shop_name),
     })
+}
+
+#[get("/api/orders/{order_id}/refund-reason")]
+pub async fn get_order_refund_reason(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let order_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    if verify_token_and_get_sub(token).is_none() {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Invalid token"),
+        });
+    }
+
+    match refund_reason::get_refund_reason_by_order_id(order_id, &client).await {
+        Some(r) => HttpResponse::Ok().json(DataResponse {
+            code: 200,
+            message: String::from("Successful."),
+            data: Some(r),
+        }),
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Refund reason not found!"),
+        }),
+    }
 }
