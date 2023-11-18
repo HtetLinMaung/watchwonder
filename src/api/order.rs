@@ -472,7 +472,11 @@ pub async fn update_order(
     //         message: String::from("Unauthorized!"),
     //     });
     // }
-    if role == "user" && body.status.as_str() != "Cancelled" && body.status.as_str() != "Returned" {
+    if role == "user"
+        && body.status.as_str() != "Cancelled"
+        && body.status.as_str() != "Returned"
+        && body.status.as_str() != "Completed"
+    {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),

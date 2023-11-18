@@ -187,7 +187,7 @@ pub async fn get_orders(
     let result=  generate_pagination_query(PaginationOptions {
         select_columns: "o.order_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol",
         base_query: &base_query,
-        search_columns: vec![ "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
+        search_columns: vec![ "o.order_id::text", "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
         order_options: Some(&order_options),
         page,

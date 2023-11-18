@@ -2,6 +2,8 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 
+use super::order;
+
 #[derive(Deserialize)]
 pub struct RefundReasonRequest {
     pub order_id: i32,
@@ -37,11 +39,25 @@ pub async fn add_refund_reason(
     user_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    client
-        .execute(
-            "insert into refund_reasons (order_id, reason_type_id, comment, user_id) values ($1, $2, $3, $4)",
-            &[&data.order_id, &data.reason_type_id, &data.comment, &user_id],
+    client.execute("BEGIN", &[]).await?;
+
+    let row = client
+        .query_one(
+            "select status from orders where order_id = $1 and deleted_at is null for update",
+            &[&data.order_id],
         )
         .await?;
+    let old_status: &str = row.get("status");
+    if old_status != "Returned" && old_status != "Refunded" {
+        order::update_order(data.order_id, "Returned", client).await?;
+        client
+            .execute(
+                "insert into refund_reasons (order_id, reason_type_id, comment, user_id) values ($1, $2, $3, $4)",
+                &[&data.order_id, &data.reason_type_id, &data.comment, &user_id],
+            )
+            .await?;
+    }
+
+    client.execute("COMMIT", &[]).await?;
     Ok(())
 }
