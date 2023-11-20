@@ -91,6 +91,7 @@ pub async fn register(
                 account_status,
                 false,
                 false,
+                false,
                 &None,
                 &client,
             )

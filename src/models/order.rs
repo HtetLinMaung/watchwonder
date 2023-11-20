@@ -1,4 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -192,7 +193,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, u.can_view_address, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol",
         base_query: &base_query,
         search_columns: vec![ "o.order_id::text", "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -225,11 +226,19 @@ pub async fn get_orders(
             let commission_amount: String = row.get("commission_amount");
             let commission_amount: f64 = commission_amount.parse().unwrap();
             let can_view_address: bool = row.get("can_view_address");
+            let can_view_phone: bool = row.get("can_view_phone");
+            let phone: String = if !can_view_phone && role == "agent" {
+                let phone: String = row.get("phone");
+                let re = Regex::new(r"\d").unwrap();
+                format!("959{}", re.replace_all(&phone["959".len()..], "x"))
+            } else {
+                row.get("phone")
+            };
 
             return Order {
                 order_id: row.get("order_id"),
                 user_name: row.get("user_name"),
-                phone: row.get("phone"),
+                phone,
                 email: row.get("email"),
                 home_address: row.get("home_address"),
                 street_address: row.get("street_address"),

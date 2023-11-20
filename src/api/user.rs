@@ -123,6 +123,7 @@ pub struct AddUserRequest {
     pub seller_information: Option<SellerInformationRequest>,
     pub can_modify_order_status: Option<bool>,
     pub can_view_address: Option<bool>,
+    pub can_view_phone: Option<bool>,
 }
 
 #[post("/api/users")]
@@ -234,6 +235,11 @@ pub async fn add_user(
                 can_view_address = yes;
             }
 
+            let mut can_view_phone: bool = false;
+            if let Some(yes) = body.can_view_phone {
+                can_view_phone = yes;
+            }
+
             match user::add_user(
                 &body.name,
                 &body.username,
@@ -245,6 +251,7 @@ pub async fn add_user(
                 account_status,
                 can_modify_order_status,
                 can_view_address,
+                can_view_phone,
                 &body.seller_information,
                 &client,
             )
@@ -354,6 +361,7 @@ pub struct UpdateUserRequest {
     pub seller_information: Option<SellerInformationRequest>,
     pub can_modify_order_status: Option<bool>,
     pub can_view_address: Option<bool>,
+    pub can_view_phone: Option<bool>,
 }
 
 #[put("/api/users/{user_id}")]
@@ -463,6 +471,11 @@ pub async fn update_user(
                 can_view_address = yes;
             }
 
+            let mut can_view_phone: bool = false;
+            if let Some(yes) = body.can_view_phone {
+                can_view_phone = yes;
+            }
+
             match user::update_user(
                 user_id,
                 &body.name,
@@ -476,6 +489,7 @@ pub async fn update_user(
                 account_status,
                 can_modify_order_status,
                 can_view_address,
+                can_view_phone,
                 &body.seller_information,
                 &client,
             )
