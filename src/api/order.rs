@@ -702,3 +702,127 @@ pub async fn get_order_refund_reason(
         }),
     }
 }
+
+#[get("/api/orders/{order_id}/remind-seller")]
+pub async fn remind_seller(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    let order_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let user_id: i32 = parsed_values[0].parse().unwrap();
+
+    match order::get_status_by_order_id(order_id, &client).await {
+        Some(status) => {
+            if status.as_str() == "Completed"
+                || status.as_str() == "Refunded"
+                || status.as_str() == "Canceled"
+            {
+                let message = format!("Order has been already {}", status.to_lowercase());
+                return HttpResponse::BadRequest().json(BaseResponse { code: 400, message });
+            }
+            let mut map = HashMap::new();
+            map.insert(
+                "redirect".to_string(),
+                Value::String("order-detail".to_string()),
+            );
+            map.insert("id".to_string(), Value::Number(order_id.into()));
+            let clone_map = map.clone();
+
+            let creator_id = product::get_product_creator_id_from_order_id(order_id, &client).await;
+
+            match user::get_user_name(user_id, &client).await {
+                Some(customer_name) => {
+                    let title = format!("Urgent Delivery Alert");
+                    let message = format!("Order ID #{order_id} for {customer_name} has been marked for urgent delivery - please oversee timely dispatch.");
+                    tokio::spawn(async move {
+                        match notification::add_notification(
+                            creator_id,
+                            &title,
+                            &message,
+                            &Some(map),
+                            &client,
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                println!("Notification added successfully.");
+                            }
+                            Err(err) => {
+                                println!("Error adding notification: {:?}", err);
+                            }
+                        };
+                        match notification::add_notification_to_admins(
+                            &title,
+                            &message,
+                            &Some(clone_map),
+                            &client,
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                println!("Notification added successfully.");
+                            }
+                            Err(err) => {
+                                println!("Error adding notification: {:?}", err);
+                            }
+                        };
+                    });
+
+                    HttpResponse::Ok().json(BaseResponse {
+                        code: 200,
+                        message: "Reminder added successfully!".to_string(),
+                    })
+                }
+                None => HttpResponse::NotFound().json(BaseResponse {
+                    code: 404,
+                    message: String::from("User not found!"),
+                }),
+            }
+        }
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Order not found!"),
+        }),
+    }
+}

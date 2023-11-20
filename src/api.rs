@@ -149,4 +149,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(reason_type::get_reason_types);
     cfg.service(refund_reason::add_refund_reason);
     cfg.service(order::get_order_refund_reason);
+    cfg.service(order::remind_seller);
 }

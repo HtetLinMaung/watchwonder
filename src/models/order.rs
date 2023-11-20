@@ -427,12 +427,25 @@ pub async fn update_order(
 pub async fn get_user_id_by_order_id(order_id: i32, client: &Client) -> Option<i32> {
     match client
         .query_one(
-            "select user_id, status from orders where order_id = $1 and deleted_at is null",
+            "select user_id from orders where order_id = $1 and deleted_at is null",
             &[&order_id],
         )
         .await
     {
         Ok(row) => row.get("user_id"),
+        Err(_) => None,
+    }
+}
+
+pub async fn get_status_by_order_id(order_id: i32, client: &Client) -> Option<String> {
+    match client
+        .query_one(
+            "select status from orders where order_id = $1 and deleted_at is null",
+            &[&order_id],
+        )
+        .await
+    {
+        Ok(row) => row.get("status"),
         Err(_) => None,
     }
 }
