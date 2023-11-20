@@ -142,6 +142,7 @@ pub async fn get_orders(
     from_amount: &Option<f64>,
     to_amount: &Option<f64>,
     payment_type: &Option<String>,
+    status: &Option<String>,
     user_id: i32,
     role: &str,
     client: &Client,
@@ -180,6 +181,11 @@ pub async fn get_orders(
     if let Some(pt) = payment_type {
         params.push(Box::new(pt));
         base_query = format!("{base_query} and o.payment_type = ${}", params.len());
+    }
+
+    if let Some(s) = status {
+        params.push(Box::new(s));
+        base_query = format!("{base_query} and o.status = ${}", params.len());
     }
 
     let order_options = "o.created_at desc".to_string();

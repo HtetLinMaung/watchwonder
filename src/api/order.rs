@@ -246,6 +246,7 @@ pub struct GetOrdersQuery {
     pub from_amount: Option<f64>,
     pub to_amount: Option<f64>,
     pub payment_type: Option<String>,
+    pub status: Option<String>,
 }
 
 #[get("/api/orders")]
@@ -307,6 +308,7 @@ pub async fn get_orders(
         &query.from_amount,
         &query.to_amount,
         &query.payment_type,
+        &query.status,
         user_id,
         role,
         &client,
