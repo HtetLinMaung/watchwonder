@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{get, post, put, web, HttpRequest, HttpResponse, Responder};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::Client;
 
 use crate::{
@@ -172,7 +173,21 @@ pub async fn add_order(
                 }
                 let title = format!("New Order #{order_id}");
                 let message = format!("{user_name} has placed a {} order for {} from {}. Please review and process the order.",&order.payment_type.to_lowercase(), items.join(", "), shops.join(", "));
-                match notification::add_notification_to_admins(&title, &message, &client).await {
+                let mut map = HashMap::new();
+                map.insert(
+                    "redirect".to_string(),
+                    Value::String("order-detail".to_string()),
+                );
+                map.insert("id".to_string(), Value::Number(order_id.into()));
+                let clone_map = map.clone();
+                match notification::add_notification_to_admins(
+                    &title,
+                    &message,
+                    &Some(map),
+                    &client,
+                )
+                .await
+                {
                     Ok(()) => {
                         println!("Notification added successfully.");
                     }
@@ -188,6 +203,7 @@ pub async fn add_order(
                         product_creator_id,
                         &title,
                         &message,
+                        &Some(clone_map),
                         &client,
                     )
                     .await
@@ -523,8 +539,20 @@ pub async fn update_order(
                             &body.status.to_lowercase()
                         ),
                     };
-
-                    match notification::add_notification(client_id, &title, &message, &client).await
+                    let mut map = HashMap::new();
+                    map.insert(
+                        "redirect".to_string(),
+                        Value::String("order-detail".to_string()),
+                    );
+                    map.insert("id".to_string(), Value::Number(order_id.into()));
+                    match notification::add_notification(
+                        client_id,
+                        &title,
+                        &message,
+                        &Some(map),
+                        &client,
+                    )
+                    .await
                     {
                         Ok(()) => {
                             println!("Notification added successfully.");

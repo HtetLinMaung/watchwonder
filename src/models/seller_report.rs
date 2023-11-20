@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
@@ -60,7 +63,13 @@ pub async fn add_seller_report(
     let message = format!(
         "{user_name} has submitted a report. Subject: '{report_subject}'. Please review the details."
     );
-    match notification::add_notification_to_admins(&title, &message, &client).await {
+    let mut map = HashMap::new();
+    map.insert(
+        "redirect".to_string(),
+        Value::String("seller-report-detail".to_string()),
+    );
+    map.insert("id".to_string(), Value::Number(report_id.into()));
+    match notification::add_notification_to_admins(&title, &message, &Some(map), &client).await {
         Ok(()) => {
             println!("Notification added successfully.");
         }

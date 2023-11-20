@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use serde_json::Value;
 use tokio_postgres::Client;
 
 use crate::{
@@ -71,7 +72,21 @@ pub async fn add_refund_reason(
                 let message = format!(
                     "Return requested by {user_name} for Order ID #{order_id} - please review and process.",
                 );
-                match notification::add_notification_to_admins(&title, &message, &client).await {
+                let mut map = HashMap::new();
+                map.insert(
+                    "redirect".to_string(),
+                    Value::String("order-detail".to_string()),
+                );
+                map.insert("id".to_string(), Value::Number(order_id.into()));
+                let clone_map = map.clone();
+                match notification::add_notification_to_admins(
+                    &title,
+                    &message,
+                    &Some(map),
+                    &client,
+                )
+                .await
+                {
                     Ok(()) => {
                         println!("Notification added successfully.");
                     }
@@ -84,8 +99,14 @@ pub async fn add_refund_reason(
                     product::get_product_creator_id_from_order_id(order_id, &client).await;
 
                 if creator_id != 0 {
-                    match notification::add_notification(creator_id, &title, &message, &client)
-                        .await
+                    match notification::add_notification(
+                        creator_id,
+                        &title,
+                        &message,
+                        &Some(clone_map),
+                        &client,
+                    )
+                    .await
                     {
                         Ok(()) => {
                             println!("Notification added to seller successfully.");

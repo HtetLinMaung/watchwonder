@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
@@ -127,11 +130,12 @@ pub async fn update_notification_status(
 pub async fn add_notification_to_admins(
     title: &str,
     message: &str,
+    data: &Option<HashMap<String, Value>>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let user_id_list = get_admin_user_ids(&client).await?;
     for user_id in user_id_list {
-        add_notification(user_id, title, message, &client).await?;
+        add_notification(user_id, title, message, data, &client).await?;
     }
     Ok(())
 }
@@ -163,6 +167,7 @@ pub async fn add_notification(
     user_id: i32,
     title: &str,
     message: &str,
+    data: &Option<HashMap<String, Value>>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
@@ -176,7 +181,7 @@ pub async fn add_notification(
         Err(_) => vec![],
     };
     for fcm_token in &fcm_tokens {
-        send_notification(title, message, fcm_token, None).await?;
+        send_notification(title, message, fcm_token, data.clone()).await?;
     }
     Ok(())
 }

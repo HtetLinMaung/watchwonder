@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -9,6 +10,7 @@ use crate::utils::validator::{validate_email, validate_mobile};
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::Client;
 
 #[derive(Deserialize)]
@@ -377,9 +379,16 @@ pub async fn forgot_password(
                 });
             }
             let message = format!("A password reset request was made for user {} ({}). Please verify legitimacy and monitor for any suspicious activity.",&user.name, &body.email);
+            let mut map = HashMap::new();
+            map.insert(
+                "redirect".to_string(),
+                Value::String("user-detail".to_string()),
+            );
+            map.insert("id".to_string(), Value::Number(user.user_id.into()));
             match notification::add_notification_to_admins(
                 "Password Reset Alert",
                 &message,
+                &Some(map),
                 &client,
             )
             .await

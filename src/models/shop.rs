@@ -26,6 +26,7 @@ pub struct Shop {
     pub website_url: String,
     pub operating_hours: String,
     pub status: String,
+    pub creator_id: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -81,7 +82,7 @@ pub async fn get_shops(
     }
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, created_at",
+        select_columns: "shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, created_at",
         base_query: &base_query,
         search_columns: vec![ "name", "description", "address", "city", "state", "postal_code", "country", "phone", "email", "operating_hours", "status"],
         search: search.as_deref(),
@@ -128,6 +129,7 @@ pub async fn get_shops(
             website_url: row.get("website_url"),
             operating_hours: row.get("operating_hours"),
             status: row.get("status"),
+            creator_id: row.get("creator_id"),
             created_at: row.get("created_at"),
         });
     }
@@ -163,14 +165,14 @@ pub async fn add_shop(
     creator_id: i32,
     role: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<i32, Box<dyn std::error::Error>> {
     let mut status = data.status.as_str();
     if role == "agent" {
         status = "Pending Approval";
     }
-    client
-        .execute(
-            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+    let row= client
+        .query_one(
+            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning shop_id",
             &[
                 &data.name,
                 &data.description,
@@ -189,13 +191,13 @@ pub async fn add_shop(
             ],
         )
         .await?;
-    Ok(())
+    Ok(row.get("shop_id"))
 }
 
 pub async fn get_shop_by_id(shop_id: i32, client: &Client) -> Option<Shop> {
     let result = client
         .query_one(
-            "select shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, created_at from shops where deleted_at is null and shop_id = $1",
+            "select shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, created_at from shops where deleted_at is null and shop_id = $1",
             &[&shop_id],
         )
         .await;
@@ -216,6 +218,7 @@ pub async fn get_shop_by_id(shop_id: i32, client: &Client) -> Option<Shop> {
             website_url: row.get("website_url"),
             operating_hours: row.get("operating_hours"),
             status: row.get("status"),
+            creator_id: row.get("creator_id"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
