@@ -483,6 +483,7 @@ pub async fn update_order(
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
     let role: &str = parsed_values[1];
+    let clone_role = role.to_string().clone();
 
     // if role != "admin" && role != "agent" {
     //     return HttpResponse::Unauthorized().json(BaseResponse {
@@ -547,6 +548,7 @@ pub async fn update_order(
                         Value::String("order-detail".to_string()),
                     );
                     map.insert("id".to_string(), Value::Number(order_id.into()));
+                    let clone_map = map.clone();
                     match notification::add_notification(
                         client_id,
                         &title,
@@ -563,6 +565,32 @@ pub async fn update_order(
                             println!("Error adding notification: {:?}", err);
                         }
                     };
+
+                    if &clone_role != "admin"
+                        && body.status.as_str() == "Cancelled"
+                        && body.status.as_str() == "Returned"
+                        && body.status.as_str() == "Completed"
+                    {
+                        let message = format!(
+                            "order #{order_id} has been {}.",
+                            &body.status.to_lowercase()
+                        );
+                        match notification::add_notification_to_admins(
+                            &title,
+                            &message,
+                            &Some(clone_map),
+                            &client,
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                println!("Notification added successfully.");
+                            }
+                            Err(err) => {
+                                println!("Error adding notification: {:?}", err);
+                            }
+                        };
+                    }
                 });
                 return HttpResponse::Ok().json(BaseResponse {
                     code: 200,
