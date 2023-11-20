@@ -90,6 +90,7 @@ pub async fn register(
                 role,
                 account_status,
                 false,
+                false,
                 &None,
                 &client,
             )

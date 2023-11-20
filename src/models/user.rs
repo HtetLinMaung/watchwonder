@@ -24,6 +24,7 @@ pub struct User {
     pub phone: String,
     pub account_status: String,
     pub can_modify_order_status: bool,
+    pub can_view_address: bool,
     pub created_at: NaiveDateTime,
     pub seller_information: Option<SellerInformation>,
 }
@@ -44,7 +45,7 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
 pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
     let result = client
         .query_one(
-            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
+            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.can_view_address, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
             &[&user_id],
         )
         .await;
@@ -61,6 +62,7 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
             phone: row.get("phone"),
             account_status: row.get("account_status"),
             can_modify_order_status: row.get("can_modify_order_status"),
+            can_view_address: row.get("can_view_address"),
             created_at: row.get("created_at"),
             seller_information: Some(SellerInformation {
                 company_name: row.get("company_name"),
@@ -88,6 +90,7 @@ pub async fn add_user(
     role: &str,
     account_status: &str,
     can_modify_order_status: bool,
+    can_view_address: bool,
     seller_information: &Option<SellerInformationRequest>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -96,8 +99,8 @@ pub async fn add_user(
 
     // Insert the new user into the database
     let row =client.query_one(
-        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning user_id",
-        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status],
+        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status, can_view_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning user_id",
+        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address],
     ).await?;
 
     if role == "agent" {
@@ -122,6 +125,7 @@ pub async fn update_user(
     role: &str,
     account_status: &str,
     can_modify_order_status: bool,
+    can_view_address: bool,
     seller_information: &Option<SellerInformationRequest>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -153,8 +157,8 @@ pub async fn update_user(
 
     // Insert the new user into the database
     client.execute(
-        "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6, account_status = $7, can_modify_order_status = $8 where user_id = $9 and deleted_at is null",
-        &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &user_id],
+        "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6, account_status = $7, can_modify_order_status = $8, can_view_address = $9 where user_id = $10 and deleted_at is null",
+        &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &user_id],
     ).await?;
 
     if role == "agent" {
@@ -223,7 +227,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
     // In a real-world scenario, handle errors gracefully
     let result = client
         .query_one(
-            "select user_id, username, password, role, name, profile_image, email, phone, account_status, can_modify_order_status, created_at from users where username = $1 and deleted_at is null",
+            "select user_id, username, password, role, name, profile_image, email, phone, account_status, can_modify_order_status, can_view_address, created_at from users where username = $1 and deleted_at is null",
             &[&username],
         )
         .await;
@@ -241,6 +245,7 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
             account_status: row.get("account_status"),
             created_at: row.get("created_at"),
             can_modify_order_status: row.get("can_modify_order_status"),
+            can_view_address: row.get("can_view_address"),
             seller_information: None,
         }),
         Err(_) => None,
@@ -269,7 +274,7 @@ pub async fn get_users(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "user_id, name, username, password, role, email, phone, profile_image, account_status, can_modify_order_status, created_at",
+            "user_id, name, username, password, role, email, phone, profile_image, account_status, can_modify_order_status, can_view_address, created_at",
         base_query: &base_query,
         search_columns: vec![
             "name",
@@ -314,6 +319,7 @@ pub async fn get_users(
             phone: row.get("phone"),
             account_status: row.get("account_status"),
             can_modify_order_status: row.get("can_modify_order_status"),
+            can_view_address: row.get("can_view_address"),
             created_at: row.get("created_at"),
             seller_information: None,
         })
