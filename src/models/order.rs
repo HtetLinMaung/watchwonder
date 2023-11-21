@@ -35,6 +35,8 @@ pub struct Order {
     pub commission_amount: f64,
     pub symbol: String,
     pub can_view_address: bool,
+    pub invoice_id: String,
+    pub invoice_url: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -194,7 +196,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol",
+        select_columns: "o.order_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol, o.invoice_id, o.invoice_url",
         base_query: &base_query,
         search_columns: vec![ "o.order_id::text", "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -260,6 +262,8 @@ pub async fn get_orders(
                 rule_id: row.get("rule_id"),
                 rule_description: row.get("rule_description"),
                 symbol: row.get("symbol"),
+                invoice_id: row.get("invoice_id"),
+                invoice_url: row.get("invoice_url"),
                 can_view_address,
             };
         })

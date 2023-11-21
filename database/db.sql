@@ -334,6 +334,7 @@ CREATE TABLE orders
     commission_amount DECIMAL(10, 2) DEFAULT 0.0,
     currency_id INT REFERENCES currencies(currency_id) DEFAULT 1,
     invoice_id VARCHAR(255) DEFAULT '',
+    invoice_url VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
