@@ -40,19 +40,20 @@ pub async fn export_invoice(
         .replace("[seller_phone]", row.get("seller_phone"))
         .replace("[seller_address]", row.get("shop_address"))
         .replace("[order_date]", row.get("order_date"))
-        .replace("[order_id]", row.get("order_id"))
+        .replace("[order_id]", &order_id.to_string())
         .replace("[invoice_id]", row.get("invoice_id"))
         .replace("[payment_type]", row.get("payment_type"))
         .replace("[note]", row.get("note"));
 
-    let rows= client.query("select b.name brand_name, p.model, oi.quantity, c.symbol, oi.price::text, (oi.quantity * oi.price)::text as total from order_items oi join products p on p.product_id = oi.product_id join brands b on b.brand_id = p.brand_id join currencies c on c.currency_id = oi.currency_id where oi.order_id = $1 order by b.name, p.model", &[&order_id]).await?;
+    let rows= client.query("select b.name brand_name, p.model, oi.quantity, c.symbol, to_char(oi.price, 'FM999,999,999.00') as price, to_char((oi.quantity * oi.price), 'FM999,999,999.00') as total from order_items oi join products p on p.product_id = oi.product_id join brands b on b.brand_id = p.brand_id join currencies c on c.currency_id = oi.currency_id where oi.order_id = $1 order by b.name, p.model", &[&order_id]).await?;
 
     let mut order_items = String::new();
+    let mut symbol = String::new();
     for row in &rows {
         let brand_name: &str = row.get("brand_name");
         let model: &str = row.get("model");
         let quantity: i32 = row.get("quantity");
-        let symbol: &str = row.get("symbol");
+        symbol = row.get("symbol");
         let price: &str = row.get("price");
         let total: &str = row.get("total");
 
@@ -64,12 +65,13 @@ pub async fn export_invoice(
 
     let row = client
         .query_one(
-            "select sum(quantity * price)::text as sub_total from order_items where order_id = $1",
+            "select to_char(sum(quantity * price), 'FM999,999,999.00') as sub_total from order_items where order_id = $1",
             &[&order_id],
         )
         .await?;
     let sub_total: &str = row.get("sub_total");
-    contents = contents.replace("[sub_total]", sub_total);
+    let sub_total = format!("{symbol} {sub_total}");
+    contents = contents.replace("[sub_total]", &sub_total);
 
     println!("contents: {}", contents);
     match report_forge::site_to_pdf(&contents).await {

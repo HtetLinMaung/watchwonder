@@ -17,7 +17,6 @@ use crate::{
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
-        socketio,
     },
 };
 
@@ -579,9 +578,9 @@ pub async fn update_order(
                     };
 
                     if &clone_role != "admin"
-                        && body.status.as_str() == "Cancelled"
-                        && body.status.as_str() == "Returned"
-                        && body.status.as_str() == "Completed"
+                        && (body.status.as_str() == "Cancelled"
+                            || body.status.as_str() == "Returned"
+                            || body.status.as_str() == "Completed")
                     {
                         let message = format!(
                             "order #{order_id} has been {}.",

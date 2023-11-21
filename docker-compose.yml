@@ -49,7 +49,7 @@ services:
     environment:
       - "DB_CONNECTION=host=150.95.82.125 user=postgres password=P@ssword dbname=report"
     volumes:
-      # - ./fonts:/usr/share/fonts/custom-fonts
+      - ./fonts:/usr/share/fonts/custom-fonts
       - ./templates:/templates
       - ./reports:/reports
 
