@@ -8,7 +8,7 @@ use crate::utils::{
     sql::{generate_pagination_query, PaginationOptions},
 };
 
-use super::address::NewAddress;
+use super::{address::NewAddress, counter};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Order {
@@ -85,10 +85,11 @@ pub async fn add_order(
 
     let shipping_address_id: i32 = address_row.get("address_id");
 
+    let invoice_id = counter::generate_invoice_id(client).await?;
     let order_row = client
         .query_one(
-            "insert into orders (user_id, shipping_address_id, payment_type, payslip_screenshot_path, currency_id) values ($1, $2, $3, $4, $5) returning order_id",
-            &[&user_id, &shipping_address_id, &order.payment_type, &order.payslip_screenshot_path, &currency_id],
+            "insert into orders (user_id, shipping_address_id, payment_type, payslip_screenshot_path, currency_id, invoice_id) values ($1, $2, $3, $4, $5, $6) returning order_id",
+            &[&user_id, &shipping_address_id, &order.payment_type, &order.payslip_screenshot_path, &currency_id, &invoice_id],
         )
         .await?;
     let order_id: i32 = order_row.get("order_id");

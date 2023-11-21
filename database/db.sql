@@ -333,6 +333,7 @@ CREATE TABLE orders
     payslip_screenshot_path VARCHAR(255) DEFAULT '',
     commission_amount DECIMAL(10, 2) DEFAULT 0.0,
     currency_id INT REFERENCES currencies(currency_id) DEFAULT 1,
+    invoice_id VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -1232,3 +1233,14 @@ CREATE TABLE refund_reasons
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+CREATE TABLE counters
+(
+    counter_id SERIAL PRIMARY KEY,
+    label VARCHAR(255) NOT NULL,
+    n INT default 1
+);
+insert into counters
+    (label)
+values
+    ('777');

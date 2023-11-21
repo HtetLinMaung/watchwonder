@@ -41,6 +41,16 @@ services:
       INSTANTIO_WEB_HOOK: "http://web:8080/api/update-instantio-state"
       TZ: "Asia/Yangon"
       # SOCKETIO_NAMESPACES: "/pos"
+  report_forge:
+    image: htetlinmaung/report_forge
+    ports:
+      - "8004:8080"
+    environment:
+      - "DB_CONNECTION=host=150.95.82.125 user=postgres password=P@ssword dbname=report"
+    volumes:
+      # - ./fonts:/usr/share/fonts/custom-fonts
+      - ./templates:/templates
+      - ./reports:/reports
 
   # db:
   #   image: postgres:13

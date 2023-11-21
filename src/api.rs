@@ -10,6 +10,7 @@ mod case_width;
 mod category;
 mod chat;
 mod condition;
+mod counter;
 mod currency;
 mod dial_glass_type;
 mod fcm;
@@ -150,4 +151,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(refund_reason::add_refund_reason);
     cfg.service(order::get_order_refund_reason);
     cfg.service(order::remind_seller);
+    cfg.service(counter::generate_invoice_id);
 }

@@ -2,6 +2,7 @@ pub mod common_struct;
 pub mod fcm;
 pub mod image;
 pub mod jwt;
+pub mod report_forge;
 pub mod setting;
 pub mod socketio;
 pub mod sql;

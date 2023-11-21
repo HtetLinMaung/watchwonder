@@ -8,7 +8,7 @@ use tokio_postgres::Client;
 
 use crate::{
     models::{
-        notification,
+        invoice, notification,
         order::{
             self, are_items_from_single_shop, are_items_same_currency_and_get_currency_id, NewOrder,
         },
@@ -17,6 +17,7 @@ use crate::{
     utils::{
         common_struct::{BaseResponse, DataResponse, PaginationResponse},
         jwt::verify_token_and_get_sub,
+        socketio,
     },
 };
 
@@ -141,6 +142,17 @@ pub async fn add_order(
 
     match order::add_order(&order, user_id, currency_id, &client).await {
         Ok(order_id) => {
+            let clone_client = client.clone();
+            tokio::spawn(async move {
+                match invoice::export_invoice(order_id, user_id, &clone_client).await {
+                    Ok(_) => {
+                        println!("Invoice exported successfully.")
+                    }
+                    Err(err) => {
+                        println!("{:?}", err);
+                    }
+                };
+            });
             let shop_id = order.shop_id.unwrap_or(0);
             let is_already_reviewed =
                 seller_review::is_user_already_review(shop_id, user_id, &client).await;
