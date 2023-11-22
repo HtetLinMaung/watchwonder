@@ -52,6 +52,7 @@ services:
       - ./fonts:/usr/share/fonts/custom-fonts
       - ./templates:/templates
       - ./reports:/reports
+      - ./images:/images
 
   # db:
   #   image: postgres:13
