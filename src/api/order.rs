@@ -583,7 +583,7 @@ pub async fn update_order(
                             || body.status.as_str() == "Completed")
                     {
                         let message = format!(
-                            "order #{order_id} has been {}.",
+                            "Order #{order_id} has been {}.",
                             &body.status.to_lowercase()
                         );
                         match notification::add_notification_to_admins(
