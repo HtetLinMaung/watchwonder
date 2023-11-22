@@ -16,7 +16,8 @@ pub async fn site_to_pdf(content: &str) -> Result<Value, reqwest::Error> {
         .post(&report_forge_url)
         .header("Content-Type", "application/json")
         .json(&json!({
-            "content": content
+            "content": content,
+            "image": true,
         }))
         .send()
         .await?
