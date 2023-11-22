@@ -37,6 +37,7 @@ pub struct Order {
     pub can_view_address: bool,
     pub invoice_id: String,
     pub invoice_url: String,
+    pub is_my_order: bool,
     pub created_at: NaiveDateTime,
 }
 
@@ -197,7 +198,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol, o.invoice_id, o.invoice_url",
+        select_columns: "o.order_id, o.user_id order_user_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol, o.invoice_id, o.invoice_url",
         base_query: &base_query,
         search_columns: vec![ "o.order_id::text", "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -225,13 +226,14 @@ pub async fn get_orders(
         .await?
         .iter()
         .map(|row| {
+            let order_user_id: i32 = row.get("order_user_id");
             let order_total: String = row.get("order_total");
             let order_total: f64 = order_total.parse().unwrap();
             let commission_amount: String = row.get("commission_amount");
             let commission_amount: f64 = commission_amount.parse().unwrap();
             let can_view_address: bool = row.get("can_view_address");
             let can_view_phone: bool = row.get("can_view_phone");
-            let phone: String = if !can_view_phone && role == "agent" {
+            let phone: String = if !can_view_phone && role == "agent" && user_id != order_user_id {
                 let phone: String = row.get("phone");
                 let re = Regex::new(r"\d").unwrap();
                 format!("959{}", re.replace_all(&phone["959".len()..], "x"))
@@ -266,6 +268,7 @@ pub async fn get_orders(
                 invoice_id: row.get("invoice_id"),
                 invoice_url: row.get("invoice_url"),
                 can_view_address,
+                is_my_order: user_id == order_user_id,
             };
         })
         .collect();
