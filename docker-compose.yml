@@ -52,6 +52,7 @@ services:
     volumes:
       - ./images:/app/images
       - ./reports:/app/pdf
+      - ./fonts:/usr/share/fonts/custom-fonts
   # report_forge:
   #   image: htetlinmaung/report_forge
   #   ports:
