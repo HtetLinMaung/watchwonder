@@ -58,7 +58,7 @@ pub async fn add_seller_review(
     }
 
     let user_id: i32 = parsed_values[0].parse().unwrap();
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
 
     // if role != "user" && role != "admin" {
     //     return HttpResponse::Unauthorized().json(BaseResponse {
