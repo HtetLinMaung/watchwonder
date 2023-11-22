@@ -42,6 +42,16 @@ services:
       INSTANTIO_WEB_HOOK: "http://web:8080/api/update-instantio-state"
       TZ: "Asia/Yangon"
       # SOCKETIO_NAMESPACES: "/pos"
+  webwand:
+    image: htetlinmaung/webwand
+    restart: always
+    ports:
+      - "8005:3000"
+    environment:
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+    volumes:
+      - ./images:/app/images
+      - ./reports:/app/pdf
   report_forge:
     image: htetlinmaung/report_forge
     ports:
