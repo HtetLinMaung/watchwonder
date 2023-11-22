@@ -46,23 +46,23 @@ services:
     image: htetlinmaung/webwand
     restart: always
     ports:
-      - "8005:3000"
+      - "8004:3000"
     environment:
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
     volumes:
       - ./images:/app/images
       - ./reports:/app/pdf
-  report_forge:
-    image: htetlinmaung/report_forge
-    ports:
-      - "8004:8080"
-    environment:
-      - "DB_CONNECTION=host=150.95.82.125 user=postgres password=P@ssword dbname=report"
-    volumes:
-      - ./fonts:/usr/share/fonts/custom-fonts
-      - ./templates:/templates
-      - ./reports:/reports
-      - ./images:/images
+  # report_forge:
+  #   image: htetlinmaung/report_forge
+  #   ports:
+  #     - "8004:8080"
+  #   environment:
+  #     - "DB_CONNECTION=host=150.95.82.125 user=postgres password=P@ssword dbname=report"
+  #   volumes:
+  #     - ./fonts:/usr/share/fonts/custom-fonts
+  #     - ./templates:/templates
+  #     - ./reports:/reports
+  #     - ./images:/images
 
   # db:
   #   image: postgres:13
