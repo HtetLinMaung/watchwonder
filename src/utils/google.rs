@@ -22,7 +22,12 @@ pub async fn verify_id_token_with_google_api_original(
         "https://oauth2.googleapis.com/tokeninfo?id_token={}",
         id_token
     );
-    let res = reqwest::get(&url)
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true) // Only if you're sure about the security implications
+        .build()?;
+    let res = client
+        .get(&url)
+        .send()
         .await?
         .json::<HashMap<String, Value>>()
         .await?;
@@ -36,7 +41,14 @@ pub async fn verify_id_token_with_google_api(
         "https://oauth2.googleapis.com/tokeninfo?id_token={}",
         id_token
     );
-    let res = reqwest::get(&url).await?.json::<GoogleTokenInfo>().await?;
-
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true) // Only if you're sure about the security implications
+        .build()?;
+    let res = client
+        .get(&url)
+        .send()
+        .await?
+        .json::<GoogleTokenInfo>()
+        .await?;
     Ok(res)
 }
