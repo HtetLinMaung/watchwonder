@@ -15,6 +15,7 @@ mod currency;
 mod dial_glass_type;
 mod fcm;
 mod gender;
+mod google;
 mod image;
 mod insurance;
 mod movement_country;
@@ -152,4 +153,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(order::get_order_refund_reason);
     cfg.service(order::remind_seller);
     cfg.service(counter::generate_invoice_id);
+    cfg.service(google::verify_google_token);
 }

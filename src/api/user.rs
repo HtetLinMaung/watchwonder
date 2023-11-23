@@ -253,6 +253,7 @@ pub async fn add_user(
                 can_view_address,
                 can_view_phone,
                 &body.seller_information,
+                &None,
                 &client,
             )
             .await

@@ -3,8 +3,9 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::notification;
-use crate::models::user::{self, get_user, is_phone_existed, user_exists};
+use crate::models::user::{self, get_user, get_user_by_google_id, is_phone_existed, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
+use crate::utils::google;
 use crate::utils::jwt::{self, verify_token_and_get_sub};
 use crate::utils::validator::{validate_email, validate_mobile};
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
@@ -22,26 +23,41 @@ pub struct RegisterRequest {
     pub phone: String,
     pub profile_image: String,
     pub role: Option<String>,
+    pub method: Option<String>,
+    pub token: Option<String>,
 }
+
+// {
+//     "iat": "1700730852",
+//     "exp": "1700734452",
+//     "kid": "5b3706960e3e60024a2655e78cfa63f87c97d309",
+//     "at_hash": "HGyLllAf66ffXreBrGKQqg",
+//     "alg": "RS256",
+//     "picture": "https://lh3.googleusercontent.com/a/ACg8ocLKmVAvCrhDjYR5h28li-noyBVhFZxD18GJjG2g6vtqpg=s96-c",
+//     "email": "kaungkhant19297@gmail.com",
+//     "email_verified": "true",
+//     "name": "Kaung Khant Kyaw",
+//     "aud": "274063087309-6r8b9e3vre2l77mi7h6p08rhlniq5ct8.apps.googleusercontent.com",
+//     "given_name": "Kaung Khant",
+//     "iss": "https://accounts.google.com",
+//     "azp": "274063087309-6r8b9e3vre2l77mi7h6p08rhlniq5ct8.apps.googleusercontent.com",
+//     "sub": "103576213499875851601",
+//     "typ": "JWT",
+//     "locale": "my",
+//     "nonce": "nDUWtAd5D6lbwEK85OswY-As7MghqpjxJkvtJSSo4lQ",
+//     "family_name": "Kyaw"
+// }
 
 #[post("/api/auth/register")]
 pub async fn register(
     client: web::Data<Arc<Client>>,
     body: web::Json<RegisterRequest>,
 ) -> HttpResponse {
-    if body.name.is_empty() {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("Name must not be empty!"),
-        });
+    let mut method = "password";
+    if let Some(m) = &body.method {
+        method = m;
     }
 
-    if !validate_email(&body.email) {
-        return HttpResponse::BadRequest().json(BaseResponse {
-            code: 400,
-            message: String::from("Invalid email!"),
-        });
-    }
     if !validate_mobile(&body.phone) {
         return HttpResponse::BadRequest().json(BaseResponse {
             code: 400,
@@ -71,51 +87,137 @@ pub async fn register(
         };
     }
 
-    match user_exists(&body.username, &client).await {
-        Ok(exists) => {
-            if exists {
-                return HttpResponse::BadRequest().json(BaseResponse {
-                    code: 400,
-                    message: String::from("User already exists!"),
-                });
-            }
+    if method == "google" {
+        if let Some(t) = &body.token {
+            match google::verify_id_token_with_google_api(t).await {
+                Ok(res) => match user_exists(&res.email, &client).await {
+                    Ok(exists) => {
+                        if exists {
+                            return HttpResponse::BadRequest().json(BaseResponse {
+                                code: 400,
+                                message: String::from("User already exists!"),
+                            });
+                        }
 
-            match user::add_user(
-                &body.name,
-                &body.username,
-                &body.password,
-                &body.email,
-                &body.phone,
-                &body.profile_image,
-                role,
-                account_status,
-                false,
-                false,
-                false,
-                &None,
-                &client,
-            )
-            .await
-            {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                    code: 200,
-                    message: String::from("Registration successfully"),
-                }),
-                Err(e) => {
-                    eprintln!("User registration error: {}", e);
-                    return HttpResponse::InternalServerError().json(BaseResponse {
-                        code: 500,
-                        message: String::from("Error registering user!"),
+                        let profile_image = if let Some(picture) = &res.picture {
+                            picture
+                        } else {
+                            ""
+                        };
+
+                        match user::add_user(
+                            &res.name,
+                            &res.email,
+                            &body.password,
+                            &res.email,
+                            &body.phone,
+                            profile_image,
+                            role,
+                            account_status,
+                            false,
+                            false,
+                            false,
+                            &None,
+                            &Some(res.sub),
+                            &client,
+                        )
+                        .await
+                        {
+                            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                                code: 200,
+                                message: String::from("Registration successfully"),
+                            }),
+                            Err(e) => {
+                                eprintln!("User registration error: {}", e);
+                                return HttpResponse::InternalServerError().json(BaseResponse {
+                                    code: 500,
+                                    message: String::from("Error registering user!"),
+                                });
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Database error: {}", e);
+                        return HttpResponse::InternalServerError().json(BaseResponse {
+                            code: 500,
+                            message: String::from("Something went wrong!"),
+                        });
+                    }
+                },
+                Err(err) => {
+                    println!("{:?}", err);
+                    return HttpResponse::Unauthorized().json(BaseResponse {
+                        code: 401,
+                        message: String::from("Unauthorized!"),
                     });
                 }
             }
-        }
-        Err(e) => {
-            eprintln!("Database error: {}", e);
-            return HttpResponse::InternalServerError().json(BaseResponse {
-                code: 500,
-                message: String::from("Something went wrong!"),
+        } else {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Unauthorized!"),
             });
+        }
+    } else {
+        if body.name.is_empty() {
+            return HttpResponse::BadRequest().json(BaseResponse {
+                code: 400,
+                message: String::from("Name must not be empty!"),
+            });
+        }
+        if !validate_email(&body.email) {
+            return HttpResponse::BadRequest().json(BaseResponse {
+                code: 400,
+                message: String::from("Invalid email!"),
+            });
+        }
+        match user_exists(&body.username, &client).await {
+            Ok(exists) => {
+                if exists {
+                    return HttpResponse::BadRequest().json(BaseResponse {
+                        code: 400,
+                        message: String::from("User already exists!"),
+                    });
+                }
+
+                match user::add_user(
+                    &body.name,
+                    &body.username,
+                    &body.password,
+                    &body.email,
+                    &body.phone,
+                    &body.profile_image,
+                    role,
+                    account_status,
+                    false,
+                    false,
+                    false,
+                    &None,
+                    &None,
+                    &client,
+                )
+                .await
+                {
+                    Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                        code: 200,
+                        message: String::from("Registration successfully"),
+                    }),
+                    Err(e) => {
+                        eprintln!("User registration error: {}", e);
+                        return HttpResponse::InternalServerError().json(BaseResponse {
+                            code: 500,
+                            message: String::from("Error registering user!"),
+                        });
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Database error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Something went wrong!"),
+                });
+            }
         }
     }
 }
@@ -124,6 +226,8 @@ pub async fn register(
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
+    pub method: Option<String>,
+    pub token: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -140,8 +244,40 @@ pub async fn login(
     client: web::Data<Arc<Client>>,
     credentials: web::Json<LoginRequest>,
 ) -> HttpResponse {
+    let method = if let Some(m) = &credentials.method {
+        m
+    } else {
+        "password"
+    };
+
+    let mut username_or_google_id = credentials.username.clone();
+    if method == "google" {
+        if let Some(t) = &credentials.token {
+            username_or_google_id = match google::verify_id_token_with_google_api(t).await {
+                Ok(res) => res.sub,
+                Err(err) => {
+                    println!("{:?}", err);
+                    return HttpResponse::Unauthorized().json(BaseResponse {
+                        code: 401,
+                        message: String::from("Unauthorized!"),
+                    });
+                }
+            }
+        }
+    }
+
     // Fetch user from the database based on the username
-    let user = get_user(&credentials.username, &client).await;
+    let user = if method == "google" {
+        get_user_by_google_id(&username_or_google_id, &client).await
+    } else {
+        get_user(&username_or_google_id, &client).await
+    };
+    if method == "google" && user.is_none() {
+        return HttpResponse::NotFound().json(BaseResponse {
+            code: 401,
+            message: String::from("User not found!"),
+        });
+    }
 
     match user {
         Some(user) => {
@@ -152,7 +288,7 @@ pub async fn login(
                 });
             }
 
-            if verify(&credentials.password, &user.password).unwrap() {
+            if method == "google" || verify(&credentials.password, &user.password).unwrap() {
                 // let now = SystemTime::now()
                 //     .duration_since(UNIX_EPOCH)
                 //     .expect("Time went backwards")

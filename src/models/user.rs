@@ -95,6 +95,7 @@ pub async fn add_user(
     can_view_address: bool,
     can_view_phone: bool,
     seller_information: &Option<SellerInformationRequest>,
+    google_id: &Option<String>,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let hashed_password =
@@ -102,8 +103,8 @@ pub async fn add_user(
 
     // Insert the new user into the database
     let row =client.query_one(
-        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status, can_view_address, can_view_phone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning user_id",
-        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone],
+        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status, can_view_address, can_view_phone, google_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning user_id",
+        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &google_id],
     ).await?;
 
     if role == "agent" {
@@ -233,6 +234,37 @@ pub async fn get_user(username: &str, client: &Client) -> Option<User> {
         .query_one(
             "select user_id, username, password, role, name, profile_image, email, phone, account_status, can_modify_order_status, can_view_address, can_view_phone, created_at from users where username = $1 and deleted_at is null",
             &[&username],
+        )
+        .await;
+
+    match result {
+        Ok(row) => Some(User {
+            user_id: row.get("user_id"),
+            username: row.get("username"),
+            password: row.get("password"),
+            role: row.get("role"),
+            name: row.get("name"),
+            profile_image: row.get("profile_image"),
+            email: row.get("email"),
+            phone: row.get("phone"),
+            account_status: row.get("account_status"),
+            created_at: row.get("created_at"),
+            can_modify_order_status: row.get("can_modify_order_status"),
+            can_view_address: row.get("can_view_address"),
+            can_view_phone: row.get("can_view_phone"),
+            seller_information: None,
+        }),
+        Err(_) => None,
+    }
+}
+
+pub async fn get_user_by_google_id(google_id: &str, client: &Client) -> Option<User> {
+    // Here we fetch the user from the database using tokio-postgres
+    // In a real-world scenario, handle errors gracefully
+    let result = client
+        .query_one(
+            "select user_id, username, password, role, name, profile_image, email, phone, account_status, can_modify_order_status, can_view_address, can_view_phone, created_at from users where google_id = $1 and deleted_at is null",
+            &[&google_id],
         )
         .await;
 
@@ -457,3 +489,17 @@ pub async fn is_phone_existed(phone: &str, client: &Client) -> bool {
     };
     total > 0
 }
+
+// pub async fn user_exists_by(vendor: &str, id: &str, client: &Client) -> Result<bool, Error> {
+//     let column = if vendor == "google" {
+//         "google_id"
+//     } else if vendor == "facebook" {
+//         "facebook_id"
+//     } else {
+//         "apple_id"
+//     };
+//     let query = format!("select username from users where {column} = $1 and deleted_at is null");
+//     let row = client.query_one(&query, &[&id]).await;
+//     // Return whether the user exists
+//     Ok(row.is_ok())
+// }

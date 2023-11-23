@@ -1,5 +1,6 @@
 pub mod common_struct;
 pub mod fcm;
+pub mod google;
 pub mod image;
 pub mod jwt;
 pub mod report_forge;
