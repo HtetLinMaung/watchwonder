@@ -24,3 +24,11 @@ pub fn get_version_update_message() -> String {
     let version_update_message = std::env::var("VERSION_UPDATE_MESSAGE").unwrap_or("".to_string());
     version_update_message
 }
+
+pub fn get_max_cash_on_delivery_amount() -> f64 {
+    let max_cash_on_delivery_amount: f64 = std::env::var("MAX_CASH_ON_DELIVERY_AMOUNT")
+        .unwrap_or("2000000".to_string())
+        .parse()
+        .unwrap();
+    max_cash_on_delivery_amount
+}

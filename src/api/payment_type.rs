@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use serde::Deserialize;
 use tokio_postgres::Client;
 
 use crate::{
@@ -11,8 +12,17 @@ use crate::{
     },
 };
 
+#[derive(Deserialize)]
+pub struct GetPaymentTypesQuery {
+    pub amount: Option<f64>,
+}
+
 #[get("/api/payment-types")]
-pub async fn get_payment_types(req: HttpRequest, client: web::Data<Arc<Client>>) -> impl Responder {
+pub async fn get_payment_types(
+    req: HttpRequest,
+    query: web::Query<GetPaymentTypesQuery>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -41,7 +51,9 @@ pub async fn get_payment_types(req: HttpRequest, client: web::Data<Arc<Client>>)
         });
     }
 
-    match payment_type::get_payment_types(&client).await {
+    let amount = if let Some(a) = query.amount { a } else { 0.0 };
+
+    match payment_type::get_payment_types(amount, &client).await {
         Ok(payment_types) => HttpResponse::Ok().json(DataResponse {
             code: 200,
             message: String::from("Successful."),
