@@ -320,3 +320,19 @@ pub async fn get_cover_images(client: &Client) -> Vec<String> {
         }
     }
 }
+
+pub async fn get_creator_id_from_shop(shop_id: i32, client: &Client) -> Option<i32> {
+    match client
+        .query_one(
+            "select creator_id from shops where shop_id = $1",
+            &[&shop_id],
+        )
+        .await
+    {
+        Ok(row) => Some(row.get("creator_id")),
+        Err(err) => {
+            println!("{:?}", err);
+            None
+        }
+    }
+}

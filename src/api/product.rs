@@ -310,13 +310,20 @@ pub async fn add_product(
         });
     }
 
-    let creator_id = if role != "admin" {
-        user_id
-    } else if let Some(creator_id) = body.creator_id {
-        creator_id
-    } else {
-        user_id
-    };
+    let mut creator_id = user_id;
+    if role == "admin" {
+        if let Some(id) = shop::get_creator_id_from_shop(body.shop_id, &client).await {
+            creator_id = id;
+        }
+    }
+
+    // let creator_id = if role != "admin" {
+    //     user_id
+    // } else if let Some(creator_id) = body.creator_id {
+    //     creator_id
+    // } else {
+    //     user_id
+    // };
 
     match product::add_product(&body, currency_id, creator_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
@@ -546,20 +553,19 @@ pub async fn update_product(
 
     match product::get_product_by_id(product_id, &client).await {
         Some(p) => {
-            let old_creator_id = p.creator_id;
-            let creator_id = if role != "admin" {
-                old_creator_id
-            } else if let Some(creator_id) = body.creator_id {
-                creator_id
-            } else {
-                old_creator_id
-            };
+            // let old_creator_id = p.creator_id;
+            // let creator_id = if role != "admin" {
+            //     old_creator_id
+            // } else if let Some(creator_id) = body.creator_id {
+            //     creator_id
+            // } else {
+            //     old_creator_id
+            // };
             match product::update_product(
                 product_id,
                 &p.product_images,
                 &body,
                 currency_id,
-                creator_id,
                 &client,
             )
             .await
