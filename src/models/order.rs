@@ -241,6 +241,11 @@ pub async fn get_orders(
                 row.get("phone")
             };
 
+            let invoice_url: String = if user_id == order_user_id {
+                row.get("invoice_url")
+            } else {
+                "".to_string()
+            };
             return Order {
                 order_id: row.get("order_id"),
                 user_name: row.get("user_name"),
@@ -266,7 +271,7 @@ pub async fn get_orders(
                 rule_description: row.get("rule_description"),
                 symbol: row.get("symbol"),
                 invoice_id: row.get("invoice_id"),
-                invoice_url: row.get("invoice_url"),
+                invoice_url,
                 can_view_address,
                 is_my_order: user_id == order_user_id,
             };
