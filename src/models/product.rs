@@ -375,6 +375,7 @@ pub struct ProductRequest {
     pub is_preorder: Option<bool>,
     pub movement_caliber: Option<String>,
     pub movement_country: Option<String>,
+    pub creator_id: Option<i32>,
 }
 
 pub async fn add_product(
@@ -593,6 +594,7 @@ pub async fn update_product(
     old_product_images: &Vec<String>,
     data: &ProductRequest,
     currency_id: i32,
+    creator_id: i32,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut condition = "".to_string();
@@ -647,7 +649,7 @@ pub async fn update_product(
     if let Some(dp) = data.discount_percent {
         discount_percent = dp;
     }
-    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, discount_percent = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27, movement_caliber = $28, movement_country = $29 where product_id = $30", &data.price, &discount_percent);
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, discount_percent = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27, movement_caliber = $28, movement_country = $29, creator_id = $30 where product_id = $31", &data.price, &discount_percent);
     client
         .execute(
             &query,
@@ -681,6 +683,7 @@ pub async fn update_product(
                 &is_preorder,
                 &movement_caliber,
                 &movement_country,
+                &creator_id,
                 &product_id,
             ],
         )

@@ -310,7 +310,15 @@ pub async fn add_product(
         });
     }
 
-    match product::add_product(&body, currency_id, user_id, &client).await {
+    let creator_id = if role != "admin" {
+        user_id
+    } else if let Some(creator_id) = body.creator_id {
+        creator_id
+    } else {
+        user_id
+    };
+
+    match product::add_product(&body, currency_id, creator_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Product added successfully"),
@@ -442,6 +450,7 @@ pub async fn update_product(
         });
     }
 
+    // let user_id = parsed_values[0].parse().unwrap();
     let role: &str = parsed_values[1];
 
     if role != "admin" && role != "agent" {
@@ -537,11 +546,20 @@ pub async fn update_product(
 
     match product::get_product_by_id(product_id, &client).await {
         Some(p) => {
+            let old_creator_id = p.creator_id;
+            let creator_id = if role != "admin" {
+                old_creator_id
+            } else if let Some(creator_id) = body.creator_id {
+                creator_id
+            } else {
+                old_creator_id
+            };
             match product::update_product(
                 product_id,
                 &p.product_images,
                 &body,
                 currency_id,
+                creator_id,
                 &client,
             )
             .await
