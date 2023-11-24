@@ -503,3 +503,27 @@ pub async fn is_phone_existed(phone: &str, client: &Client) -> bool {
 //     // Return whether the user exists
 //     Ok(row.is_ok())
 // }
+
+#[derive(Serialize)]
+pub struct UserPermission {
+    pub can_modify_order_status: bool,
+    pub can_view_address: bool,
+    pub can_view_phone: bool,
+}
+
+pub async fn get_user_permission(user_id: i32, client: &Client) -> UserPermission {
+    match client.query_one("select can_modify_order_status, can_view_address, can_view_phone from users where user_id = $1 and deleted_at is null", &[&user_id]).await {
+        Ok(row) => UserPermission {
+            can_modify_order_status: row.get("can_modify_order_status"),
+            can_view_address: row.get("can_view_address"),
+            can_view_phone: row.get("can_view_phone")
+        }, Err(err) => {
+            println!("{:?}", err);
+            UserPermission {
+                can_modify_order_status: false,
+                can_view_address: false,
+                can_view_phone: false
+            }
+        }
+    }
+}

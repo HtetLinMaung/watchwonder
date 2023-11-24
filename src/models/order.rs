@@ -8,7 +8,7 @@ use crate::utils::{
     sql::{generate_pagination_query, PaginationOptions},
 };
 
-use super::{address::NewAddress, counter};
+use super::{address::NewAddress, counter, user};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Order {
@@ -198,7 +198,7 @@ pub async fn get_orders(
     let order_options = "o.created_at desc".to_string();
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "o.order_id, o.user_id order_user_id, u.name user_name, u.phone, u.email, u.can_view_address, u.can_view_phone, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol, o.invoice_id, o.invoice_url",
+        select_columns: "o.order_id, o.user_id order_user_id, u.name user_name, u.phone, u.email, a.home_address, a.street_address, a.city, a.state, a.postal_code, a.country, a.township, a.ward, a.note, o.created_at, o.status, o.order_total::text, (coalesce(o.commission_amount, 0))::text as commission_amount, o.item_counts, o.payment_type, o.payslip_screenshot_path, coalesce(r.rule_id, 0) as rule_id, coalesce(r.description, '') as rule_description, cur.symbol, o.invoice_id, o.invoice_url",
         base_query: &base_query,
         search_columns: vec![ "o.order_id::text", "u.name", "u.phone", "u.email", "a.home_address", "a.street_address", "a.city", "a.state", "a.postal_code", "a.country", "a.township", "a.ward", "a.note","o.status", "o.payment_type", "r.description"],
         search: search.as_deref(),
@@ -221,6 +221,14 @@ pub async fn get_orders(
         page_counts = (total as f64 / limit as f64).ceil() as usize;
     }
 
+    let mut can_view_address = false;
+    let mut can_view_phone = false;
+    if role == "agent" {
+        let permission = user::get_user_permission(user_id, client).await;
+        can_view_address = permission.can_view_address;
+        can_view_phone = permission.can_view_phone;
+    }
+
     let orders = client
         .query(&result.query, &params_slice[..])
         .await?
@@ -231,8 +239,6 @@ pub async fn get_orders(
             let order_total: f64 = order_total.parse().unwrap();
             let commission_amount: String = row.get("commission_amount");
             let commission_amount: f64 = commission_amount.parse().unwrap();
-            let can_view_address: bool = row.get("can_view_address");
-            let can_view_phone: bool = row.get("can_view_phone");
             let phone: String = if !can_view_phone && role == "agent" && user_id != order_user_id {
                 let phone: String = row.get("phone");
                 let re = Regex::new(r"\d").unwrap();
@@ -241,10 +247,10 @@ pub async fn get_orders(
                 row.get("phone")
             };
 
-            let invoice_url: String = if user_id == order_user_id {
-                row.get("invoice_url")
-            } else {
+            let invoice_url: String = if role == "agent" && user_id != order_user_id {
                 "".to_string()
+            } else {
+                row.get("invoice_url")
             };
             return Order {
                 order_id: row.get("order_id"),
