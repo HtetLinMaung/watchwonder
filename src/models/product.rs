@@ -6,7 +6,7 @@ use crate::utils::{
     sql::{generate_pagination_query, PaginationOptions},
     vector_finder::add_vector,
 };
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
@@ -56,7 +56,7 @@ pub struct Product {
     pub movement_country: String,
     pub is_preorder: bool,
     pub creator_id: i32,
-    pub discount_expiration: Option<NaiveDate>,
+    pub discount_expiration: Option<NaiveDateTime>,
     pub discount_reason: String,
     pub created_at: NaiveDateTime,
 }
@@ -385,7 +385,7 @@ pub struct ProductRequest {
     pub movement_caliber: Option<String>,
     pub movement_country: Option<String>,
     pub creator_id: Option<i32>,
-    pub discount_expiration: Option<NaiveDate>,
+    pub discount_expiration: Option<String>,
     pub discount_reason: Option<String>,
 }
 
@@ -452,7 +452,12 @@ pub async fn add_product(
     } else {
         ""
     };
-    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, discount_percent, stock_quantity, is_top_model, currency_id, condition, warranty_type_id, dial_glass_type_id, other_accessories_type_id, gender_id, waiting_time, case_diameter, case_depth, case_width, movement_caliber, movement_country, is_preorder, creator_id, discount_expiration, discount_reason) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, {}, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32) returning product_id", &data.price, &discount_percent);
+    let discount_expiration = if let Some(de) = &data.discount_expiration {
+        format!("'{de}'")
+    } else {
+        "null".to_string()
+    };
+    let query = format!("insert into products (shop_id, category_id, brand_id, model, description, color, strap_material, strap_color, case_material, dial_color, movement_type, water_resistance, warranty_period, dimensions, price, discount_percent, stock_quantity, is_top_model, currency_id, condition, warranty_type_id, dial_glass_type_id, other_accessories_type_id, gender_id, waiting_time, case_diameter, case_depth, case_width, movement_caliber, movement_country, is_preorder, creator_id, discount_expiration, discount_reason) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, {}, {}, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, {}, $31) returning product_id", &data.price, &discount_percent, discount_expiration);
     let result = client
         .query_one(
             &query,
@@ -487,7 +492,6 @@ pub async fn add_product(
                 &movement_country,
                 &is_preorder,
                 &creator_id,
-                &data.discount_expiration,
                 &discount_reason,
             ],
         )
@@ -673,7 +677,12 @@ pub async fn update_product(
     } else {
         ""
     };
-    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, discount_percent = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27, movement_caliber = $28, movement_country = $29, discount_expiration = $30, discount_reason = $31 where product_id = $32", &data.price, &discount_percent);
+    let discount_expiration = if let Some(de) = &data.discount_expiration {
+        format!("'{de}'")
+    } else {
+        "null".to_string()
+    };
+    let query = format!("update products set shop_id = $1, category_id = $2, brand_id = $3, model = $4, description = $5, color = $6, strap_material = $7, strap_color = $8, case_material = $9, dial_color = $10, movement_type = $11, water_resistance = $12, warranty_period = $13, dimensions = $14, price = {}, discount_percent = {}, stock_quantity = $15, is_top_model = $16, currency_id = $17, condition = $18, warranty_type_id = $19, dial_glass_type_id = $20, other_accessories_type_id = $21, gender_id = $22, waiting_time = $23, case_diameter = $24, case_depth = $25, case_width = $26, is_preorder = $27, movement_caliber = $28, movement_country = $29, discount_expiration = {}, discount_reason = $30 where product_id = $31", &data.price, &discount_percent, discount_expiration);
     client
         .execute(
             &query,
@@ -707,7 +716,6 @@ pub async fn update_product(
                 &is_preorder,
                 &movement_caliber,
                 &movement_country,
-                &data.discount_expiration,
                 &discount_reason,
                 &product_id,
             ],
