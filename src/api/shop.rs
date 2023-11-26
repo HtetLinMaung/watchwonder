@@ -23,6 +23,7 @@ pub struct GetShopsQuery {
     pub page: Option<usize>,
     pub per_page: Option<usize>,
     pub platform: Option<String>,
+    pub version: Option<String>,
     pub status: Option<String>,
     pub view: Option<String>,
 }
@@ -74,6 +75,10 @@ pub async fn get_shops(
         Some(p) => p.as_str(),
         None => "",
     };
+    let version = match &query.version {
+        Some(v) => v.replace(".", "").parse().unwrap(),
+        None => 0,
+    };
     match shop::get_shops(
         &query.search,
         query.page,
@@ -83,6 +88,7 @@ pub async fn get_shops(
         &query.view,
         &role,
         user_id,
+        version,
         &client,
     )
     .await

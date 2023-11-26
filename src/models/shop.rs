@@ -6,7 +6,7 @@ use tokio_postgres::{types::ToSql, Client};
 
 use crate::utils::{
     common_struct::PaginationResult,
-    setting::{get_demo_platform, get_demo_user_id},
+    setting::{get_demo_platform, get_demo_user_id, get_min_demo_version},
     sql::{generate_pagination_query, PaginationOptions},
 };
 
@@ -39,6 +39,7 @@ pub async fn get_shops(
     view: &Option<String>,
     role: &str,
     user_id: i32,
+    version: i32,
     client: &Client,
 ) -> Result<PaginationResult<Shop>, Box<dyn std::error::Error>> {
     let mut base_query = "from shops where deleted_at is null".to_string();
@@ -75,7 +76,11 @@ pub async fn get_shops(
     }
 
     let demo_user_id = get_demo_user_id();
-    if platform == get_demo_platform().as_str() || (demo_user_id > 0 && user_id == demo_user_id) {
+    let min_demo_version = get_min_demo_version();
+    if platform == get_demo_platform().as_str()
+        || platform == "ios" && version >= min_demo_version
+        || (demo_user_id > 0 && user_id == demo_user_id)
+    {
         base_query = format!("{base_query} and is_demo = true");
     } else {
         base_query = format!("{base_query} and is_demo = false");

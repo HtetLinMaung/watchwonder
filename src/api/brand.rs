@@ -28,6 +28,7 @@ pub struct GetBrandsQuery {
     pub page: Option<usize>,
     pub per_page: Option<usize>,
     pub platform: Option<String>,
+    pub version: Option<String>,
 }
 
 #[get("/api/brands")]
@@ -76,12 +77,17 @@ pub async fn get_brands(
         Some(p) => p.as_str(),
         None => "",
     };
+    let version = match &query.version {
+        Some(v) => v.replace(".", "").parse().unwrap(),
+        None => 0,
+    };
     match brand::get_brands(
         &query.search,
         query.page,
         query.per_page,
         platform,
         user_id,
+        version,
         &client,
     )
     .await

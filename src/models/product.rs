@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use crate::utils::{
     common_struct::PaginationResult,
-    setting::{get_demo_platform, get_demo_user_id},
+    setting::{get_demo_platform, get_demo_user_id, get_min_demo_version},
     sql::{generate_pagination_query, PaginationOptions},
     vector_finder::add_vector,
 };
@@ -75,6 +75,7 @@ pub async fn get_products(
     view: &Option<String>,
     role: &str,
     user_id: i32,
+    version: i32,
     client: &Client,
 ) -> Result<PaginationResult<Product>, Error> {
     let mut base_query = "from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null".to_string();
@@ -175,7 +176,11 @@ pub async fn get_products(
     }
 
     let demo_user_id = get_demo_user_id();
-    if platform == get_demo_platform().as_str() || (demo_user_id > 0 && user_id == demo_user_id) {
+    let min_demo_version = get_min_demo_version();
+    if platform == get_demo_platform().as_str()
+        || platform == "ios" && version >= min_demo_version
+        || (demo_user_id > 0 && user_id == demo_user_id)
+    {
         base_query = format!("{base_query} and p.is_demo = true");
     } else {
         base_query = format!("{base_query} and p.is_demo = false");

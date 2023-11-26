@@ -32,3 +32,8 @@ pub fn get_max_cash_on_delivery_amount() -> f64 {
         .unwrap();
     max_cash_on_delivery_amount
 }
+
+pub fn get_min_demo_version() -> i32 {
+    let min_demo_version = std::env::var("MIN_DEMO_VERSION").unwrap_or("999.0.0".to_string());
+    min_demo_version.replace(".", "").parse().unwrap()
+}

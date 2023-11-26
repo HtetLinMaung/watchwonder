@@ -22,6 +22,7 @@ pub struct GetProductsRequestBody {
     pub page: Option<usize>,
     pub per_page: Option<usize>,
     pub platform: Option<String>,
+    pub version: Option<String>,
     pub shop_id: Option<i32>,
     pub category_id: Option<i32>,
     pub brands: Option<Vec<i32>>,
@@ -80,6 +81,10 @@ pub async fn get_products(
         Some(p) => p.as_str(),
         None => "",
     };
+    let version = match &body.version {
+        Some(v) => v.replace(".", "").parse().unwrap(),
+        None => 0,
+    };
     match product::get_products(
         &body.search,
         body.page,
@@ -96,6 +101,7 @@ pub async fn get_products(
         &body.view,
         &role,
         user_id,
+        version,
         &client,
     )
     .await
