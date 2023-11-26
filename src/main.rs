@@ -32,6 +32,16 @@ async fn main() -> std::io::Result<()> {
     });
 
     HttpServer::new(move || {
+        if !std::fs::metadata("./images").is_ok() {
+            if let Err(err) = std::fs::create_dir_all("./images") {
+                println!("{:?}", err);
+            }
+        }
+        if !std::fs::metadata("./products").is_ok() {
+            if let Err(err) = std::fs::create_dir_all("./products") {
+                println!("{:?}", err);
+            }
+        }
         // let default_size = env::var("DEFAULT_REQUEST_SIZE")
         //     .unwrap_or_else(|_| "2097152".to_string())
         //     .parse::<usize>()
@@ -46,6 +56,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(client.clone()))
             .configure(api::init)
             .service(fs::Files::new("/images", "./images").show_files_listing())
+            .service(fs::Files::new("/products", "./products").show_files_listing())
     })
     .bind(("0.0.0.0", port))?
     .run()
