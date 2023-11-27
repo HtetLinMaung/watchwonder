@@ -24,6 +24,7 @@ services:
       - REPORT_FORGE_URL=http://webwand:3000/webwand/site-to-pdf
     volumes:
       - ./images:/images
+      - ./products:/products
   pyvecfinder:
     restart: always
     image: htetlinmaung/pyvecfinder
