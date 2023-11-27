@@ -324,5 +324,24 @@ Kanji and English day/date wheel</pre
         </button>
       </div>
     </div>
+    <script>
+      // https://play.google.com/store/apps/details?id=com.watchvault.app001
+      function redirectToApp() {
+        var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+        if (/android/i.test(userAgent)) {
+          // Android URL scheme
+          window.location =
+            "intent://[path_to_content]#Intent;scheme=[your_custom_scheme];package=[your_package_name];end;";
+        } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+          // iOS URL scheme
+          window.location = "[your_custom_scheme]://";
+          setTimeout(function () {
+            // Redirect to the App Store if the app isn't installed
+            window.location = "https://apps.apple.com/app/[app_id]";
+          }, 2500);
+        }
+      }
+    </script>
   </body>
 </html>
