@@ -684,10 +684,22 @@ pub async fn delete_product(
 
     match product::get_product_by_id(product_id, &client).await {
         Some(p) => match product::delete_product(product_id, &p.product_images, &client).await {
-            Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                code: 204,
-                message: String::from("Product deleted successfully"),
-            }),
+            Ok(()) => {
+                tokio::spawn(async move {
+                    match product::delete_product_html(product_id, &client).await {
+                        Ok(()) => {
+                            println!("Product html deleted successfully.");
+                        }
+                        Err(e) => {
+                            println!("{:?}", e);
+                        }
+                    }
+                });
+                HttpResponse::Ok().json(BaseResponse {
+                    code: 204,
+                    message: String::from("Product deleted successfully"),
+                })
+            }
             Err(e) => {
                 eprintln!("Product deleting error: {}", e);
                 return HttpResponse::InternalServerError().json(BaseResponse {

@@ -1012,7 +1012,7 @@ pub struct ProductForHtml {
 pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<ProductForHtml> {
     let result = client
     .query_one(
-        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
+        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
         &[&product_id],
     )
     .await;
@@ -1227,4 +1227,14 @@ pub fn generate_product_html(
     let html_path = format!("./products/{}.html", product.unique_id);
     fs::write(&html_path, &html)?;
     Ok(product.unique_id.to_string())
+}
+
+pub async fn delete_product_html(product_id: i32, client: &Client) -> Result<(), Error> {
+    if let Some(product) = get_product_for_html(product_id, client).await {
+        match fs::remove_file(&format!("./products/{}.html", product.unique_id)) {
+            Ok(_) => println!("Product html deleted successfully!"),
+            Err(e) => println!("Error deleting product html: {}", e),
+        }
+    }
+    Ok(())
 }
