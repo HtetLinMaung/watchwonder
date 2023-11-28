@@ -1210,7 +1210,18 @@ pub fn generate_product_html(
     } else {
         ""
     };
+
     for product_image in &product.product_images {
+        let path = Path::new(&product_image);
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let product_image = format!("{stem}_original.{extension}");
         image_containers = format!("{image_containers}<div class='image-container' style='background-image: url(..{product_image})' onclick='setTimeout(() => location.href=\"..{product_image}\", 300)'>{out_of_stock_tag}</div>");
     }
     html = html.replace("[image_cards]", &image_containers);
