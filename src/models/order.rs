@@ -52,6 +52,7 @@ pub struct OrderItem {
     pub amount: f64,
     pub product_images: Vec<String>,
     pub symbol: String,
+    pub product_id: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -381,6 +382,7 @@ pub async fn get_order_items(
             created_at: row.get("created_at"),
             product_images,
             symbol: row.get("symbol"),
+            product_id,
         });
     }
 

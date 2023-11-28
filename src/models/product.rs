@@ -394,7 +394,7 @@ pub async fn add_product(
     currency_id: i32,
     creator_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<i32, Box<dyn std::error::Error>> {
     let mut condition = "".to_string();
     if let Some(c) = &data.condition {
         condition = c.to_string();
@@ -525,7 +525,7 @@ pub async fn add_product(
             }
         });
     }
-    Ok(())
+    Ok(product_id)
 }
 
 pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Product> {
@@ -973,4 +973,258 @@ pub async fn get_product_images(client: &Client) -> Vec<String> {
             vec![]
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct ProductForHtml {
+    pub unique_id: String,
+    pub product_name: String,
+    pub description: String,
+    pub post_image: String,
+    pub product_images: Vec<String>,
+    pub stock_quantity: i32,
+    pub color: String,
+    pub strap_material: String,
+    pub strap_color: String,
+    pub case_material: String,
+    pub case_diameter: String,
+    pub case_depth: String,
+    pub case_width: String,
+    pub dial_glass_type: String,
+    pub dial_color: String,
+    pub condition: String,
+    pub movement_country: String,
+    pub movement_type: String,
+    pub movement_caliber: String,
+    pub water_resistance: String,
+    pub warranty_period: String,
+    pub warranty_type: String,
+    pub other_accessories_type: String,
+    pub gender: String,
+    pub is_preorder: String,
+    pub discounted_price: String,
+    pub symbol: String,
+    pub discount_percent: f64,
+    pub price: String,
+    pub discount_reason: String,
+}
+
+pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<ProductForHtml> {
+    let result = client
+    .query_one(
+        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
+        &[&product_id],
+    )
+    .await;
+
+    let product_images: Vec<String> = match client
+        .query(
+            "select image_url from product_images where product_id = $1 and deleted_at is null",
+            &[&product_id],
+        )
+        .await
+    {
+        Ok(image_rows) => image_rows.iter().map(|r| r.get("image_url")).collect(),
+        Err(_) => vec![],
+    };
+    match result {
+        Ok(row) => {
+            let discount_percent: String = row.get("discount_percent");
+            let discount_percent: f64 = discount_percent.parse().unwrap();
+
+            let product_id: i32 = row.get("product_id");
+            let product_name: String = row.get("product_name");
+            let unique_id = format!(
+                "{}-{product_id}",
+                product_name.replace(" ", "-").to_lowercase()
+            );
+            let post_image = if product_images.is_empty() {
+                ""
+            } else {
+                &product_images[0]
+            };
+            let is_preorder: bool = row.get("is_preorder");
+            let is_preorder = if is_preorder {
+                "Yes".to_string()
+            } else {
+                "No".to_string()
+            };
+            Some(ProductForHtml {
+                unique_id,
+                product_name,
+                description: row.get("description"),
+                post_image: post_image.to_string(),
+                product_images,
+                stock_quantity: row.get("stock_quantity"),
+                color: row.get("color"),
+                strap_material: row.get("strap_material"),
+                strap_color: row.get("strap_color"),
+                case_material: row.get("case_material"),
+                case_diameter: row.get("case_diameter"),
+                case_depth: row.get("case_depth"),
+                case_width: row.get("case_width"),
+                dial_glass_type: row.get("dial_glass_type"),
+                dial_color: row.get("dial_color"),
+                condition: row.get("condition"),
+                movement_country: row.get("movement_country"),
+                movement_type: row.get("movement_type"),
+                movement_caliber: row.get("movement_caliber"),
+                water_resistance: row.get("water_resistance"),
+                warranty_period: row.get("warranty_period"),
+                warranty_type: row.get("warranty_type"),
+                other_accessories_type: row.get("other_accessories_type"),
+                gender: row.get("gender"),
+                is_preorder,
+                discounted_price: row.get("discounted_price"),
+                discount_percent,
+                symbol: row.get("symbol"),
+                price: row.get("price"),
+                discount_reason: row.get("discount_reason"),
+            })
+        }
+        Err(err) => {
+            println!("err: {:?}", err);
+            None
+        }
+    }
+}
+
+pub async fn get_products_for_html(client: &Client) -> Result<Vec<ProductForHtml>, Error> {
+    let rows = client
+    .query(
+        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null",
+        &[],
+    )
+    .await?;
+
+    let mut products = vec![];
+    for row in &rows {
+        let product_id: i32 = row.get("product_id");
+
+        let product_images: Vec<String> = match client
+            .query(
+                "select image_url from product_images where product_id = $1 and deleted_at is null",
+                &[&product_id],
+            )
+            .await
+        {
+            Ok(image_rows) => image_rows.iter().map(|r| r.get("image_url")).collect(),
+            Err(_) => vec![],
+        };
+        let discount_percent: String = row.get("discount_percent");
+        let discount_percent: f64 = discount_percent.parse().unwrap();
+
+        let product_name: String = row.get("product_name");
+        let unique_id = format!(
+            "{}-{product_id}",
+            product_name.replace(" ", "-").to_lowercase()
+        );
+        let post_image = if product_images.is_empty() {
+            ""
+        } else {
+            &product_images[0]
+        };
+        let is_preorder: bool = row.get("is_preorder");
+        let is_preorder = if is_preorder {
+            "Yes".to_string()
+        } else {
+            "No".to_string()
+        };
+        products.push(ProductForHtml {
+            unique_id,
+            product_name,
+            description: row.get("description"),
+            post_image: post_image.to_string(),
+            product_images,
+            stock_quantity: row.get("stock_quantity"),
+            color: row.get("color"),
+            strap_material: row.get("strap_material"),
+            strap_color: row.get("strap_color"),
+            case_material: row.get("case_material"),
+            case_diameter: row.get("case_diameter"),
+            case_depth: row.get("case_depth"),
+            case_width: row.get("case_width"),
+            dial_glass_type: row.get("dial_glass_type"),
+            dial_color: row.get("dial_color"),
+            condition: row.get("condition"),
+            movement_country: row.get("movement_country"),
+            movement_type: row.get("movement_type"),
+            movement_caliber: row.get("movement_caliber"),
+            water_resistance: row.get("water_resistance"),
+            warranty_period: row.get("warranty_period"),
+            warranty_type: row.get("warranty_type"),
+            other_accessories_type: row.get("other_accessories_type"),
+            gender: row.get("gender"),
+            is_preorder,
+            discounted_price: row.get("discounted_price"),
+            discount_percent,
+            symbol: row.get("symbol"),
+            price: row.get("price"),
+            discount_reason: row.get("discount_reason"),
+        });
+    }
+    Ok(products)
+}
+
+pub fn generate_product_html(
+    product: &ProductForHtml,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut html = fs::read_to_string("./products/template.html")?;
+    html = html
+        .replace("[unique_id]", product.unique_id.as_str())
+        .replace("[product_name]", product.product_name.as_str())
+        .replace("[description]", product.description.as_str())
+        .replace("[post_image]", product.post_image.as_str())
+        .replace(
+            "[stock_quantity]",
+            product.stock_quantity.to_string().as_str(),
+        )
+        .replace("[color]", product.color.as_str())
+        .replace("[strap_material]", product.strap_material.as_str())
+        .replace("[strap_color]", product.strap_color.as_str())
+        .replace("[case_material]", product.case_material.as_str())
+        .replace("[case_diameter]", product.case_diameter.as_str())
+        .replace("[case_depth]", product.case_depth.as_str())
+        .replace("[case_width]", product.case_width.as_str())
+        .replace("[dial_glass_type]", product.dial_glass_type.as_str())
+        .replace("[dial_color]", product.dial_color.as_str())
+        .replace("[condition]", product.condition.as_str())
+        .replace("[movement_country]", product.movement_country.as_str())
+        .replace("[movement_type]", product.movement_type.as_str())
+        .replace("[movement_caliber]", product.movement_caliber.as_str())
+        .replace("[water_resistance]", product.water_resistance.as_str())
+        .replace("[warranty_period]", product.warranty_period.as_str())
+        .replace("[warranty_type]", product.warranty_type.as_str())
+        .replace(
+            "[other_accessories_type]",
+            product.other_accessories_type.as_str(),
+        )
+        .replace("[gender]", product.gender.as_str())
+        .replace("[is_preorder]", product.is_preorder.as_str())
+        .replace("[discounted_price]", product.discounted_price.as_str())
+        .replace("[symbol]", product.symbol.as_str());
+
+    let mut image_containers = "".to_string();
+    let out_of_stock_tag = if product.stock_quantity <= 0 {
+        "<div class='out-of-stock-label'>Out of Stock</div>"
+    } else {
+        ""
+    };
+    for product_image in &product.product_images {
+        image_containers = format!("{image_containers}<div class='image-container' style='background-image: url(..{product_image})' onclick='setTimeout(() => location.href=\"..{product_image}\", 300)'>{out_of_stock_tag}</div>");
+    }
+    html = html.replace("[image_cards]", &image_containers);
+
+    if product.discount_percent >= 0.0 {
+        html = html.replace(
+            "[original_price]",
+            &format!(
+                "<span style='text-decoration: line-through; margin-right: 0.2rem'>{}</span>",
+                product.price
+            ),
+        );
+    }
+    let html_path = format!("./products/{}.html", product.unique_id);
+    fs::write(&html_path, &html)?;
+    Ok(product.unique_id.to_string())
 }

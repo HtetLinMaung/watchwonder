@@ -332,10 +332,24 @@ pub async fn add_product(
     // };
 
     match product::add_product(&body, currency_id, creator_id, &client).await {
-        Ok(()) => HttpResponse::Created().json(BaseResponse {
-            code: 201,
-            message: String::from("Product added successfully"),
-        }),
+        Ok(product_id) => {
+            tokio::spawn(async move {
+                if let Some(product) = product::get_product_for_html(product_id, &client).await {
+                    match product::generate_product_html(&product) {
+                        Ok(unique_id) => {
+                            println!("{unique_id}.html generated successfully.");
+                        }
+                        Err(e) => {
+                            println!("{:?}", e);
+                        }
+                    };
+                }
+            });
+            HttpResponse::Created().json(BaseResponse {
+                code: 201,
+                message: String::from("Product added successfully"),
+            })
+        }
         Err(e) => {
             eprintln!("Product adding error: {}", e);
             return HttpResponse::InternalServerError().json(BaseResponse {
@@ -576,10 +590,26 @@ pub async fn update_product(
             )
             .await
             {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                    code: 200,
-                    message: String::from("Product updated successfully"),
-                }),
+                Ok(()) => {
+                    tokio::spawn(async move {
+                        if let Some(product) =
+                            product::get_product_for_html(product_id, &client).await
+                        {
+                            match product::generate_product_html(&product) {
+                                Ok(unique_id) => {
+                                    println!("{unique_id}.html generated successfully.");
+                                }
+                                Err(e) => {
+                                    println!("{:?}", e);
+                                }
+                            };
+                        }
+                    });
+                    HttpResponse::Ok().json(BaseResponse {
+                        code: 200,
+                        message: String::from("Product updated successfully"),
+                    })
+                }
                 Err(e) => {
                     eprintln!("Product updating error: {}", e);
                     return HttpResponse::InternalServerError().json(BaseResponse {
@@ -755,6 +785,35 @@ pub async fn get_recommended_products_for_user(
                 code: 500,
                 message: String::from("Error fetching recommended products!"),
             });
+        }
+    }
+}
+
+#[get("/api/generate-product-htmls")]
+pub async fn generate_product_htmls(client: web::Data<Arc<Client>>) -> impl Responder {
+    match product::get_products_for_html(&client).await {
+        Ok(products) => {
+            for product in &products {
+                match product::generate_product_html(product) {
+                    Ok(unique_id) => {
+                        println!("{unique_id}.html generated successfully.");
+                    }
+                    Err(e) => {
+                        println!("{:?}", e);
+                    }
+                };
+            }
+            HttpResponse::Ok().json(BaseResponse {
+                code: 200,
+                message: String::from("Product htmls generated successfully."),
+            })
+        }
+        Err(e) => {
+            println!("{:?}", e);
+            HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Something went wrong while fetching products!"),
+            })
         }
     }
 }

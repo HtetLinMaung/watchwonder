@@ -154,4 +154,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(order::remind_seller);
     cfg.service(counter::generate_invoice_id);
     cfg.service(google::verify_google_token);
+    cfg.service(product::generate_product_htmls);
 }
