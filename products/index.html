@@ -335,7 +335,7 @@ Kanji and English day/date wheel</pre
         if (/android/i.test(userAgent)) {
           // Android URL scheme
           window.location =
-            "intent://products#Intent;scheme=intent;package=com.watchvault.app001;end;";
+            "intent://products#Intent;scheme=http;package=com.watchvault.app001;end;";
         } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
           // iOS URL scheme
           window.location = "[your_custom_scheme]://";
