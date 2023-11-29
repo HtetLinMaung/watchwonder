@@ -22,6 +22,7 @@ services:
       - IOS_VERSION=1.0.30
       - ANDROID_VERSION=1.0.33
       - REPORT_FORGE_URL=http://webwand:3000/webwand/site-to-pdf
+      - MIN_DEMO_VERSION=1.0.34
     volumes:
       - ./images:/images
       - ./products:/products
