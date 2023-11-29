@@ -325,7 +325,10 @@ Kanji and English day/date wheel</pre
       </div>
     </div>
     <script>
-      // https://play.google.com/store/apps/details?id=com.watchvault.app001
+      window.onload = function () {
+        redirectToApp();
+      };
+
       function redirectToApp() {
         var userAgent = navigator.userAgent || navigator.vendor || window.opera;
 
