@@ -253,28 +253,21 @@ pub async fn get_shop_by_id(
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
     let shop_id = path.into_inner();
+
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
             let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
             if parts.len() == 2 && parts[0] == "Bearer" {
-                parts[1]
+                parts[1].to_string()
             } else {
-                return HttpResponse::BadRequest().json(BaseResponse {
-                    code: 400,
-                    message: String::from("Invalid Authorization header format"),
-                });
+                "".to_string()
             }
         }
-        None => {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Authorization header missing"),
-            })
-        }
+        None => "".to_string(),
     };
 
-    if verify_token_and_get_sub(token).is_none() {
+    if !token.is_empty() && verify_token_and_get_sub(&token).is_none() {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Invalid token"),
