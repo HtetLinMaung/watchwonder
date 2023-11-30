@@ -9,6 +9,7 @@ pub mod condition;
 pub mod counter;
 pub mod currency;
 pub mod dial_glass_type;
+pub mod discount_type;
 pub mod fcm;
 pub mod gender;
 pub mod insurance;

@@ -272,6 +272,8 @@ CREATE TABLE products
     discount_percent DECIMAL(10, 2) DEFAULT 0,
     discount_expiration TIMESTAMP DEFAULT null,
     discount_reason TEXT DEFAULT '',
+    discounted_price DECIMAL(18, 2) DEFAULT 0.0,
+    discount_type VARCHAR(255) DEFAULT 'Discount by Specific Percentage',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -1250,3 +1252,27 @@ insert into counters
     (label)
 values
     ('777');
+
+CREATE TABLE discount_types
+(
+    discount_type_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+INSERT INTO discount_types
+    (description)
+VALUES
+    ('No Discount');
+
+INSERT INTO discount_types
+    (description)
+VALUES
+    ('Discount by Specific Percentage');
+
+INSERT INTO discount_types
+    (description)
+VALUES
+    ('Discount by Specific Amount');
