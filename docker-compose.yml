@@ -9,7 +9,7 @@ services:
     # depends_on:
     #   - db
     environment:
-      - "DB_CONNECTION=host=postgres user=postgres password=P@ssword dbname=watch"
+      - "DB_CONNECTION=host=postgres user=postgres password=9ef91afcedc9a6533ccd3fada98e7b69 dbname=watch"
       - JWT_SECRET=6bc586e8db18e9b663f66b062bbb08509010e222fb2469d45009b68013ac430d
       - FIREBASE_FCM_URL=https://fcm.googleapis.com/fcm/send
       - FIREBASE_FCM_AUTH=key=AAAAP89u1s0:APA91bHf2dDH0XrJt1u71o8UrNsmOt57A4TJhQzj_MtSygfHoBJ_6VXvjriacwhcNeLSHp4Ix947YmtZO_f2IwJL_9zqU2UkKH6gSzbpJ86YXXghiCfLoLpJ9Iz4Hsj8SMQ8XhjrcAC1
@@ -63,7 +63,7 @@ services:
     command: postgres -c 'max_connections=16500'
     environment:
       - POSTGRES_DB=postgres
-      - POSTGRES_PASSWORD=P@ssword
+      - POSTGRES_PASSWORD=9ef91afcedc9a6533ccd3fada98e7b69
     volumes:
       - postgresdb:/var/lib/postgresql/data
   # report_forge:
