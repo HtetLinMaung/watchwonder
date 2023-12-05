@@ -27,6 +27,7 @@ pub struct GetBrandsQuery {
     pub search: Option<String>,
     pub page: Option<usize>,
     pub per_page: Option<usize>,
+    pub shop_id: Option<i32>,
     pub platform: Option<String>,
     pub version: Option<String>,
 }

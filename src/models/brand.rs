@@ -23,13 +23,14 @@ pub async fn get_brands(
     search: &Option<String>,
     page: Option<usize>,
     per_page: Option<usize>,
+    shop_id: Option<i32>,
     platform: &str,
     user_id: i32,
     version: i32,
     client: &Client,
 ) -> Result<PaginationResult<Brand>, Error> {
     let mut base_query = "from brands where deleted_at is null".to_string();
-    let params: Vec<Box<dyn ToSql + Sync>> = vec![];
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
     // let order_options = match role {
     //     "user" => "name asc, created_at desc",
     //     _ => "created_at desc",
@@ -45,6 +46,11 @@ pub async fn get_brands(
         base_query = format!("{base_query} and is_demo = true");
     } else {
         base_query = format!("{base_query} and is_demo = false");
+    }
+
+    if let Some(sid) = shop_id {
+        params.push(Box::new(sid));
+        base_query = format!("{base_query} and brand_id in (select brand_id from products where deleted_at is null and shop_id = ${})", params.len());
     }
 
     // if role == "agent" {
