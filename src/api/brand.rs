@@ -86,6 +86,7 @@ pub async fn get_brands(
         &query.search,
         query.page,
         query.per_page,
+        query.shop_id,
         platform,
         user_id,
         version,
