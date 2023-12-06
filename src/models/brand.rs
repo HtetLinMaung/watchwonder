@@ -110,7 +110,7 @@ pub async fn add_brand(
     logo_url: &str,
     creator_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     // Insert the new brands into the database
     client
         .execute(
@@ -128,7 +128,7 @@ pub async fn update_brand(
     logo_url: &str,
     old_logo_url: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client.execute(
             "update brands set name = $1, description = $2, logo_url = $3 where brand_id = $4 and deleted_at is null",
             &[&name, &description, &logo_url ,&brand_id],
@@ -175,11 +175,7 @@ pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
     }
 }
 
-pub async fn delete_brand(
-    brand_id: i32,
-    old_logo_url: &str,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_brand(brand_id: i32, old_logo_url: &str, client: &Client) -> Result<(), Error> {
     client.execute(
         "update brands set deleted_at = CURRENT_TIMESTAMP where brand_id = $1 and deleted_at is null",
         &[&brand_id],

@@ -24,6 +24,7 @@ pub mod product;
 pub mod reason_type;
 pub mod refund_reason;
 pub mod seller_information;
+pub mod seller_registration_fee;
 pub mod seller_report;
 pub mod seller_review;
 pub mod shop;

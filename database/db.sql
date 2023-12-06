@@ -599,13 +599,15 @@ CREATE TABLE seller_informations
     address TEXT DEFAULT '',
     nrc VARCHAR(255) DEFAULT '',
     nrc_front_image VARCHAR(255) DEFAULT '',
+    nrc_back_image VARCHAR(255) DEFAULT '',
     bank_code VARCHAR(15) DEFAULT '',
     bank_account VARCHAR(255) DEFAULT '',
     bank_account_image VARCHAR(255) DEFAULT '',
     wallet_type VARCHAR(15) DEFAULT '',
     wallet_account VARCHAR(255) DEFAULT '',
     charges_model VARCHAR(255) DEFAULT '',
-    transaction_screenshot VARCHAR(255) DEFAULT '',
+    fee_id INT REFERENCES seller_registration_fees(fee_id) DEFAULT 1,
+    monthly_transaction_screenshot VARCHAR(255) DEFAULT '',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1276,3 +1278,25 @@ INSERT INTO discount_types
     (description)
 VALUES
     ('Discount by Specific Amount');
+
+
+CREATE TABLE seller_registration_fees
+(
+    fee_id SERIAL PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    amount DECIMAL(18, 2) DEFAULT 0.0,
+    is_percent BOOLEAN DEFAULT FALSE,
+    currency_id INT REFERENCES currencies(currency_id) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+insert into seller_registration_fees
+    (description, amount, is_percent)
+values
+    ('Monthly Fee', '50000.00', false);
+insert into seller_registration_fees
+    (description, amount, is_percent)
+values
+    ('Commission Fee', '5', true);

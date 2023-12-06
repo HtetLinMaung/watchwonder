@@ -109,10 +109,7 @@ pub struct InsuranceRuleRequest {
     pub effective_to: DateTime<Utc>,
 }
 
-pub async fn add_insurance_rule(
-    data: &InsuranceRuleRequest,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn add_insurance_rule(data: &InsuranceRuleRequest, client: &Client) -> Result<(), Error> {
     let query = format!("insert into commission_rules (description, commission_percentage, min_order_amount, max_order_amount, effective_from, effective_to) values ($1, {}, {}, {}, $2, $3)", &data.commission_percentage, &data.min_order_amount, &data.max_order_amount);
     client
         .execute(
@@ -163,7 +160,7 @@ pub async fn update_insurance_rule(
     rule_id: i32,
     data: &InsuranceRuleRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let query = format!("update commission_rules set description = $1, commission_percentage = {}, min_order_amount = {}, max_order_amount = {}, effective_from = $2, effective_to = $3 where rule_id = $4", &data.commission_percentage, &data.min_order_amount, &data.max_order_amount);
     client
         .execute(
@@ -179,10 +176,7 @@ pub async fn update_insurance_rule(
     Ok(())
 }
 
-pub async fn delete_insurance_rule(
-    rule_id: i32,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_insurance_rule(rule_id: i32, client: &Client) -> Result<(), Error> {
     client
         .execute(
             "update commission_rules set deleted_at = CURRENT_TIMESTAMP where rule_id = $1",

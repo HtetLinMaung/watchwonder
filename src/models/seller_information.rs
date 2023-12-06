@@ -20,6 +20,23 @@ pub struct SellerInformationRequest {
     pub professional_title: String,
     pub location: String,
     pub offline_trader: bool,
+
+    pub facebook_profile_image: Option<String>,
+    pub shop_or_page_name: Option<String>,
+    pub facebook_page_image: Option<String>,
+    pub bussiness_phone: Option<String>,
+    pub address: Option<String>,
+    pub nrc: Option<String>,
+    pub nrc_front_image: Option<String>,
+    pub nrc_back_image: Option<String>,
+    pub bank_code: Option<String>,
+    pub bank_account: Option<String>,
+    pub bank_account_image: Option<String>,
+    pub wallet_type: Option<String>,
+    pub wallet_account: Option<String>,
+    pub charges_model: Option<String>,
+    pub fee_id: Option<i32>,
+    pub monthly_transaction_screenshot: Option<String>,
 }
 
 pub async fn get_seller_information(user_id: i32, client: &Client) -> Option<SellerInformation> {

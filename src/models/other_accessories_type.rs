@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct OtherAccessoriesType {
@@ -9,7 +9,7 @@ pub struct OtherAccessoriesType {
 
 pub async fn get_other_accessories_types(
     client: &Client,
-) -> Result<Vec<OtherAccessoriesType>, Box<dyn std::error::Error>> {
+) -> Result<Vec<OtherAccessoriesType>, Error> {
     let rows=  client.query("select other_accessories_type_id, description from other_accessories_types where deleted_at is null order by description", &[]).await?;
 
     Ok(rows

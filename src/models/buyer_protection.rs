@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::{types::ToSql, Client};
+use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
@@ -19,7 +19,7 @@ pub async fn get_buyer_protections(
     page: Option<usize>,
     per_page: Option<usize>,
     client: &Client,
-) -> Result<PaginationResult<BuyerProtection>, Box<dyn std::error::Error>> {
+) -> Result<PaginationResult<BuyerProtection>, Error> {
     let base_query = "from buyer_protections where deleted_at is null".to_string();
     let params: Vec<Box<dyn ToSql + Sync>> = vec![];
     let order_options = "created_at";
@@ -74,7 +74,7 @@ pub struct BuyerProtectionRequest {
 pub async fn add_buyer_protection(
     data: &BuyerProtectionRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "insert into buyer_protections (description) values ($1)",
@@ -109,7 +109,7 @@ pub async fn update_buyer_protection(
     buyer_protection_id: i32,
     data: &BuyerProtectionRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update buyer_protections set description = $1 where buyer_protection_id = $2",
@@ -122,7 +122,7 @@ pub async fn update_buyer_protection(
 pub async fn delete_buyer_protection(
     buyer_protection_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update buyer_protections set deleted_at = CURRENT_TIMESTAMP where buyer_protection_id = $1",

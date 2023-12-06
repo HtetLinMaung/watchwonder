@@ -92,10 +92,7 @@ pub struct BankAccountRequest {
     pub bank_logo: String,
 }
 
-pub async fn add_bank_account(
-    data: &BankAccountRequest,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn add_bank_account(data: &BankAccountRequest, client: &Client) -> Result<(), Error> {
     client
         .execute(
             "insert into bank_accounts (account_type, account_holder_name, account_number, bank_logo) values ($1, $2, $3, $4)",
@@ -131,7 +128,7 @@ pub async fn update_bank_account(
     old_bank_logo: &str,
     data: &BankAccountRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update bank_accounts set account_type = $1, account_holder_name = $2, account_number = $3, bank_logo = $4 where account_id = $5",
@@ -171,7 +168,7 @@ pub async fn delete_bank_account(
     account_id: i32,
     old_bank_logo: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update bank_accounts set deleted_at = CURRENT_TIMESTAMP where account_id = $1",

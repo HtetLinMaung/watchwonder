@@ -1,8 +1,6 @@
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
-pub async fn get_strap_materials(
-    client: &Client,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub async fn get_strap_materials(client: &Client) -> Result<Vec<String>, Error> {
     let rows = client
         .query(
             "select description from strap_materials where deleted_at is null order by description",

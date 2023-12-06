@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 use super::order;
 
@@ -38,7 +38,7 @@ pub async fn add_refund_reason(
     data: &RefundReasonRequest,
     user_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client.execute("BEGIN", &[]).await?;
 
     let row = client

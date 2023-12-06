@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::{types::ToSql, Client};
+use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
@@ -41,7 +41,7 @@ pub async fn get_shops(
     user_id: i32,
     version: i32,
     client: &Client,
-) -> Result<PaginationResult<Shop>, Box<dyn std::error::Error>> {
+) -> Result<PaginationResult<Shop>, Error> {
     let mut base_query = "from shops where deleted_at is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
 
@@ -170,7 +170,7 @@ pub async fn add_shop(
     creator_id: i32,
     role: &str,
     client: &Client,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<i32, Error> {
     let mut status = data.status.as_str();
     if role == "agent" {
         status = "Pending Approval";
@@ -236,7 +236,7 @@ pub async fn update_shop(
     data: &ShopRequest,
     role: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let mut status = data.status.as_str();
     if role == "agent" {
         status = "Pending Approval";
@@ -289,7 +289,7 @@ pub async fn delete_shop(
     shop_id: i32,
     old_cover_image: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update shops set deleted_at = CURRENT_TIMESTAMP where shop_id = $1",

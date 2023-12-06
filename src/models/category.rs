@@ -101,7 +101,7 @@ pub async fn add_category(
     data: &CategoryRequest,
     creator_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "insert into categories (name, description, cover_image, creator_id) values ($1, $2, $3, $4)",
@@ -136,7 +136,7 @@ pub async fn update_category(
     old_cover_image: &str,
     data: &CategoryRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update categories set name = $1, description = $2, cover_image = $3 where category_id = $4",
@@ -175,7 +175,7 @@ pub async fn delete_category(
     category_id: i32,
     old_cover_image: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update categories set deleted_at = CURRENT_TIMESTAMP where category_id = $1",

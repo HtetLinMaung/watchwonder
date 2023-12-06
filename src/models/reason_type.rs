@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct ReasonType {
@@ -7,9 +7,7 @@ pub struct ReasonType {
     pub description: String,
 }
 
-pub async fn get_reason_types(
-    client: &Client,
-) -> Result<Vec<ReasonType>, Box<dyn std::error::Error>> {
+pub async fn get_reason_types(client: &Client) -> Result<Vec<ReasonType>, Error> {
     let rows=  client.query("select reason_type_id, description from reason_types where deleted_at is null order by description", &[]).await?;
 
     Ok(rows

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct WarrantyType {
@@ -7,9 +7,7 @@ pub struct WarrantyType {
     pub description: String,
 }
 
-pub async fn get_warranty_types(
-    client: &Client,
-) -> Result<Vec<WarrantyType>, Box<dyn std::error::Error>> {
+pub async fn get_warranty_types(client: &Client) -> Result<Vec<WarrantyType>, Error> {
     let rows = client
         .query(
             "select warranty_type_id, description from warranty_types where deleted_at is null order by description",

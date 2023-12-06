@@ -77,7 +77,7 @@ pub async fn add_order(
     user_id: i32,
     currency_id: i32,
     client: &Client,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<i32, Error> {
     client.execute("INSERT INTO user_addresses (user_id, street_address, city, state, postal_code, country, township, home_address, ward) 
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     ON CONFLICT (user_id) WHERE deleted_at IS NULL
@@ -395,11 +395,7 @@ pub async fn get_order_items(
     })
 }
 
-pub async fn update_order(
-    order_id: i32,
-    status: &str,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_order(order_id: i32, status: &str, client: &Client) -> Result<(), Error> {
     // Start a transaction
     client.execute("BEGIN", &[]).await?;
 
@@ -523,10 +519,7 @@ pub async fn get_order_shop_name(order_id: i32, client: &Client) -> String {
     }
 }
 
-pub async fn update_stocks(
-    items: &Vec<NewOrderItem>,
-    client: &Client,
-) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn update_stocks(items: &Vec<NewOrderItem>, client: &Client) -> Result<bool, Error> {
     // Start the transaction
     client.execute("BEGIN", &[]).await?;
 

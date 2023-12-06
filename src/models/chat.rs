@@ -6,7 +6,7 @@ use std::{
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio_postgres::{types::ToSql, Client};
+use tokio_postgres::{types::ToSql, Client, Error};
 
 use crate::utils::{
     common_struct::PaginationResult,
@@ -30,7 +30,7 @@ pub async fn add_message(
     sender_id: i32,
     role: &str,
     client: &Client,
-) -> Result<(i32, i32), Box<dyn std::error::Error>> {
+) -> Result<(i32, i32), Error> {
     let mut chat_id = data.chat_id;
     let row = client
         .query_one(
@@ -229,7 +229,7 @@ pub async fn get_chat_sessions(
     user_id: i32,
     role: &str,
     client: &Client,
-) -> Result<PaginationResult<ChatSession>, Box<dyn std::error::Error>> {
+) -> Result<PaginationResult<ChatSession>, Error> {
     let mut base_query = "from chats c join (select message_text, created_at, sender_id, chat_id, status from messages where deleted_at is null and created_at in (select max(created_at) from messages where deleted_at is null group by chat_id)) as m on m.chat_id = c.chat_id join users u on m.sender_id = u.user_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where c.deleted_at is null and cd.chat_id is null".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id)];
 
@@ -329,7 +329,7 @@ pub async fn get_chat_session_by_id(
     user_id: i32,
     receiver_id: i32,
     client: &Client,
-) -> Result<ChatSession, Box<dyn std::error::Error>> {
+) -> Result<ChatSession, Error> {
     let chat_id = if chat_id == 0 {
         let query = format!("select cp.chat_id from chat_participants cp join chats c on c.chat_id = cp.chat_id where cp.user_id in ({}, {}) and c.deleted_at is null group by cp.chat_id having count(distinct cp.user_id) = 2", user_id, receiver_id);
         match client.query_one(&query, &[]).await {
@@ -410,7 +410,7 @@ pub async fn get_chat_messages(
     user_id: i32,
     receiver_id: i32,
     client: &Client,
-) -> Result<PaginationResult<ChatMessage>, Box<dyn std::error::Error>> {
+) -> Result<PaginationResult<ChatMessage>, Error> {
     let chat_id = if chat_id == 0 {
         let query = format!("select cp.chat_id from chat_participants cp join chats c on c.chat_id = cp.chat_id where cp.user_id in ({}, {}) and c.deleted_at is null group by cp.chat_id having count(distinct cp.user_id) = 2", user_id, receiver_id);
         match client.query_one(&query, &[]).await {
@@ -501,7 +501,7 @@ pub async fn get_chat_message_by_id(
     message_id: i32,
     user_id: i32,
     client: &Client,
-) -> Result<ChatMessage, Box<dyn std::error::Error>> {
+) -> Result<ChatMessage, Error> {
     let row = client.query_one("select m.chat_id, m.message_id, m.sender_id, u.name as sender_name, u.profile_image, m.message_text, m.status, m.created_at from messages m join users u on u.user_id = m.sender_id where m.deleted_at is null and m.message_id = $1", &[&message_id]).await?;
 
     let message_id: i32 = row.get("message_id");
@@ -534,7 +534,7 @@ pub async fn update_message_status(
     status: &str,
     user_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update messages set status = $1 where message_id = $2",
@@ -602,10 +602,7 @@ pub async fn is_own_message(message_id: i32, user_id: i32, client: &Client) -> b
     total > 0
 }
 
-pub async fn delete_message(
-    message_id: i32,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_message(message_id: i32, client: &Client) -> Result<(), Error> {
     client
         .execute(
             "update messages set deleted_at = CURRENT_TIMESTAMP where message_id = $1",
@@ -633,7 +630,7 @@ pub async fn get_total_unread_counts(
     role: &str,
     user_id: i32,
     client: &Client,
-) -> Result<i64, Box<dyn std::error::Error>> {
+) -> Result<i64, Error> {
     let mut query = "select count(*) as unread_counts from messages m join chats c on c.chat_id = m.chat_id left join chat_deletes cd on c.chat_id = cd.chat_id and cd.user_id = $1 where m.deleted_at is null and c.deleted_at is null and cd.chat_id is null and m.status != 'read' and m.sender_id != $2".to_string();
     let mut params: Vec<Box<dyn ToSql + Sync>> = vec![Box::new(user_id), Box::new(user_id)];
 
@@ -650,7 +647,7 @@ pub async fn get_total_unread_counts(
     Ok(row.get("unread_counts"))
 }
 
-pub async fn get_admin_ids(client: &Client) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+pub async fn get_admin_ids(client: &Client) -> Result<Vec<i32>, Error> {
     let rows = client
         .query(
             "select user_id from users where role = 'admin' and deleted_at is null",
@@ -677,7 +674,7 @@ pub struct UpdateStateRequest {
 pub async fn update_instantio_state(
     body: &UpdateStateRequest,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     if body.event == "disconnect" {
         let user_id = body.data.room.unwrap();
         client
@@ -725,7 +722,7 @@ pub async fn update_instantio_state(
 pub async fn get_last_active_at(
     user_id: i32,
     client: &Client,
-) -> Result<Option<NaiveDateTime>, Box<dyn std::error::Error>> {
+) -> Result<Option<NaiveDateTime>, Error> {
     let row = client
         .query_one(
             "select last_active_at from users where user_id = $1",
@@ -739,7 +736,7 @@ pub async fn get_receiver_ids_from_chat_id(
     chat_id: i32,
     user_id: i32,
     client: &Client,
-) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+) -> Result<Vec<i32>, Error> {
     let rows = client
         .query(
             "select user_id from chat_participants where chat_id = $1 and user_id != $2",
@@ -754,7 +751,7 @@ pub async fn delete_chat_session(
     user_id: i32,
     role: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     if role == "admin" {
         client.execute(
             "update chats set deleted_at = CURRENT_TIMESTAMP where chat_id = $1 and deleted_at is null",

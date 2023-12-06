@@ -1,9 +1,6 @@
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
-pub async fn add_terms_and_conditions(
-    content: &str,
-    client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn add_terms_and_conditions(content: &str, client: &Client) -> Result<(), Error> {
     let rows = client
         .query("select id from terms_and_conditions limit 1", &[])
         .await?;

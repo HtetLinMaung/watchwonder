@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct Condition {
@@ -7,7 +7,7 @@ pub struct Condition {
     pub description: String,
 }
 
-pub async fn get_conditions(client: &Client) -> Result<Vec<Condition>, Box<dyn std::error::Error>> {
+pub async fn get_conditions(client: &Client) -> Result<Vec<Condition>, Error> {
     let rows=  client.query("select condition_id, description from conditions where deleted_at is null order by description", &[]).await?;
 
     Ok(rows

@@ -104,10 +104,7 @@ pub async fn get_notifications(
     })
 }
 
-pub async fn get_unread_counts(
-    user_id: i32,
-    client: &Client,
-) -> Result<i64, Box<dyn std::error::Error>> {
+pub async fn get_unread_counts(user_id: i32, client: &Client) -> Result<i64, Error> {
     let result = client
         .query_one(
             "select count(*) as total from notifications where user_id = $1 and status = 'Unread' and deleted_at is null",
@@ -122,7 +119,7 @@ pub async fn update_notification_status(
     notification_id: i32,
     status: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client.execute("update notifications set status = $1 where notification_id = $2 and deleted_at is null", &[&status, &notification_id]).await?;
     Ok(())
 }
@@ -144,7 +141,7 @@ pub async fn add_notifications_for_all_users(
     title: &str,
     message: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let rows = client
         .query(
             "select user_id from users where deleted_at is null and role != 'admin'",

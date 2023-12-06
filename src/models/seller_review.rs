@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Deserialize)]
 pub struct SellerReviewRequest {
@@ -13,7 +13,7 @@ pub async fn add_review(
     data: &SellerReviewRequest,
     user_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     match client.query_one("select review_id from seller_reviews where user_id = $1 and shop_id = $2 and deleted_at is null", &[&user_id, &data.shop_id]).await {
         Ok(row) => {
             let review_id: i32 = row.get("review_id");
@@ -38,10 +38,7 @@ pub struct SellerReview {
     pub review_date: NaiveDateTime,
 }
 
-pub async fn get_seller_reviews(
-    shop_id: i32,
-    client: &Client,
-) -> Result<Vec<SellerReview>, Box<dyn std::error::Error>> {
+pub async fn get_seller_reviews(shop_id: i32, client: &Client) -> Result<Vec<SellerReview>, Error> {
     let rows= client.query(
         "select r.review_id, u.name, u.profile_image, r.rating::text, r.comment, r.review_date from seller_reviews r inner join users u on u.user_id = r.user_id where r.deleted_at is null and u.deleted_at is null and r.shop_id = $1",
         &[&shop_id],

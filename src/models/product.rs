@@ -398,7 +398,7 @@ pub async fn add_product(
     currency_id: i32,
     creator_id: i32,
     client: &Client,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<i32, Error> {
     let mut condition = "".to_string();
     if let Some(c) = &data.condition {
         condition = c.to_string();
@@ -636,7 +636,7 @@ pub async fn update_product(
     data: &ProductRequest,
     currency_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let mut condition = "".to_string();
     if let Some(c) = &data.condition {
         condition = c.to_string();
@@ -811,7 +811,7 @@ pub async fn delete_product(
     product_id: i32,
     old_product_images: &Vec<String>,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client
         .execute(
             "update products set deleted_at = CURRENT_TIMESTAMP where product_id = $1",
@@ -855,7 +855,7 @@ pub struct ProductAndShopName {
 pub async fn get_product_and_shop_names(
     product_id_list: &Vec<i32>,
     client: &Client,
-) -> Result<Vec<ProductAndShopName>, Box<dyn std::error::Error>> {
+) -> Result<Vec<ProductAndShopName>, Error> {
     if product_id_list.is_empty() {
         return Ok(vec![]);
     }
@@ -978,11 +978,7 @@ pub async fn get_product_creator_id_from_order_id(order_id: i32, client: &Client
     }
 }
 
-pub async fn is_products_exist(
-    key: &str,
-    id: i32,
-    client: &Client,
-) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn is_products_exist(key: &str, id: i32, client: &Client) -> Result<bool, Error> {
     let query =
         format!("select count(*) as total from products where {key} = $1 and deleted_at is null");
     let row = client.query_one(&query, &[&id]).await?;

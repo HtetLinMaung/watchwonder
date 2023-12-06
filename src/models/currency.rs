@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct Currency {
@@ -9,7 +9,7 @@ pub struct Currency {
     pub symbol: String,
 }
 
-pub async fn get_currencies(client: &Client) -> Result<Vec<Currency>, Box<dyn std::error::Error>> {
+pub async fn get_currencies(client: &Client) -> Result<Vec<Currency>, Error> {
     let rows=  client.query("select currency_id, currency_code, currency_name, symbol from currencies where deleted_at is null order by currency_code", &[]).await?;
     Ok(rows
         .iter()
@@ -22,7 +22,7 @@ pub async fn get_currencies(client: &Client) -> Result<Vec<Currency>, Box<dyn st
         .collect())
 }
 
-pub async fn get_default_currency_id(client: &Client) -> Result<i32, Box<dyn std::error::Error>> {
+pub async fn get_default_currency_id(client: &Client) -> Result<i32, Error> {
     let row = client
         .query_one(
             "select currency_id from currencies where currency_code = 'MMK' and deleted_at is null",

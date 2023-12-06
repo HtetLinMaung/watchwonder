@@ -201,7 +201,7 @@ pub async fn delete_user(
     user_id: i32,
     old_profile_image: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     match fs::remove_file(old_profile_image) {
         Ok(_) => println!("File deleted successfully!"),
         Err(e) => println!("Error deleting file: {}", e),
@@ -414,7 +414,7 @@ pub async fn update_user_profile(
     data: &UserProfile,
     old_profile_image: &str,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     client.execute("update users set name = $1, email = $2, phone = $3, profile_image = $4 where user_id = $5", &[&data.name, &data.email, &data.phone, &data.profile_image, &user_id]).await?;
     if data.profile_image != old_profile_image {
         match fs::remove_file(old_profile_image) {
@@ -425,7 +425,7 @@ pub async fn update_user_profile(
     Ok(())
 }
 
-pub async fn get_admin_user_ids(client: &Client) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+pub async fn get_admin_user_ids(client: &Client) -> Result<Vec<i32>, Error> {
     Ok(client
         .query(
             "select user_id from users where role = 'admin' and deleted_at is null",

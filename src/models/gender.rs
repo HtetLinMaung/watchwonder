@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tokio_postgres::Client;
+use tokio_postgres::{Client, Error};
 
 #[derive(Serialize)]
 pub struct Gender {
@@ -7,7 +7,7 @@ pub struct Gender {
     pub description: String,
 }
 
-pub async fn get_genders(client: &Client) -> Result<Vec<Gender>, Box<dyn std::error::Error>> {
+pub async fn get_genders(client: &Client) -> Result<Vec<Gender>, Error> {
     let rows=  client.query("select gender_id, description from genders where deleted_at is null order by description", &[]).await?;
 
     Ok(rows

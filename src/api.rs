@@ -29,6 +29,7 @@ mod product;
 mod reason_type;
 mod refund_reason;
 mod seller_information;
+mod seller_registration_fee;
 mod seller_report;
 mod seller_review;
 mod setting;
@@ -157,4 +158,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(google::verify_google_token);
     cfg.service(product::generate_product_htmls);
     cfg.service(discount_type::get_discount_types);
+    cfg.service(seller_registration_fee::add_seller_registration_fee);
+    cfg.service(seller_registration_fee::get_seller_registration_fees);
+    cfg.service(seller_registration_fee::get_seller_registration_by_id);
+    cfg.service(seller_registration_fee::update_seller_registration_fee);
+    cfg.service(seller_registration_fee::delete_seller_registration_fee);
 }

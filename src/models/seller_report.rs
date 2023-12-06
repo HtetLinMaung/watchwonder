@@ -18,9 +18,7 @@ pub struct ReportSubject {
     pub description: String,
 }
 
-pub async fn get_report_subjects(
-    client: &Client,
-) -> Result<Vec<ReportSubject>, Box<dyn std::error::Error>> {
+pub async fn get_report_subjects(client: &Client) -> Result<Vec<ReportSubject>, Error> {
     let rows = client
         .query(
             "select subject_id, description from report_subjects where deleted_at is null",
@@ -48,7 +46,7 @@ pub async fn add_seller_report(
     data: &SellerReportRequest,
     user_id: i32,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let row= client
         .query_one(
             "insert into seller_reports (user_id, seller_id, subject_id, message, phone) values ($1, $2, $3, $4, $5) returning report_id",
