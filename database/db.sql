@@ -605,7 +605,6 @@ CREATE TABLE seller_informations
     bank_account_image VARCHAR(255) DEFAULT '',
     wallet_type VARCHAR(15) DEFAULT '',
     wallet_account VARCHAR(255) DEFAULT '',
-    charges_model VARCHAR(255) DEFAULT '',
     fee_id INT REFERENCES seller_registration_fees(fee_id) DEFAULT 1,
     monthly_transaction_screenshot VARCHAR(255) DEFAULT '',
 

@@ -46,7 +46,7 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
 pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
     let result = client
         .query_one(
-            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.can_view_address, u.can_view_phone, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
+            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.can_view_address, u.can_view_phone, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader, si.facebook_profile_image, si.shop_or_page_name, si.facebook_page_image, si.bussiness_phone, si.address, si.nrc, si.nrc_front_image, si.nrc_back_image, si.bank_code, si.bank_account, si.bank_account_image, si.wallet_type, si.wallet_account, si.fee_id, si.monthly_transaction_screenshot from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
             &[&user_id],
         )
         .await;
@@ -76,6 +76,21 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
                 sold_product_counts: 0,
                 seller_name: row.get("name"),
                 seller_profile_image: row.get("profile_image"),
+                facebook_profile_image: row.get("facebook_profile_image"),
+                shop_or_page_name: row.get("shop_or_page_name"),
+                facebook_page_image: row.get("facebook_page_image"),
+                bussiness_phone: row.get("bussiness_phone"),
+                address: row.get("address"),
+                nrc: row.get("nrc"),
+                nrc_front_image: row.get("nrc_front_image"),
+                nrc_back_image: row.get("nrc_back_image"),
+                bank_code: row.get("bank_code"),
+                bank_account: row.get("bank_account"),
+                bank_account_image: row.get("bank_account_image"),
+                wallet_type: row.get("wallet_type"),
+                wallet_account: row.get("wallet_account"),
+                fee_id: row.get("fee_id"),
+                monthly_transaction_screenshot: row.get("monthly_transaction_screenshot"),
             }),
         }),
         Err(_) => None,
@@ -110,7 +125,78 @@ pub async fn add_user(
     if role == "agent" {
         let user_id: i32 = row.get("user_id");
         if let Some(si) = seller_information {
-            client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader]).await?;
+            let facebook_profile_image = if let Some(fpi) = &si.facebook_profile_image {
+                fpi
+            } else {
+                ""
+            };
+
+            let shop_or_page_name = if let Some(spn) = &si.shop_or_page_name {
+                spn
+            } else {
+                ""
+            };
+
+            let facebook_page_image = if let Some(fpi) = &si.facebook_page_image {
+                fpi
+            } else {
+                ""
+            };
+
+            let bussiness_phone = if let Some(bp) = &si.bussiness_phone {
+                bp
+            } else {
+                ""
+            };
+
+            let address = if let Some(a) = &si.address { a } else { "" };
+
+            let nrc = if let Some(n) = &si.nrc { n } else { "" };
+
+            let nrc_front_image = if let Some(n) = &si.nrc_front_image {
+                n
+            } else {
+                ""
+            };
+
+            let nrc_back_image = if let Some(n) = &si.nrc_back_image {
+                n
+            } else {
+                ""
+            };
+
+            let bank_code = if let Some(b) = &si.bank_code { b } else { "" };
+
+            let bank_account = if let Some(b) = &si.bank_account {
+                b
+            } else {
+                ""
+            };
+
+            let bank_account_image = if let Some(b) = &si.bank_account_image {
+                b
+            } else {
+                ""
+            };
+
+            let wallet_type = if let Some(w) = &si.wallet_type { w } else { "" };
+
+            let wallet_account = if let Some(w) = &si.wallet_account {
+                w
+            } else {
+                ""
+            };
+
+            let fee_id = if let Some(f) = si.fee_id { f } else { 0 };
+
+            let monthly_transaction_screenshot =
+                if let Some(mts) = &si.monthly_transaction_screenshot {
+                    mts
+                } else {
+                    ""
+                };
+
+            client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader, facebook_profile_image, shop_or_page_name, facebook_page_image, bussiness_phone, address, nrc, nrc_front_image, nrc_back_image, bank_code, bank_account, bank_account_image, wallet_type, wallet_account, fee_id, monthly_transaction_screenshot) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader, &facebook_profile_image, &shop_or_page_name, &facebook_page_image, &bussiness_phone, &address, &nrc, &nrc_front_image, &nrc_back_image, &bank_code, &bank_account, &bank_account_image, &wallet_type, &wallet_account, &fee_id, &monthly_transaction_screenshot]).await?;
         }
     }
 
@@ -168,7 +254,7 @@ pub async fn update_user(
 
     if role == "agent" {
         if let Some(si) = seller_information {
-            println!("si: {:?}", si);
+            // println!("si: {:?}", si);
             let row = client
                 .query_one(
                     "select count(*) as total from seller_informations where user_id = $1 and deleted_at is null",
@@ -176,21 +262,107 @@ pub async fn update_user(
                 )
                 .await?;
             let total: i64 = row.get("total");
+
+            let facebook_profile_image = if let Some(fpi) = &si.facebook_profile_image {
+                fpi
+            } else {
+                ""
+            };
+
+            let shop_or_page_name = if let Some(spn) = &si.shop_or_page_name {
+                spn
+            } else {
+                ""
+            };
+
+            let facebook_page_image = if let Some(fpi) = &si.facebook_page_image {
+                fpi
+            } else {
+                ""
+            };
+
+            let bussiness_phone = if let Some(bp) = &si.bussiness_phone {
+                bp
+            } else {
+                ""
+            };
+
+            let address = if let Some(a) = &si.address { a } else { "" };
+
+            let nrc = if let Some(n) = &si.nrc { n } else { "" };
+
+            let nrc_front_image = if let Some(n) = &si.nrc_front_image {
+                n
+            } else {
+                ""
+            };
+
+            let nrc_back_image = if let Some(n) = &si.nrc_back_image {
+                n
+            } else {
+                ""
+            };
+
+            let bank_code = if let Some(b) = &si.bank_code { b } else { "" };
+
+            let bank_account = if let Some(b) = &si.bank_account {
+                b
+            } else {
+                ""
+            };
+
+            let bank_account_image = if let Some(b) = &si.bank_account_image {
+                b
+            } else {
+                ""
+            };
+
+            let wallet_type = if let Some(w) = &si.wallet_type { w } else { "" };
+
+            let wallet_account = if let Some(w) = &si.wallet_account {
+                w
+            } else {
+                ""
+            };
+
+            let fee_id = if let Some(f) = si.fee_id { f } else { 0 };
+
+            let monthly_transaction_screenshot =
+                if let Some(mts) = &si.monthly_transaction_screenshot {
+                    mts
+                } else {
+                    ""
+                };
             if total > 0 {
                 client
                 .execute(
-                    "update seller_informations set company_name = $1, professional_title = $2, location = $3, offline_trader = $4 where user_id = $5 and deleted_at is null",
+                    "update seller_informations set company_name = $1, professional_title = $2, location = $3, offline_trader = $4, facebook_profile_image = $5, shop_or_page_name = $6, facebook_page_image = $7,bussiness_phone = $8, address = $9, nrc = $10, nrc_front_image = $11, nrc_back_image = $12, bank_code = $13, bank_account = $14, bank_account_image = $15, wallet_type = $16, wallet_account = $17, fee_id = $18, monthly_transaction_screenshot = $19 where user_id = $20 and deleted_at is null",
                     &[
                         &si.company_name,
                         &si.professional_title,
                         &si.location,
                         &si.offline_trader,
+                        &facebook_profile_image,
+                        &shop_or_page_name,
+                        &facebook_page_image,
+                        &bussiness_phone,
+                        &address,
+                        &nrc,
+                        &nrc_front_image,
+                        &nrc_back_image,
+                        &bank_code,
+                        &bank_account,
+                        &bank_account_image,
+                        &wallet_type,
+                        &wallet_account,
+                        &fee_id,
+                        &monthly_transaction_screenshot,
                         &user_id,
                     ],
                 )
                 .await?;
             } else {
-                client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader]).await?;
+                client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader, facebook_profile_image, shop_or_page_name, facebook_page_image, bussiness_phone, address, nrc, nrc_front_image, nrc_back_image, bank_code, bank_account, bank_account_image, wallet_type, wallet_account, fee_id, monthly_transaction_screenshot) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader, &facebook_profile_image, &shop_or_page_name, &facebook_page_image, &bussiness_phone, &address, &nrc, &nrc_front_image, &nrc_back_image, &bank_code, &bank_account, &bank_account_image, &wallet_type, &wallet_account, &fee_id, &monthly_transaction_screenshot]).await?;
             }
         }
     }

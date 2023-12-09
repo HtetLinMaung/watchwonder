@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::models::notification;
+use crate::models::seller_information::SellerInformationRequest;
 use crate::models::user::{self, get_user, get_user_by_google_id, is_phone_existed, user_exists};
 use crate::utils::common_struct::{BaseResponse, DataResponse};
 use crate::utils::google;
@@ -25,28 +26,8 @@ pub struct RegisterRequest {
     pub role: Option<String>,
     pub method: Option<String>,
     pub token: Option<String>,
+    pub seller_information: Option<SellerInformationRequest>,
 }
-
-// {
-//     "iat": "1700730852",
-//     "exp": "1700734452",
-//     "kid": "5b3706960e3e60024a2655e78cfa63f87c97d309",
-//     "at_hash": "HGyLllAf66ffXreBrGKQqg",
-//     "alg": "RS256",
-//     "picture": "https://lh3.googleusercontent.com/a/ACg8ocLKmVAvCrhDjYR5h28li-noyBVhFZxD18GJjG2g6vtqpg=s96-c",
-//     "email": "kaungkhant19297@gmail.com",
-//     "email_verified": "true",
-//     "name": "Kaung Khant Kyaw",
-//     "aud": "274063087309-6r8b9e3vre2l77mi7h6p08rhlniq5ct8.apps.googleusercontent.com",
-//     "given_name": "Kaung Khant",
-//     "iss": "https://accounts.google.com",
-//     "azp": "274063087309-6r8b9e3vre2l77mi7h6p08rhlniq5ct8.apps.googleusercontent.com",
-//     "sub": "103576213499875851601",
-//     "typ": "JWT",
-//     "locale": "my",
-//     "nonce": "nDUWtAd5D6lbwEK85OswY-As7MghqpjxJkvtJSSo4lQ",
-//     "family_name": "Kyaw"
-// }
 
 #[post("/api/auth/register")]
 pub async fn register(
@@ -117,7 +98,7 @@ pub async fn register(
                             false,
                             false,
                             false,
-                            &None,
+                            &body.seller_information,
                             &Some(res.sub),
                             &client,
                         )
@@ -192,7 +173,7 @@ pub async fn register(
                     false,
                     false,
                     false,
-                    &None,
+                    &body.seller_information,
                     &None,
                     &client,
                 )
