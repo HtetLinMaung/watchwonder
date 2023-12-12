@@ -21,6 +21,9 @@ pub struct SellerInformation {
     pub nrc: String,
     pub nrc_front_image: String,
     pub nrc_back_image: String,
+    pub passport_image: String,
+    pub driving_licence_image: String,
+    pub signature_image: String,
     pub bank_code: String,
     pub bank_account: String,
     pub bank_account_image: String,
@@ -45,6 +48,9 @@ pub struct SellerInformationRequest {
     pub nrc: Option<String>,
     pub nrc_front_image: Option<String>,
     pub nrc_back_image: Option<String>,
+    pub passport_image: Option<String>,
+    pub driving_licence_image: Option<String>,
+    pub signature_image: Option<String>,
     pub bank_code: Option<String>,
     pub bank_account: Option<String>,
     pub bank_account_image: Option<String>,
@@ -58,7 +64,7 @@ pub async fn get_seller_information(user_id: i32, client: &Client) -> Option<Sel
     let product_counts_query =
         "select count(*) from products where creator_id = $1 and deleted_at is null";
     let sold_product_counts_query = "select coalesce(sum(oi.quantity), 0) from order_items oi inner join products p on p.product_id = oi.product_id inner join orders o on o.order_id = oi.order_id where oi.deleted_at is null and p.deleted_at is null and o.deleted_at is null and o.status = 'Completed' and p.creator_id = $2";
-    let query = format!("select si.company_name, si.professional_title, si.active_since_year, si.location, si.offline_trader, ({}) as product_counts, ({}) as sold_product_counts, u.name seller_name, u.profile_image seller_profile_image, si.facebook_profile_image, si.shop_or_page_name, si.facebook_page_image, si.bussiness_phone, si.address, si.nrc, si.nrc_front_image, si.nrc_back_image, si.bank_code, si.bank_account, si.bank_account_image, si.wallet_type, si.wallet_account, si.fee_id, si.monthly_transaction_screenshot from seller_informations si join users u on u.user_id = si.user_id where si.user_id = $3 and si.deleted_at is null", product_counts_query, sold_product_counts_query);
+    let query = format!("select si.company_name, si.professional_title, si.active_since_year, si.location, si.offline_trader, ({}) as product_counts, ({}) as sold_product_counts, u.name seller_name, u.profile_image seller_profile_image, si.facebook_profile_image, si.shop_or_page_name, si.facebook_page_image, si.bussiness_phone, si.address, si.nrc, si.nrc_front_image, si.nrc_back_image, si.bank_code, si.bank_account, si.bank_account_image, si.wallet_type, si.wallet_account, si.fee_id, si.monthly_transaction_screenshot, si.passport_image, si.driving_licence_image, si.signature_image from seller_informations si join users u on u.user_id = si.user_id where si.user_id = $3 and si.deleted_at is null", product_counts_query, sold_product_counts_query);
     match client
         .query_one(&query, &[&user_id, &user_id, &user_id])
         .await
@@ -88,6 +94,9 @@ pub async fn get_seller_information(user_id: i32, client: &Client) -> Option<Sel
             wallet_account: row.get("wallet_account"),
             fee_id: row.get("fee_id"),
             monthly_transaction_screenshot: row.get("monthly_transaction_screenshot"),
+            passport_image: row.get("passport_image"),
+            driving_licence_image: row.get("driving_licence_image"),
+            signature_image: row.get("signature_image"),
         }),
         Err(err) => {
             println!("{:?}", err);
