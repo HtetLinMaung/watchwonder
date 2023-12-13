@@ -46,7 +46,7 @@ pub async fn user_exists(username: &str, client: &Client) -> Result<bool, Error>
 pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
     let result = client
         .query_one(
-            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.can_view_address, u.can_view_phone, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader, coalesce(si.facebook_profile_image, '') as facebook_profile_image, coalesce(si.shop_or_page_name, '') as shop_or_page_name, coalesce(si.facebook_page_image, '') as facebook_page_image, coalesce(si.bussiness_phone, '') as bussiness_phone, coalesce(si.address, '') as address, coalesce(si.nrc, '') as nrc, coalesce(si.nrc_front_image, '') as nrc_front_image, coalesce(si.nrc_back_image, '') as nrc_back_image, coalesce(si.bank_code, '') as bank_code, coalesce(si.bank_account, '') as bank_account, coalesce(si.bank_account_image, '') as bank_account_image, coalesce(si.wallet_type, '') as wallet_type, coalesce(si.wallet_account, '') as wallet_account, coalesce(si.fee_id, '') as fee_id, coalesce(si.monthly_transaction_screenshot, '') as monthly_transaction_screenshot, coalesce(si.passport_image, '') as passport_image, coalesce(si.driving_licence_image, '') as driving_licence_image, coalesce(si.signature_image, '') as signature_image from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
+            "select u.user_id, u.username, u.password, u.role, u.name, u.profile_image, u.email, u.phone, u.account_status, u.can_modify_order_status, u.can_view_address, u.can_view_phone, u.created_at, coalesce(si.company_name, '') as company_name, coalesce(si.professional_title, '') as professional_title, coalesce(si.active_since_year, 0) as active_since_year, coalesce(si.location, '') as location, coalesce(si.offline_trader, false) as offline_trader, coalesce(si.facebook_profile_image, '') as facebook_profile_image, coalesce(si.shop_or_page_name, '') as shop_or_page_name, coalesce(si.facebook_page_image, '') as facebook_page_image, coalesce(si.bussiness_phone, '') as bussiness_phone, coalesce(si.address, '') as address, coalesce(si.nrc, '') as nrc, coalesce(si.nrc_front_image, '') as nrc_front_image, coalesce(si.nrc_back_image, '') as nrc_back_image, coalesce(si.bank_code, '') as bank_code, coalesce(si.bank_account, '') as bank_account, coalesce(si.bank_account_image, '') as bank_account_image, coalesce(si.wallet_type, '') as wallet_type, coalesce(si.wallet_account, '') as wallet_account, coalesce(si.fee_id, 0) as fee_id, coalesce(si.monthly_transaction_screenshot, '') as monthly_transaction_screenshot, coalesce(si.passport_image, '') as passport_image, coalesce(si.driving_licence_image, '') as driving_licence_image, coalesce(si.signature_image, '') as signature_image from users u left join seller_informations si on u.user_id = si.user_id and si.deleted_at is null where u.user_id = $1 and u.deleted_at is null",
             &[&user_id],
         )
         .await;
@@ -96,7 +96,10 @@ pub async fn get_user_by_id(user_id: i32, client: &Client) -> Option<User> {
                 signature_image: row.get("signature_image"),
             }),
         }),
-        Err(_) => None,
+        Err(err) => {
+            println!("{:?}", err);
+            None
+        }
     }
 }
 
