@@ -68,6 +68,8 @@ pub async fn register(
         };
     }
 
+    let request_to_agent = if role == "agent" { true } else { false };
+
     if method == "google" {
         if let Some(t) = &body.token {
             match google::verify_id_token_with_google_api(t).await {
@@ -100,14 +102,45 @@ pub async fn register(
                             false,
                             &body.seller_information,
                             &Some(res.sub),
+                            request_to_agent,
                             &client,
                         )
                         .await
                         {
-                            Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                                code: 200,
-                                message: String::from("Registration successfully"),
-                            }),
+                            Ok(user_id) => {
+                                if request_to_agent {
+                                    let title = format!("New Agent Registration");
+                                    let message =
+                                        format!("A new agent, {}, has registered.", &body.username);
+                                    let mut map = HashMap::new();
+                                    map.insert(
+                                        "redirect".to_string(),
+                                        Value::String("agent-approval".to_string()),
+                                    );
+                                    map.insert("id".to_string(), Value::Number(user_id.into()));
+                                    tokio::spawn(async move {
+                                        match notification::add_notification_to_admins(
+                                            &title,
+                                            &message,
+                                            &Some(map),
+                                            &client,
+                                        )
+                                        .await
+                                        {
+                                            Ok(()) => {
+                                                println!("Notification added successfully.");
+                                            }
+                                            Err(err) => {
+                                                println!("Error adding notification: {:?}", err);
+                                            }
+                                        };
+                                    });
+                                }
+                                HttpResponse::Ok().json(BaseResponse {
+                                    code: 200,
+                                    message: String::from("Registration successfully"),
+                                })
+                            }
                             Err(e) => {
                                 eprintln!("User registration error: {}", e);
                                 return HttpResponse::InternalServerError().json(BaseResponse {
@@ -175,14 +208,46 @@ pub async fn register(
                     false,
                     &body.seller_information,
                     &None,
+                    request_to_agent,
                     &client,
                 )
                 .await
                 {
-                    Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                        code: 200,
-                        message: String::from("Registration successfully"),
-                    }),
+                    Ok(user_id) => {
+                        if request_to_agent {
+                            let title = format!("New Agent Registration");
+                            let message =
+                                format!("A new agent, {}, has registered.", &body.username);
+                            let mut map = HashMap::new();
+                            map.insert(
+                                "redirect".to_string(),
+                                Value::String("agent-approval".to_string()),
+                            );
+                            map.insert("id".to_string(), Value::Number(user_id.into()));
+                            tokio::spawn(async move {
+                                match notification::add_notification_to_admins(
+                                    &title,
+                                    &message,
+                                    &Some(map),
+                                    &client,
+                                )
+                                .await
+                                {
+                                    Ok(()) => {
+                                        println!("Notification added successfully.");
+                                    }
+                                    Err(err) => {
+                                        println!("Error adding notification: {:?}", err);
+                                    }
+                                };
+                            });
+                        }
+
+                        HttpResponse::Ok().json(BaseResponse {
+                            code: 200,
+                            message: String::from("Registration successfully"),
+                        })
+                    }
                     Err(e) => {
                         eprintln!("User registration error: {}", e);
                         return HttpResponse::InternalServerError().json(BaseResponse {

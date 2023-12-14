@@ -20,6 +20,7 @@ CREATE TABLE users
     apple_id VARCHAR(255),
     last_active_at TIMESTAMP,
     is_online BOOLEAN DEFAULT FALSE,
+    request_to_agent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );

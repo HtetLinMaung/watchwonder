@@ -117,19 +117,19 @@ pub async fn add_user(
     can_view_phone: bool,
     seller_information: &Option<SellerInformationRequest>,
     google_id: &Option<String>,
+    request_to_agent: bool,
     client: &Client,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<i32, Box<dyn std::error::Error>> {
     let hashed_password =
         hash(&password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
 
     // Insert the new user into the database
     let row =client.query_one(
-        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status, can_view_address, can_view_phone, google_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning user_id",
-        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &google_id],
+        "INSERT INTO users (name, username, password, email, phone, profile_image, role, account_status, can_modify_order_status, can_view_address, can_view_phone, google_id, request_to_agent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) returning user_id",
+        &[&name, &username, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &google_id, &request_to_agent],
     ).await?;
-
+    let user_id: i32 = row.get("user_id");
     if role == "agent" {
-        let user_id: i32 = row.get("user_id");
         if let Some(si) = seller_information {
             let facebook_profile_image = if let Some(fpi) = &si.facebook_profile_image {
                 fpi
@@ -224,7 +224,7 @@ pub async fn add_user(
         }
     }
 
-    Ok(())
+    Ok(user_id)
 }
 
 pub async fn update_user(
@@ -242,6 +242,7 @@ pub async fn update_user(
     can_view_address: bool,
     can_view_phone: bool,
     seller_information: &Option<SellerInformationRequest>,
+    request_to_agent: bool,
     client: &Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if profile_image != old_profile_image {
@@ -272,8 +273,8 @@ pub async fn update_user(
 
     // Insert the new user into the database
     client.execute(
-        "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6, account_status = $7, can_modify_order_status = $8, can_view_address = $9, can_view_phone = $10 where user_id = $11 and deleted_at is null",
-        &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &user_id],
+        "update users set name = $1, password = $2, email = $3, phone = $4, profile_image = $5, role = $6, account_status = $7, can_modify_order_status = $8, can_view_address = $9, can_view_phone = $10, request_to_agent = $11 where user_id = $12 and deleted_at is null",
+        &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &request_to_agent, &user_id],
     ).await?;
 
     if role == "agent" {
@@ -512,6 +513,7 @@ pub async fn get_users(
     per_page: Option<usize>,
     role: &Option<String>,
     account_status: &Option<String>,
+    request_to_agent: Option<bool>,
     client: &Client,
 ) -> Result<PaginationResult<User>, Error> {
     let mut base_query = "from users where deleted_at is null".to_string();
@@ -524,6 +526,10 @@ pub async fn get_users(
     if let Some(status) = account_status {
         params.push(Box::new(status));
         base_query = format!("{base_query} and account_status = ${}", params.len());
+    }
+    if let Some(rta) = request_to_agent {
+        params.push(Box::new(rta));
+        base_query = format!("{base_query} and request_to_agent = ${}", params.len());
     }
 
     let result = generate_pagination_query(PaginationOptions {

@@ -1,11 +1,13 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
+use serde_json::Value;
 use tokio_postgres::Client;
 
 use crate::{
     models::{
+        notification,
         seller_information::SellerInformationRequest,
         user::{self, is_phone_existed, UserProfile},
     },
@@ -23,6 +25,7 @@ pub struct GetUsersQuery {
     pub per_page: Option<usize>,
     pub role: Option<String>,
     pub account_status: Option<String>,
+    pub request_to_agent: Option<bool>,
 }
 
 #[get("/api/users")]
@@ -86,6 +89,7 @@ pub async fn get_users(
         query.per_page,
         &query.role,
         &query.account_status,
+        query.request_to_agent,
         &client,
     )
     .await
@@ -254,11 +258,12 @@ pub async fn add_user(
                 can_view_phone,
                 &body.seller_information,
                 &None,
+                false,
                 &client,
             )
             .await
             {
-                Ok(()) => HttpResponse::Created().json(BaseResponse {
+                Ok(_) => HttpResponse::Created().json(BaseResponse {
                     code: 201,
                     message: String::from("User added successfully"),
                 }),
@@ -363,6 +368,7 @@ pub struct UpdateUserRequest {
     pub can_modify_order_status: Option<bool>,
     pub can_view_address: Option<bool>,
     pub can_view_phone: Option<bool>,
+    pub request_to_agent: Option<bool>,
 }
 
 #[put("/api/users/{user_id}")]
@@ -372,7 +378,7 @@ pub async fn update_user(
     body: web::Json<UpdateUserRequest>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
-    let user_id = path.into_inner();
+    let mut user_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -414,8 +420,17 @@ pub async fn update_user(
     }
 
     let role: &str = parsed_values[1];
+    let request_to_agent = if let Some(rta) = body.request_to_agent {
+        rta
+    } else {
+        false
+    };
 
-    if role != "admin" {
+    if request_to_agent {
+        user_id = parsed_values[0].parse().unwrap();
+    }
+
+    if !request_to_agent && role != "admin" {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),
@@ -492,14 +507,47 @@ pub async fn update_user(
                 can_view_address,
                 can_view_phone,
                 &body.seller_information,
+                request_to_agent,
                 &client,
             )
             .await
             {
-                Ok(()) => HttpResponse::Ok().json(BaseResponse {
-                    code: 200,
-                    message: String::from("User updated successfully"),
-                }),
+                Ok(()) => {
+                    if request_to_agent {
+                        let title = format!("Agent Role Upgrade Request");
+                        let message = format!(
+                            "User {} has requested to upgrade to an 'Agent' role.",
+                            &u.username
+                        );
+                        let mut map = HashMap::new();
+                        map.insert(
+                            "redirect".to_string(),
+                            Value::String("agent-approval".to_string()),
+                        );
+                        map.insert("id".to_string(), Value::Number(user_id.into()));
+                        tokio::spawn(async move {
+                            match notification::add_notification_to_admins(
+                                &title,
+                                &message,
+                                &Some(map),
+                                &client,
+                            )
+                            .await
+                            {
+                                Ok(()) => {
+                                    println!("Notification added successfully.");
+                                }
+                                Err(err) => {
+                                    println!("Error adding notification: {:?}", err);
+                                }
+                            };
+                        });
+                    }
+                    HttpResponse::Ok().json(BaseResponse {
+                        code: 200,
+                        message: String::from("User updated successfully"),
+                    })
+                }
                 Err(e) => {
                     eprintln!("User updating error: {}", e);
                     return HttpResponse::InternalServerError().json(BaseResponse {
