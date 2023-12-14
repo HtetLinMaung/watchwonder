@@ -292,7 +292,7 @@ pub async fn get_user_by_id(
     path: web::Path<i32>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
-    let user_id = path.into_inner();
+    let mut user_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
         Some(value) => {
@@ -333,14 +333,17 @@ pub async fn get_user_by_id(
         });
     }
 
-    let role: &str = parsed_values[1];
-
-    if role != "admin" {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Unauthorized!"),
-        });
+    // let role: &str = parsed_values[1];
+    if user_id == 0 {
+        user_id = parsed_values[0].parse().unwrap();
     }
+
+    // if role != "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
 
     match user::get_user_by_id(user_id, &client).await {
         Some(u) => HttpResponse::Ok().json(DataResponse {
@@ -430,7 +433,7 @@ pub async fn update_user(
         user_id = parsed_values[0].parse().unwrap();
     }
 
-    if !request_to_agent && role != "admin" {
+    if (!request_to_agent && role != "admin") || (request_to_agent && &body.role != "user") {
         return HttpResponse::Unauthorized().json(BaseResponse {
             code: 401,
             message: String::from("Unauthorized!"),

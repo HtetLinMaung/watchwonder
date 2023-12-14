@@ -120,6 +120,7 @@ pub async fn add_user(
     request_to_agent: bool,
     client: &Client,
 ) -> Result<i32, Box<dyn std::error::Error>> {
+    println!("request_to_agent: {request_to_agent}");
     let hashed_password =
         hash(&password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))?;
 
