@@ -28,6 +28,7 @@ mod payment_type;
 mod product;
 mod reason_type;
 mod refund_reason;
+mod seller_agreement_contract;
 mod seller_information;
 mod seller_registration_fee;
 mod seller_report;
@@ -163,4 +164,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_registration_fee::get_seller_registration_by_id);
     cfg.service(seller_registration_fee::update_seller_registration_fee);
     cfg.service(seller_registration_fee::delete_seller_registration_fee);
+    cfg.service(seller_agreement_contract::save_seller_agreement_contract);
+    cfg.service(seller_agreement_contract::get_seller_agreement_contract);
 }

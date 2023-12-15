@@ -1303,3 +1303,12 @@ insert into seller_registration_fees
     (description, amount, is_percent)
 values
     ('Commission Fee', '5', true);
+
+CREATE TABLE seller_agreement_contract
+(
+    aggrement_id SERIAL PRIMARY KEY,
+    file_path VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);  

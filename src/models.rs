@@ -23,6 +23,7 @@ pub mod payment_type;
 pub mod product;
 pub mod reason_type;
 pub mod refund_reason;
+pub mod seller_agreement_contract;
 pub mod seller_information;
 pub mod seller_registration_fee;
 pub mod seller_report;
