@@ -278,7 +278,7 @@ pub async fn update_user(
         &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &request_to_agent, &user_id],
     ).await?;
 
-    if role == "agent" {
+    if role == "agent" || role == "user" {
         if let Some(si) = seller_information {
             // println!("si: {:?}", si);
             let row = client
