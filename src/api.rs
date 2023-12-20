@@ -13,6 +13,7 @@ mod condition;
 mod counter;
 mod currency;
 mod dial_glass_type;
+mod discount_rule;
 mod discount_type;
 mod fcm;
 mod gender;
@@ -166,4 +167,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(seller_registration_fee::delete_seller_registration_fee);
     cfg.service(seller_agreement_contract::save_seller_agreement_contract);
     cfg.service(seller_agreement_contract::get_seller_agreement_contract);
+    cfg.service(discount_rule::add_discount_rule);
+    cfg.service(discount_rule::get_discount_rules);
+    cfg.service(discount_rule::get_discount_rule_by_id);
+    cfg.service(discount_rule::update_discount_rule);
+    cfg.service(discount_rule::delete_discount_rule);
 }

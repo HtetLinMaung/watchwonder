@@ -1311,4 +1311,23 @@ CREATE TABLE seller_agreement_contract
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
-);  
+);
+
+CREATE TABLE discount_rules
+(
+    rule_id SERIAL PRIMARY KEY,
+    discount_for VARCHAR(255) DEFAULT 'all',
+    discount_for_id INT DEFAULT 0,
+    discount_percent DECIMAL(10, 2) DEFAULT 0,
+    discount_expiration TIMESTAMP DEFAULT null,
+    discount_reason TEXT DEFAULT '',
+    discounted_price DECIMAL(18, 2) DEFAULT 0.0,
+    discount_type VARCHAR(255) DEFAULT 'Discount by Specific Percentage',
+    creator_id INT REFERENCES users(user_id),
+    shop_id INT REFERENCES shops(shop_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+-- discount_for: all, product, brand, category
