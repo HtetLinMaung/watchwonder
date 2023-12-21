@@ -275,6 +275,7 @@ CREATE TABLE products
     discount_reason TEXT DEFAULT '',
     discounted_price DECIMAL(18, 2) DEFAULT 0.0,
     discount_type VARCHAR(255) DEFAULT 'Discount by Specific Percentage',
+    discount_updated_by VARCHAR(255) DEFAULT 'product',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );

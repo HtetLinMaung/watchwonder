@@ -146,6 +146,8 @@ pub async fn add_discount_rule(
             ],
         )
         .await?;
+
+    update_products_discount(data, client).await?;
     Ok(())
 }
 
@@ -209,16 +211,61 @@ pub async fn update_discount_rule(
         )
         .await?;
 
+    update_products_discount(data, client).await?;
     Ok(())
 }
 
-pub async fn delete_discount_rule(rule_id: i32, client: &Client) -> Result<(), Error> {
+async fn update_products_discount(
+    data: &DiscountRuleRequest,
+    client: &Client,
+) -> Result<(), Error> {
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![
+        Box::new(&data.discount_for),
+        Box::new(&data.discount_reason),
+        Box::new(&data.discount_type),
+        Box::new(data.shop_id),
+    ];
+    let discount_expiration = if let Some(de) = &data.discount_expiration {
+        de
+    } else {
+        "null"
+    };
+    let base_update_query = &format!("update products set discount_updated_by = $1, discount_percent = {}, discount_expiration = '{discount_expiration}', discount_reason = $2, discounted_price = {}, discount_type = $3 where deleted_at is null and shop_id = $4", data.discount_percent, data.discounted_price);
+    let update_query = if data.discount_for == "brand" {
+        params.push(Box::new(data.discount_for_id));
+        format!(
+            "{base_update_query} and discount_updated_by != 'product' and brand_id = ${}",
+            params.len()
+        )
+    } else if data.discount_for == "category" {
+        params.push(Box::new(data.discount_for_id));
+        format!(
+            "{base_update_query} and discount_updated_by not in ('product', 'brand') and category_id = ${}",
+            params.len()
+        )
+    } else {
+        format!(
+            "{base_update_query} and discount_updated_by not in ('product', 'brand', 'category')"
+        )
+    };
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+    client.execute(&update_query, &params_slice).await?;
+    Ok(())
+}
+
+pub async fn delete_discount_rule(
+    rule_id: i32,
+    old_discount_rule: &DiscountRule,
+    client: &Client,
+) -> Result<(), Error> {
     client
         .execute(
             "update discount_rules set deleted_at = CURRENT_TIMESTAMP where rule_id = $1",
             &[&rule_id],
         )
         .await?;
+    let update_query = format!("update products set discount_percent = 0.0, discount_expiration = null, discount_reason = '', discounted_price = 0.0, discount_type = 'No Discount' where deleted_at is null and shop_id = {} and discount_updated_by = '{}'", old_discount_rule.shop_id, old_discount_rule.discount_for);
+    client.execute(&update_query, &[]).await?;
     Ok(())
 }
 
@@ -254,114 +301,114 @@ pub async fn delete_discount_rule(rule_id: i32, client: &Client) -> Result<(), E
 //         .collect())
 // }
 
-pub struct DiscountCalculationResult {
-    pub discount_percent: f64,
-    pub discounted_price: f64,
-    pub discount_reason: String,
-    pub discount_type: String,
-}
+// pub struct DiscountCalculationResult {
+//     pub discount_percent: f64,
+//     pub discounted_price: f64,
+//     pub discount_reason: String,
+//     pub discount_type: String,
+// }
 
-pub async fn calculate_discounted_price(
-    price: f64,
-    product_id: i32,
-    shop_id: i32,
-    category_id: i32,
-    brand_id: i32,
-    client: &Client,
-) -> DiscountCalculationResult {
-    let query = "
-    SELECT 
-    rule_id, 
-    discount_for, 
-    discount_for_id, 
-    discount_percent::text, 
-    discount_expiration, 
-    discount_reason, 
-    discounted_price::text, 
-    discount_type, 
-    shop_id, 
-    created_at 
-FROM discount_rules 
-WHERE 
-    deleted_at IS NULL 
-    AND (discount_expiration IS NULL OR discount_expiration >= CURRENT_DATE)
-    AND shop_id = $1 
-    AND (
-        (discount_for = 'product' AND discount_for_id = $2) 
-        OR (discount_for = 'brand' AND discount_for_id = $3) 
-        OR (discount_for = 'category' AND discount_for_id = $4) 
-        OR discount_for = 'all'
-    ) 
-ORDER BY 
-    CASE 
-        WHEN discount_for = 'product' THEN 1 
-        WHEN discount_for = 'brand' THEN 2 
-        WHEN discount_for = 'category' THEN 3 
-        WHEN discount_for = 'all' THEN 4 
-    END 
-LIMIT 1;
-    ";
-    match client
-        .query_one(query, &[&shop_id, &product_id, &brand_id, &category_id])
-        .await
-    {
-        Ok(row) => {
-            let discount_percent: &str = row.get("discount_percent");
-            let discount_percent: f64 = discount_percent.parse().unwrap();
+// pub async fn calculate_discounted_price(
+//     price: f64,
+//     product_id: i32,
+//     shop_id: i32,
+//     category_id: i32,
+//     brand_id: i32,
+//     client: &Client,
+// ) -> DiscountCalculationResult {
+//     let query = "
+//     SELECT
+//     rule_id,
+//     discount_for,
+//     discount_for_id,
+//     discount_percent::text,
+//     discount_expiration,
+//     discount_reason,
+//     discounted_price::text,
+//     discount_type,
+//     shop_id,
+//     created_at
+// FROM discount_rules
+// WHERE
+//     deleted_at IS NULL
+//     AND (discount_expiration IS NULL OR discount_expiration >= CURRENT_DATE)
+//     AND shop_id = $1
+//     AND (
+//         (discount_for = 'product' AND discount_for_id = $2)
+//         OR (discount_for = 'brand' AND discount_for_id = $3)
+//         OR (discount_for = 'category' AND discount_for_id = $4)
+//         OR discount_for = 'all'
+//     )
+// ORDER BY
+//     CASE
+//         WHEN discount_for = 'product' THEN 1
+//         WHEN discount_for = 'brand' THEN 2
+//         WHEN discount_for = 'category' THEN 3
+//         WHEN discount_for = 'all' THEN 4
+//     END
+// LIMIT 1;
+//     ";
+//     match client
+//         .query_one(query, &[&shop_id, &product_id, &brand_id, &category_id])
+//         .await
+//     {
+//         Ok(row) => {
+//             let discount_percent: &str = row.get("discount_percent");
+//             let discount_percent: f64 = discount_percent.parse().unwrap();
 
-            let discounted_price: &str = row.get("discounted_price");
-            let discounted_price: f64 = discounted_price.parse().unwrap();
+//             let discounted_price: &str = row.get("discounted_price");
+//             let discounted_price: f64 = discounted_price.parse().unwrap();
 
-            let rule = DiscountRule {
-                rule_id: row.get("rule_id"),
-                discount_for: row.get("discount_for"),
-                discount_for_id: row.get("discount_for_id"),
-                discount_percent,
-                discount_expiration: row.get("discount_expiration"),
-                discount_reason: row.get("discount_reason"),
-                discounted_price,
-                discount_type: row.get("discount_type"),
-                shop_id: row.get("shop_id"),
-                shop_name: "".to_string(),
-                created_at: row.get("created_at"),
-            };
+//             let rule = DiscountRule {
+//                 rule_id: row.get("rule_id"),
+//                 discount_for: row.get("discount_for"),
+//                 discount_for_id: row.get("discount_for_id"),
+//                 discount_percent,
+//                 discount_expiration: row.get("discount_expiration"),
+//                 discount_reason: row.get("discount_reason"),
+//                 discounted_price,
+//                 discount_type: row.get("discount_type"),
+//                 shop_id: row.get("shop_id"),
+//                 shop_name: "".to_string(),
+//                 created_at: row.get("created_at"),
+//             };
 
-            return calculate_discount(price, &rule);
-        }
-        Err(err) => {
-            println!("Discount calculation error: {:?}", err);
-            return DiscountCalculationResult {
-                discount_percent: 0.0,
-                discounted_price: price,
-                discount_reason: String::new(),
-                discount_type: "No Discount".to_string(),
-            };
-        }
-    };
-}
+//             return calculate_discount(price, &rule);
+//         }
+//         Err(err) => {
+//             println!("Discount calculation error: {:?}", err);
+//             return DiscountCalculationResult {
+//                 discount_percent: 0.0,
+//                 discounted_price: price,
+//                 discount_reason: String::new(),
+//                 discount_type: "No Discount".to_string(),
+//             };
+//         }
+//     };
+// }
 
-fn calculate_discount(price: f64, rule: &DiscountRule) -> DiscountCalculationResult {
-    match rule.discount_type.as_str() {
-        "Discount by Specific Percentage" => DiscountCalculationResult {
-            discount_percent: rule.discount_percent,
-            discounted_price: price * (1.0 - rule.discount_percent / 100.0),
-            discount_reason: rule.discount_reason.clone(),
-            discount_type: rule.discount_type.clone(),
-        },
-        "Discount by Specific Amount" => DiscountCalculationResult {
-            discount_percent: 0.0,
-            discounted_price: rule.discounted_price,
-            discount_reason: rule.discount_reason.clone(),
-            discount_type: rule.discount_type.clone(),
-        },
-        _ => DiscountCalculationResult {
-            discount_percent: 0.0,
-            discounted_price: price,
-            discount_reason: String::new(),
-            discount_type: rule.discount_type.clone(),
-        },
-    }
-}
+// fn calculate_discount(price: f64, rule: &DiscountRule) -> DiscountCalculationResult {
+//     match rule.discount_type.as_str() {
+//         "Discount by Specific Percentage" => DiscountCalculationResult {
+//             discount_percent: rule.discount_percent,
+//             discounted_price: price * (1.0 - rule.discount_percent / 100.0),
+//             discount_reason: rule.discount_reason.clone(),
+//             discount_type: rule.discount_type.clone(),
+//         },
+//         "Discount by Specific Amount" => DiscountCalculationResult {
+//             discount_percent: 0.0,
+//             discounted_price: rule.discounted_price,
+//             discount_reason: rule.discount_reason.clone(),
+//             discount_type: rule.discount_type.clone(),
+//         },
+//         _ => DiscountCalculationResult {
+//             discount_percent: 0.0,
+//             discounted_price: price,
+//             discount_reason: String::new(),
+//             discount_type: rule.discount_type.clone(),
+//         },
+//     }
+// }
 
 // pub fn calculate_discounted_price(
 //     price: f64,

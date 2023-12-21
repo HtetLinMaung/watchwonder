@@ -402,7 +402,7 @@ pub async fn delete_discount_rule(
     }
 
     match discount_rule::get_discount_rule_by_id(rule_id, &client).await {
-        Some(_) => match discount_rule::delete_discount_rule(rule_id, &client).await {
+        Some(dr) => match discount_rule::delete_discount_rule(rule_id, &dr, &client).await {
             Ok(()) => HttpResponse::Ok().json(BaseResponse {
                 code: 204,
                 message: String::from("Discount rule deleted successfully"),
@@ -473,7 +473,7 @@ pub async fn get_discount_fors(req: HttpRequest) -> impl Responder {
         });
     }
 
-    let discount_fors = vec!["all", "product", "brand", "category"];
+    let discount_fors = vec!["all", "brand", "category"];
     HttpResponse::Ok().json(DataResponse {
         code: 200,
         message: String::from("Discount fors returned successfully"),

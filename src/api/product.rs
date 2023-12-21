@@ -562,9 +562,10 @@ pub async fn update_product(
             // };
             match product::update_product(
                 product_id,
-                &p.product_images,
+               
                 &body,
                 currency_id,
+                &p,
                 &client,
             )
             .await
