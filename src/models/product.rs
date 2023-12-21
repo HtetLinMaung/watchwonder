@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 
 use crate::utils::{
+    comma_number::format_with_commas,
     common_struct::PaginationResult,
     setting::{get_demo_platform, get_demo_user_id, get_min_demo_version},
     sql::{generate_pagination_query, PaginationOptions},
@@ -1077,12 +1078,13 @@ pub struct ProductForHtml {
     pub discount_percent: f64,
     pub price: String,
     pub discount_reason: String,
+    pub discount_type: String,
 }
 
 pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<ProductForHtml> {
     let result = client
     .query_one(
-        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_type = 'No Discount' then to_char(p.price, 'FM999,999,999.00') when p.discount_type = 'Discount by Specific Amount' then to_char(p.discounted_price, 'FM999,999,999.00') else case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
+        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_type = 'No Discount' then to_char(p.price, 'FM999,999,999.00') when p.discount_type = 'Discount by Specific Amount' then to_char(p.discounted_price, 'FM999,999,999.00') else case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason, p.discount_type, p.brand_id, p.shop_id, p.category_id from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1",
         &[&product_id],
     )
     .await;
@@ -1099,10 +1101,38 @@ pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<Pr
     };
     match result {
         Ok(row) => {
-            let discount_percent: String = row.get("discount_percent");
-            let discount_percent: f64 = discount_percent.parse().unwrap();
+            let price: String = row.get("price");
+            let price: f64 = price.replace(",", "").parse().unwrap();
+
+            let discount_type: &str = row.get("discount_type");
 
             let product_id: i32 = row.get("product_id");
+            let brand_id: i32 = row.get("brand_id");
+            let sid: i32 = row.get("shop_id");
+            let cid: i32 = row.get("category_id");
+
+            let mut _discount_percent = 0.0;
+            let mut _discounted_price = 0.0;
+            let mut _discount_reason: String = row.get("discount_reason");
+            let mut _discount_type: String = row.get("discount_type");
+
+            if discount_type == "No Discount" {
+                let result = discount_rule::calculate_discounted_price(
+                    price, product_id, sid, cid, brand_id, client,
+                )
+                .await;
+                _discount_percent = result.discount_percent;
+                _discounted_price = result.discounted_price;
+                _discount_reason = result.discount_reason;
+                _discount_type = result.discount_type;
+            } else {
+                let discount_percent_string: String = row.get("discount_percent");
+                _discount_percent = discount_percent_string.parse().unwrap();
+
+                let discounted_price_string: String = row.get("discounted_price");
+                _discounted_price = discounted_price_string.parse().unwrap();
+            }
+
             let product_name: String = row.get("product_name");
             let unique_id = format!(
                 "{}-{product_id}",
@@ -1145,11 +1175,12 @@ pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<Pr
                 other_accessories_type: row.get("other_accessories_type"),
                 gender: row.get("gender"),
                 is_preorder,
-                discounted_price: row.get("discounted_price"),
-                discount_percent,
+                discounted_price: format_with_commas(_discounted_price),
+                discount_percent: _discount_percent,
                 symbol: row.get("symbol"),
                 price: row.get("price"),
-                discount_reason: row.get("discount_reason"),
+                discount_reason: _discount_reason,
+                discount_type: _discount_type,
             })
         }
         Err(err) => {
@@ -1162,7 +1193,7 @@ pub async fn get_product_for_html(product_id: i32, client: &Client) -> Option<Pr
 pub async fn get_products_for_html(client: &Client) -> Result<Vec<ProductForHtml>, Error> {
     let rows = client
     .query(
-        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_type = 'No Discount' then to_char(p.price, 'FM999,999,999.00') when p.discount_type = 'Discount by Specific Amount' then to_char(p.discounted_price, 'FM999,999,999.00') else case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null",
+        "select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, case when p.discount_type = 'No Discount' then to_char(p.price, 'FM999,999,999.00') when p.discount_type = 'Discount by Specific Amount' then to_char(p.discounted_price, 'FM999,999,999.00') else case when p.discount_expiration is null then to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') when now() >= p.discount_expiration then to_char(p.price, 'FM999,999,999.00') else to_char(p.price - (p.price * p.discount_percent / 100), 'FM999,999,999.00') end end as discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.description warranty_type, dgt.description dial_glass_type, oat.description other_accessories_type, g.description gender, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, p.discount_reason, p.discount_type, p.brand_id, p.shop_id, p.category_id from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null",
         &[],
     )
     .await?;
@@ -1181,8 +1212,36 @@ pub async fn get_products_for_html(client: &Client) -> Result<Vec<ProductForHtml
             Ok(image_rows) => image_rows.iter().map(|r| r.get("image_url")).collect(),
             Err(_) => vec![],
         };
-        let discount_percent: String = row.get("discount_percent");
-        let discount_percent: f64 = discount_percent.parse().unwrap();
+        let price: String = row.get("price");
+        let price: f64 = price.replace(",", "").parse().unwrap();
+
+        let discount_type: &str = row.get("discount_type");
+
+        let brand_id: i32 = row.get("brand_id");
+        let sid: i32 = row.get("shop_id");
+        let cid: i32 = row.get("category_id");
+
+        let mut _discount_percent = 0.0;
+        let mut _discounted_price = 0.0;
+        let mut _discount_reason: String = row.get("discount_reason");
+        let mut _discount_type: String = row.get("discount_type");
+
+        if discount_type == "No Discount" {
+            let result = discount_rule::calculate_discounted_price(
+                price, product_id, sid, cid, brand_id, client,
+            )
+            .await;
+            _discount_percent = result.discount_percent;
+            _discounted_price = result.discounted_price;
+            _discount_reason = result.discount_reason;
+            _discount_type = result.discount_type;
+        } else {
+            let discount_percent_string: String = row.get("discount_percent");
+            _discount_percent = discount_percent_string.parse().unwrap();
+
+            let discounted_price_string: String = row.get("discounted_price");
+            _discounted_price = discounted_price_string.parse().unwrap();
+        }
 
         let product_name: String = row.get("product_name");
         let unique_id = format!(
@@ -1226,11 +1285,12 @@ pub async fn get_products_for_html(client: &Client) -> Result<Vec<ProductForHtml
             other_accessories_type: row.get("other_accessories_type"),
             gender: row.get("gender"),
             is_preorder,
-            discounted_price: row.get("discounted_price"),
-            discount_percent,
+            discounted_price: format_with_commas(_discounted_price),
+            discount_percent: _discount_percent,
             symbol: row.get("symbol"),
             price: row.get("price"),
-            discount_reason: row.get("discount_reason"),
+            discount_reason: _discount_reason,
+            discount_type: _discount_type,
         });
     }
     Ok(products)
@@ -1296,7 +1356,7 @@ pub fn generate_product_html(
     }
     html = html.replace("[image_cards]", &image_containers);
 
-    if product.discount_percent >= 0.0 {
+    if product.price != product.discounted_price {
         html = html.replace(
             "[original_price]",
             &format!(
@@ -1304,6 +1364,8 @@ pub fn generate_product_html(
                 product.price
             ),
         );
+    } else {
+        html = html.replace("[original_price]", "");
     }
     let html_path = format!("./products/{}.html", product.unique_id);
     fs::write(&html_path, &html)?;
