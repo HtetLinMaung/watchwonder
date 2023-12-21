@@ -10,6 +10,8 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Client, Error};
 
+use super::discount_rule;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Product {
     pub product_id: i32,
@@ -237,14 +239,36 @@ pub async fn get_products(
         let price: String = row.get("price");
         let price: f64 = price.parse().unwrap();
 
-        let discount_percent: String = row.get("discount_percent");
-        let discount_percent: f64 = discount_percent.parse().unwrap();
+        let discount_type: &str = row.get("discount_type");
 
-        let discounted_price: String = row.get("discounted_price");
-        let discounted_price: f64 = discounted_price.parse().unwrap();
+        let product_id: i32 = row.get("product_id");
+        let brand_id: i32 = row.get("brand_id");
+        let sid: i32 = row.get("shop_id");
+        let cid: i32 = row.get("category_id");
+
+        let mut _discount_percent = 0.0;
+        let mut _discounted_price = 0.0;
+        let mut _discount_reason: String = row.get("discount_reason");
+        let mut _discount_type: String = row.get("discount_type");
+        if discount_type == "No Discount" {
+            let result = discount_rule::calculate_discounted_price(
+                price, product_id, sid, cid, brand_id, client,
+            )
+            .await;
+            _discount_percent = result.discount_percent;
+            _discounted_price = result.discounted_price;
+            _discount_reason = result.discount_reason;
+            _discount_type = result.discount_type;
+        } else {
+            let discount_percent_string: String = row.get("discount_percent");
+            _discount_percent = discount_percent_string.parse().unwrap();
+
+            let discounted_price_string: String = row.get("discounted_price");
+            _discounted_price = discounted_price_string.parse().unwrap();
+        }
 
         products.push(Product {
-            product_id: row.get("product_id"),
+            product_id,
             model: row.get("model"),
             description: row.get("description"),
             color: row.get("color"),
@@ -257,16 +281,16 @@ pub async fn get_products(
             warranty_period: row.get("warranty_period"),
             dimensions: row.get("dimensions"),
             price,
-            discount_percent,
-            discounted_price,
+            discount_percent: _discount_percent,
+            discounted_price: _discounted_price,
             stock_quantity: row.get("stock_quantity"),
             is_top_model: row.get("is_top_model"),
             product_images,
-            brand_id: row.get("brand_id"),
+            brand_id,
             brand_name: row.get("brand_name"),
-            category_id: row.get("category_id"),
+            category_id: cid,
             category_name: row.get("category_name"),
-            shop_id: row.get("shop_id"),
+            shop_id: sid,
             shop_name: row.get("shop_name"),
             currency_id: row.get("currency_id"),
             currency_code: row.get("currency_code"),
@@ -289,7 +313,7 @@ pub async fn get_products(
             is_preorder: row.get("is_preorder"),
             creator_id: row.get("creator_id"),
             discount_expiration: row.get("discount_expiration"),
-            discount_reason: row.get("discount_reason"),
+            discount_reason: _discount_reason,
             discount_type: row.get("discount_type"),
             created_at: row.get("created_at"),
         });
@@ -567,11 +591,33 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
             let price: String = row.get("price");
             let price: f64 = price.parse().unwrap();
 
-            let discount_percent: String = row.get("discount_percent");
-            let discount_percent: f64 = discount_percent.parse().unwrap();
+            let discount_type: &str = row.get("discount_type");
 
-            let discounted_price: String = row.get("discounted_price");
-            let discounted_price: f64 = discounted_price.parse().unwrap();
+            let product_id: i32 = row.get("product_id");
+            let brand_id: i32 = row.get("brand_id");
+            let sid: i32 = row.get("shop_id");
+            let cid: i32 = row.get("category_id");
+
+            let mut _discount_percent = 0.0;
+            let mut _discounted_price = 0.0;
+            let mut _discount_reason: String = row.get("discount_reason");
+            let mut _discount_type: String = row.get("discount_type");
+            if discount_type == "No Discount" {
+                let result = discount_rule::calculate_discounted_price(
+                    price, product_id, sid, cid, brand_id, client,
+                )
+                .await;
+                _discount_percent = result.discount_percent;
+                _discounted_price = result.discounted_price;
+                _discount_reason = result.discount_reason;
+                _discount_type = result.discount_type;
+            } else {
+                let discount_percent_string: String = row.get("discount_percent");
+                _discount_percent = discount_percent_string.parse().unwrap();
+
+                let discounted_price_string: String = row.get("discounted_price");
+                _discounted_price = discounted_price_string.parse().unwrap();
+            }
             Some(Product {
                 product_id: row.get("product_id"),
                 model: row.get("model"),
@@ -586,8 +632,8 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 warranty_period: row.get("warranty_period"),
                 dimensions: row.get("dimensions"),
                 price,
-                discount_percent,
-                discounted_price,
+                discount_percent: _discount_percent,
+                discounted_price: _discounted_price,
                 stock_quantity: row.get("stock_quantity"),
                 is_top_model: row.get("is_top_model"),
                 product_images,
@@ -619,7 +665,7 @@ pub async fn get_product_by_id(product_id: i32, client: &Client) -> Option<Produ
                 creator_id: row.get("creator_id"),
                 discount_expiration: row.get("discount_expiration"),
                 discount_reason: row.get("discount_reason"),
-                discount_type: row.get("discount_type"),
+                discount_type: _discount_type,
                 created_at: row.get("created_at"),
             })
         }

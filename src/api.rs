@@ -172,4 +172,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(discount_rule::get_discount_rule_by_id);
     cfg.service(discount_rule::update_discount_rule);
     cfg.service(discount_rule::delete_discount_rule);
+    cfg.service(discount_rule::get_discount_fors);
 }

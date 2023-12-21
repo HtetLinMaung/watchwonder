@@ -173,7 +173,7 @@ pub async fn add_discount_rule(
         });
     }
 
-    match discount_rule::add_discount_rule(&body, user_id, role, &client).await {
+    match discount_rule::add_discount_rule(&body, user_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Discount rule added successfully"),
@@ -325,7 +325,7 @@ pub async fn update_discount_rule(
     }
 
     match discount_rule::get_discount_rule_by_id(rule_id, &client).await {
-        Some(_) => match discount_rule::update_discount_rule(rule_id, &body, role, &client).await {
+        Some(_) => match discount_rule::update_discount_rule(rule_id, &body, &client).await {
             Ok(()) => HttpResponse::Ok().json(BaseResponse {
                 code: 200,
                 message: String::from("Discount rule updated successfully"),
@@ -420,4 +420,63 @@ pub async fn delete_discount_rule(
             message: String::from("Discount rule not found!"),
         }),
     }
+}
+
+#[get("/api/discount-fors")]
+pub async fn get_discount_fors(req: HttpRequest) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let role: &str = parsed_values[1];
+
+    if role == "user" {
+        return HttpResponse::Unauthorized().json(BaseResponse {
+            code: 401,
+            message: String::from("Unauthorized!"),
+        });
+    }
+
+    let discount_fors = vec!["all", "product", "brand", "category"];
+    HttpResponse::Ok().json(DataResponse {
+        code: 200,
+        message: String::from("Discount fors returned successfully"),
+        data: Some(discount_fors),
+    })
 }

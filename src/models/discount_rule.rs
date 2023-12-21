@@ -50,7 +50,7 @@ pub async fn get_discount_rules(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent, dr.discount_expiration, dr.discount_reason, dr.discounted_price, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at",
+            "dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at",
         base_query: &base_query,
         search_columns: vec!["dr.rule_id::text", "dr.discount_for", "dr.discount_reason", "dr.discount_type", "s.name"],
         search: search.as_deref(),
@@ -124,7 +124,6 @@ pub struct DiscountRuleRequest {
 pub async fn add_discount_rule(
     data: &DiscountRuleRequest,
     creator_id: i32,
-    role: &str,
     client: &Client,
 ) -> Result<(), Error> {
     let discount_expiration = if let Some(de) = &data.discount_expiration {
@@ -153,7 +152,7 @@ pub async fn add_discount_rule(
 pub async fn get_discount_rule_by_id(rule_id: i32, client: &Client) -> Option<DiscountRule> {
     let result = client
         .query_one(
-            "select dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent, dr.discount_expiration, dr.discount_reason, dr.discounted_price, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at from discount_rules dr join shops s on dr.shop_id = s.shop_id where dr.deleted_at is null and dr.rule_id = $1",
+            "select dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at from discount_rules dr join shops s on dr.shop_id = s.shop_id where dr.deleted_at is null and dr.rule_id = $1",
             &[&rule_id],
         )
         .await;
@@ -187,7 +186,6 @@ pub async fn get_discount_rule_by_id(rule_id: i32, client: &Client) -> Option<Di
 pub async fn update_discount_rule(
     rule_id: i32,
     data: &DiscountRuleRequest,
-    role: &str,
     client: &Client,
 ) -> Result<(), Error> {
     let discount_expiration = if let Some(de) = &data.discount_expiration {
@@ -223,3 +221,183 @@ pub async fn delete_discount_rule(rule_id: i32, client: &Client) -> Result<(), E
         .await?;
     Ok(())
 }
+
+// pub async fn get_discount_rules_for_calculation(
+//     client: &Client,
+// ) -> Result<Vec<DiscountRule>, Error> {
+//     let rows=  client.query("select rule_id, discount_for, discount_for_id, discount_percent::text, discount_expiration, discount_reason, discounted_price::text, discount_type, shop_id, created_at from discount_rules
+//     where (discount_expiration is null or discount_expiration >= CURRENT_DATE) and deleted_at is null
+//     ", &[]).await?;
+//     Ok(rows
+//         .iter()
+//         .map(|row| {
+//             let discount_percent: &str = row.get("discount_percent");
+//             let discount_percent: f64 = discount_percent.parse().unwrap();
+
+//             let discounted_price: &str = row.get("discounted_price");
+//             let discounted_price: f64 = discounted_price.parse().unwrap();
+
+//             DiscountRule {
+//                 rule_id: row.get("rule_id"),
+//                 discount_for: row.get("discount_for"),
+//                 discount_for_id: row.get("discount_for_id"),
+//                 discount_percent,
+//                 discount_expiration: row.get("discount_expiration"),
+//                 discount_reason: row.get("discount_reason"),
+//                 discounted_price,
+//                 discount_type: row.get("discount_type"),
+//                 shop_id: row.get("shop_id"),
+//                 shop_name: "".to_string(),
+//                 created_at: row.get("created_at"),
+//             }
+//         })
+//         .collect())
+// }
+
+pub struct DiscountCalculationResult {
+    pub discount_percent: f64,
+    pub discounted_price: f64,
+    pub discount_reason: String,
+    pub discount_type: String,
+}
+
+pub async fn calculate_discounted_price(
+    price: f64,
+    product_id: i32,
+    shop_id: i32,
+    category_id: i32,
+    brand_id: i32,
+    client: &Client,
+) -> DiscountCalculationResult {
+    let query = "
+    SELECT 
+    rule_id, 
+    discount_for, 
+    discount_for_id, 
+    discount_percent::text, 
+    discount_expiration, 
+    discount_reason, 
+    discounted_price::text, 
+    discount_type, 
+    shop_id, 
+    created_at 
+FROM discount_rules 
+WHERE 
+    deleted_at IS NULL 
+    AND (discount_expiration IS NULL OR discount_expiration >= CURRENT_DATE)
+    AND shop_id = $1 
+    AND (
+        (discount_for = 'product' AND discount_for_id = $2) 
+        OR (discount_for = 'brand' AND discount_for_id = $3) 
+        OR (discount_for = 'category' AND discount_for_id = $4) 
+        OR discount_for = 'all'
+    ) 
+ORDER BY 
+    CASE 
+        WHEN discount_for = 'product' THEN 1 
+        WHEN discount_for = 'brand' THEN 2 
+        WHEN discount_for = 'category' THEN 3 
+        WHEN discount_for = 'all' THEN 4 
+    END 
+LIMIT 1;
+    ";
+    match client
+        .query_one(query, &[&shop_id, &product_id, &brand_id, &category_id])
+        .await
+    {
+        Ok(row) => {
+            let discount_percent: &str = row.get("discount_percent");
+            let discount_percent: f64 = discount_percent.parse().unwrap();
+
+            let discounted_price: &str = row.get("discounted_price");
+            let discounted_price: f64 = discounted_price.parse().unwrap();
+
+            let rule = DiscountRule {
+                rule_id: row.get("rule_id"),
+                discount_for: row.get("discount_for"),
+                discount_for_id: row.get("discount_for_id"),
+                discount_percent,
+                discount_expiration: row.get("discount_expiration"),
+                discount_reason: row.get("discount_reason"),
+                discounted_price,
+                discount_type: row.get("discount_type"),
+                shop_id: row.get("shop_id"),
+                shop_name: "".to_string(),
+                created_at: row.get("created_at"),
+            };
+
+            return calculate_discount(price, &rule);
+        }
+        Err(err) => {
+            println!("Discount calculation error: {:?}", err);
+            return DiscountCalculationResult {
+                discount_percent: 0.0,
+                discounted_price: price,
+                discount_reason: String::new(),
+                discount_type: "No Discount".to_string(),
+            };
+        }
+    };
+}
+
+fn calculate_discount(price: f64, rule: &DiscountRule) -> DiscountCalculationResult {
+    match rule.discount_type.as_str() {
+        "Discount by Specific Percentage" => DiscountCalculationResult {
+            discount_percent: rule.discount_percent,
+            discounted_price: price * (1.0 - rule.discount_percent / 100.0),
+            discount_reason: rule.discount_reason.clone(),
+            discount_type: rule.discount_type.clone(),
+        },
+        "Discount by Specific Amount" => DiscountCalculationResult {
+            discount_percent: 0.0,
+            discounted_price: rule.discounted_price,
+            discount_reason: rule.discount_reason.clone(),
+            discount_type: rule.discount_type.clone(),
+        },
+        _ => DiscountCalculationResult {
+            discount_percent: 0.0,
+            discounted_price: price,
+            discount_reason: String::new(),
+            discount_type: rule.discount_type.clone(),
+        },
+    }
+}
+
+// pub fn calculate_discounted_price(
+//     price: f64,
+//     product_id: i32,
+//     shop_id: i32,
+//     category_id: i32,
+//     brand_id: i32,
+//     discount_rules: &[DiscountRule],
+// ) -> (f64, String) {
+//     let mut applicable_rules: Vec<&DiscountRule> = discount_rules
+//         .iter()
+//         .filter(|rule| rule.shop_id == shop_id)
+//         .collect();
+
+//     // Sort rules by priority
+//     applicable_rules.sort_by_key(|rule| match rule.discount_for.as_str() {
+//         "product" => 1,
+//         "brand" => 2,
+//         "category" => 3,
+//         "all" => 4,
+//         _ => 5,
+//     });
+
+//     for rule in applicable_rules {
+//         match rule.discount_for.as_str() {
+//             "product" if rule.discount_for_id == product_id => {
+//                 return calculate_discount(price, rule)
+//             }
+//             "brand" if rule.discount_for_id == brand_id => return calculate_discount(price, rule),
+//             "category" if rule.discount_for_id == category_id => {
+//                 return calculate_discount(price, rule)
+//             }
+//             "all" => return calculate_discount(price, rule),
+//             _ => (),
+//         }
+//     }
+
+//     (price, String::new()) // default case if no rule matches
+// }
