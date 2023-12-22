@@ -278,107 +278,105 @@ pub async fn update_user(
         &[&name, &hashed_password, &email, &phone, &profile_image, &role, &account_status, &can_modify_order_status, &can_view_address, &can_view_phone, &request_to_agent, &user_id],
     ).await?;
 
-    if role == "agent" || role == "user" {
-        if let Some(si) = seller_information {
-            // println!("si: {:?}", si);
-            let row = client
+    if let Some(si) = seller_information {
+        // println!("si: {:?}", si);
+        let row = client
                 .query_one(
                     "select count(*) as total from seller_informations where user_id = $1 and deleted_at is null",
                     &[&user_id],
                 )
                 .await?;
-            let total: i64 = row.get("total");
+        let total: i64 = row.get("total");
 
-            let facebook_profile_image = if let Some(fpi) = &si.facebook_profile_image {
-                fpi
-            } else {
-                ""
-            };
+        let facebook_profile_image = if let Some(fpi) = &si.facebook_profile_image {
+            fpi
+        } else {
+            ""
+        };
 
-            let shop_or_page_name = if let Some(spn) = &si.shop_or_page_name {
-                spn
-            } else {
-                ""
-            };
+        let shop_or_page_name = if let Some(spn) = &si.shop_or_page_name {
+            spn
+        } else {
+            ""
+        };
 
-            let facebook_page_image = if let Some(fpi) = &si.facebook_page_image {
-                fpi
-            } else {
-                ""
-            };
+        let facebook_page_image = if let Some(fpi) = &si.facebook_page_image {
+            fpi
+        } else {
+            ""
+        };
 
-            let bussiness_phone = if let Some(bp) = &si.bussiness_phone {
-                bp
-            } else {
-                ""
-            };
+        let bussiness_phone = if let Some(bp) = &si.bussiness_phone {
+            bp
+        } else {
+            ""
+        };
 
-            let address = if let Some(a) = &si.address { a } else { "" };
+        let address = if let Some(a) = &si.address { a } else { "" };
 
-            let nrc = if let Some(n) = &si.nrc { n } else { "" };
+        let nrc = if let Some(n) = &si.nrc { n } else { "" };
 
-            let nrc_front_image = if let Some(n) = &si.nrc_front_image {
-                n
-            } else {
-                ""
-            };
+        let nrc_front_image = if let Some(n) = &si.nrc_front_image {
+            n
+        } else {
+            ""
+        };
 
-            let nrc_back_image = if let Some(n) = &si.nrc_back_image {
-                n
-            } else {
-                ""
-            };
+        let nrc_back_image = if let Some(n) = &si.nrc_back_image {
+            n
+        } else {
+            ""
+        };
 
-            let passport_image = if let Some(pi) = &si.passport_image {
-                pi
-            } else {
-                ""
-            };
+        let passport_image = if let Some(pi) = &si.passport_image {
+            pi
+        } else {
+            ""
+        };
 
-            let driving_licence_image = if let Some(dli) = &si.driving_licence_image {
-                dli
-            } else {
-                ""
-            };
+        let driving_licence_image = if let Some(dli) = &si.driving_licence_image {
+            dli
+        } else {
+            ""
+        };
 
-            let signature_image = if let Some(si) = &si.signature_image {
-                si
-            } else {
-                ""
-            };
+        let signature_image = if let Some(si) = &si.signature_image {
+            si
+        } else {
+            ""
+        };
 
-            let bank_code = if let Some(b) = &si.bank_code { b } else { "" };
+        let bank_code = if let Some(b) = &si.bank_code { b } else { "" };
 
-            let bank_account = if let Some(b) = &si.bank_account {
-                b
-            } else {
-                ""
-            };
+        let bank_account = if let Some(b) = &si.bank_account {
+            b
+        } else {
+            ""
+        };
 
-            let bank_account_image = if let Some(b) = &si.bank_account_image {
-                b
-            } else {
-                ""
-            };
+        let bank_account_image = if let Some(b) = &si.bank_account_image {
+            b
+        } else {
+            ""
+        };
 
-            let wallet_type = if let Some(w) = &si.wallet_type { w } else { "" };
+        let wallet_type = if let Some(w) = &si.wallet_type { w } else { "" };
 
-            let wallet_account = if let Some(w) = &si.wallet_account {
-                w
-            } else {
-                ""
-            };
+        let wallet_account = if let Some(w) = &si.wallet_account {
+            w
+        } else {
+            ""
+        };
 
-            let fee_id = if let Some(f) = si.fee_id { f } else { 0 };
+        let fee_id = if let Some(f) = si.fee_id { f } else { 0 };
 
-            let monthly_transaction_screenshot =
-                if let Some(mts) = &si.monthly_transaction_screenshot {
-                    mts
-                } else {
-                    ""
-                };
-            if total > 0 {
-                client
+        let monthly_transaction_screenshot = if let Some(mts) = &si.monthly_transaction_screenshot {
+            mts
+        } else {
+            ""
+        };
+        if total > 0 {
+            client
                 .execute(
                     "update seller_informations set company_name = $1, professional_title = $2, location = $3, offline_trader = $4, facebook_profile_image = $5, shop_or_page_name = $6, facebook_page_image = $7,bussiness_phone = $8, address = $9, nrc = $10, nrc_front_image = $11, nrc_back_image = $12, bank_code = $13, bank_account = $14, bank_account_image = $15, wallet_type = $16, wallet_account = $17, fee_id = $18, monthly_transaction_screenshot = $19, passport_image = $20, driving_licence_image = $21, signature_image = $22 where user_id = $23 and deleted_at is null",
                     &[
@@ -408,11 +406,11 @@ pub async fn update_user(
                     ],
                 )
                 .await?;
-            } else {
-                client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader, facebook_profile_image, shop_or_page_name, facebook_page_image, bussiness_phone, address, nrc, nrc_front_image, nrc_back_image, bank_code, bank_account, bank_account_image, wallet_type, wallet_account, fee_id, monthly_transaction_screenshot, passport_image, driving_licence_image, signature_image) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader, &facebook_profile_image, &shop_or_page_name, &facebook_page_image, &bussiness_phone, &address, &nrc, &nrc_front_image, &nrc_back_image, &bank_code, &bank_account, &bank_account_image, &wallet_type, &wallet_account, &fee_id, &monthly_transaction_screenshot, &passport_image, &driving_licence_image, &signature_image]).await?;
-            }
+        } else {
+            client.execute("insert into seller_informations (user_id, company_name, professional_title, active_since_year, location, offline_trader, facebook_profile_image, shop_or_page_name, facebook_page_image, bussiness_phone, address, nrc, nrc_front_image, nrc_back_image, bank_code, bank_account, bank_account_image, wallet_type, wallet_account, fee_id, monthly_transaction_screenshot, passport_image, driving_licence_image, signature_image) values ($1, $2, $3, EXTRACT(YEAR FROM CURRENT_DATE), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)", &[&user_id, &si.company_name, &si.professional_title, &si.location, &si.offline_trader, &facebook_profile_image, &shop_or_page_name, &facebook_page_image, &bussiness_phone, &address, &nrc, &nrc_front_image, &nrc_back_image, &bank_code, &bank_account, &bank_account_image, &wallet_type, &wallet_account, &fee_id, &monthly_transaction_screenshot, &passport_image, &driving_licence_image, &signature_image]).await?;
         }
     }
+
     Ok(())
 }
 
