@@ -358,7 +358,7 @@ pub async fn get_user_by_id(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct UpdateUserRequest {
     pub name: String,
     pub password: String,
@@ -381,6 +381,7 @@ pub async fn update_user(
     body: web::Json<UpdateUserRequest>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
+    println!("update_user body: {:?}", body);
     let mut user_id = path.into_inner();
     // Extract the token from the Authorization header
     let token = match req.headers().get("Authorization") {
