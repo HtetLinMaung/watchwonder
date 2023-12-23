@@ -369,7 +369,7 @@ pub async fn update_user(
                 ""
             };
 
-            let fee_id = if let Some(f) = si.fee_id { f } else { 0 };
+            let fee_id = if let Some(f) = si.fee_id { f } else { 1 };
 
             let monthly_transaction_screenshot =
                 if let Some(mts) = &si.monthly_transaction_screenshot {
