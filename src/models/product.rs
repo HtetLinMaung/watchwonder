@@ -724,10 +724,14 @@ pub async fn update_product(
     //     old_product.discount_expiration.unwrap().date().to_string()
     // );
     // println!("new expiration: {}", discount_expiration.replace("'", ""));
+    let old_discount_expiration = if let Some(de) = old_product.discount_expiration {
+        de.date().to_string()
+    } else {
+        "null".to_string()
+    };
     let is_same_expiration = (old_product.discount_expiration.is_none()
         && data.discount_expiration.is_none())
-        || (old_product.discount_expiration.unwrap().date().to_string()
-            == discount_expiration.replace("'", ""));
+        || (old_discount_expiration == discount_expiration.replace("'", ""));
 
     let is_same_discounted_price = if old_product.discount_type == discount_type
         && discount_type == "Discount by Specific Amount"
