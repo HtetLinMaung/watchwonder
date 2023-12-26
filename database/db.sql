@@ -68,6 +68,7 @@ CREATE TABLE shops
     status VARCHAR(50) DEFAULT 'Active',
     creator_id INT REFERENCES users(user_id),
     is_demo BOOLEAN DEFAULT FALSE,
+    level INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -146,6 +147,7 @@ CREATE TABLE categories
     cover_image VARCHAR(255),
     creator_id INT REFERENCES users(user_id),
     is_demo BOOLEAN DEFAULT FALSE,
+    level INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -186,6 +188,7 @@ CREATE TABLE brands
     logo_url VARCHAR(255),
     creator_id INT REFERENCES users(user_id),
     is_demo BOOLEAN DEFAULT FALSE,
+    level INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -276,6 +279,7 @@ CREATE TABLE products
     discounted_price DECIMAL(18, 2) DEFAULT 0.0,
     discount_type VARCHAR(255) DEFAULT 'Discount by Specific Percentage',
     discount_updated_by VARCHAR(255) DEFAULT 'product',
+    level INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
