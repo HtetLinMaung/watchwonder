@@ -331,7 +331,7 @@ pub async fn add_product(
     //     user_id
     // };
 
-    match product::add_product(&body, currency_id, creator_id, &client).await {
+    match product::add_product(&body, currency_id, creator_id, role, &client).await {
         Ok(product_id) => {
             tokio::spawn(async move {
                 if let Some(product) = product::get_product_for_html(product_id, &client).await {
@@ -560,16 +560,7 @@ pub async fn update_product(
             // } else {
             //     old_creator_id
             // };
-            match product::update_product(
-                product_id,
-               
-                &body,
-                currency_id,
-                &p,
-                &client,
-            )
-            .await
-            {
+            match product::update_product(product_id, &body, currency_id, &p, role, &client).await {
                 Ok(()) => {
                     tokio::spawn(async move {
                         if let Some(product) =

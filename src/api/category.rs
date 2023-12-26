@@ -149,7 +149,7 @@ pub async fn add_category(
         });
     }
 
-    match category::add_category(&body, user_id, &client).await {
+    match category::add_category(&body, user_id, role, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
             message: String::from("Category added successfully"),
@@ -305,7 +305,16 @@ pub async fn update_category(
 
     match category::get_category_by_id(category_id, &client).await {
         Some(c) => {
-            match category::update_category(category_id, &c.cover_image, &body, &client).await {
+            match category::update_category(
+                category_id,
+                &c.cover_image,
+                &body,
+                c.level,
+                role,
+                &client,
+            )
+            .await
+            {
                 Ok(()) => HttpResponse::Ok().json(BaseResponse {
                     code: 200,
                     message: String::from("Category updated successfully"),
