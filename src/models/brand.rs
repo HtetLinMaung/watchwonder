@@ -16,6 +16,7 @@ pub struct Brand {
     pub name: String,
     pub description: String,
     pub logo_url: String,
+    pub level: i32,
     pub created_at: Option<NaiveDateTime>,
 }
 
@@ -35,7 +36,7 @@ pub async fn get_brands(
     //     "user" => "name asc, created_at desc",
     //     _ => "created_at desc",
     // };
-    let order_options = "name asc";
+    let order_options = "level desc, name asc";
 
     let demo_user_id = get_demo_user_id();
     let min_demo_version = get_min_demo_version();
@@ -59,7 +60,7 @@ pub async fn get_brands(
     // }
 
     let result = generate_pagination_query(PaginationOptions {
-        select_columns: "brand_id, name, description, logo_url, created_at",
+        select_columns: "brand_id, name, description, logo_url, level, created_at",
         base_query: &base_query,
         search_columns: vec!["name", "description"],
         search: search.as_deref(),
@@ -91,6 +92,7 @@ pub async fn get_brands(
             name: row.get("name"),
             description: row.get("description"),
             logo_url: row.get("logo_url"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         })
         .collect();
@@ -109,13 +111,14 @@ pub async fn add_brand(
     description: &str,
     logo_url: &str,
     creator_id: i32,
+    level: i32,
     client: &Client,
 ) -> Result<(), Error> {
     // Insert the new brands into the database
     client
         .execute(
-            "INSERT INTO brands (name, description, logo_url, creator_id) VALUES ($1, $2, $3, $4)",
-            &[&name, &description, &logo_url, &creator_id],
+            "INSERT INTO brands (name, description, logo_url, creator_id, level) VALUES ($1, $2, $3, $4, $5)",
+            &[&name, &description, &logo_url, &creator_id, &level],
         )
         .await?;
     Ok(())
@@ -127,11 +130,12 @@ pub async fn update_brand(
     description: &str,
     logo_url: &str,
     old_logo_url: &str,
+    level: i32,
     client: &Client,
 ) -> Result<(), Error> {
     client.execute(
-            "update brands set name = $1, description = $2, logo_url = $3 where brand_id = $4 and deleted_at is null",
-            &[&name, &description, &logo_url ,&brand_id],
+            "update brands set name = $1, description = $2, logo_url = $3, level = $4 where brand_id = $5 and deleted_at is null",
+            &[&name, &description, &logo_url, &level, &brand_id],
         ).await?;
     if logo_url != old_logo_url {
         match fs::remove_file(old_logo_url) {
@@ -158,7 +162,7 @@ pub async fn update_brand(
 pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
     let result = client
         .query_one(
-            "select brand_id, name, description, logo_url, created_at from brands where brand_id = $1 and deleted_at is null",
+            "select brand_id, name, description, logo_url, level, created_at from brands where brand_id = $1 and deleted_at is null",
             &[&brand_id],
         )
         .await;
@@ -169,6 +173,7 @@ pub async fn get_brand_by_id(brand_id: i32, client: &Client) -> Option<Brand> {
             name: row.get("name"),
             description: row.get("description"),
             logo_url: row.get("logo_url"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,

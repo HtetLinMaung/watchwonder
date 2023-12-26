@@ -27,6 +27,7 @@ pub struct Shop {
     pub operating_hours: String,
     pub status: String,
     pub creator_id: i32,
+    pub level: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -51,7 +52,7 @@ pub async fn get_shops(
     }
 
     let order_options = if role == "user" || (role == "agent" && screen_view == "user") {
-        "name asc, created_at desc"
+        "level desc, name asc, created_at desc"
     } else {
         "created_at desc"
     };
@@ -87,7 +88,7 @@ pub async fn get_shops(
     }
 
     let result=  generate_pagination_query(PaginationOptions {
-        select_columns: "shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, created_at",
+        select_columns: "shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, level, created_at",
         base_query: &base_query,
         search_columns: vec![ "name", "description", "address", "city", "state", "postal_code", "country", "phone", "email", "operating_hours", "status"],
         search: search.as_deref(),
@@ -135,6 +136,7 @@ pub async fn get_shops(
             operating_hours: row.get("operating_hours"),
             status: row.get("status"),
             creator_id: row.get("creator_id"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         });
     }
@@ -163,6 +165,7 @@ pub struct ShopRequest {
     pub website_url: String,
     pub operating_hours: String,
     pub status: String,
+    pub level: Option<i32>,
 }
 
 pub async fn add_shop(
@@ -175,9 +178,19 @@ pub async fn add_shop(
     if role == "agent" {
         status = "Pending Approval";
     }
+
+    let level = if let Some(l) = data.level {
+        if role == "admin" {
+            l
+        } else {
+            0
+        }
+    } else {
+        0
+    };
     let row= client
         .query_one(
-            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning shop_id",
+            "insert into shops (name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, level) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) returning shop_id",
             &[
                 &data.name,
                 &data.description,
@@ -192,7 +205,8 @@ pub async fn add_shop(
                 &data.website_url,
                 &data.operating_hours,
                 &status,
-                &creator_id
+                &creator_id,
+                &level
             ],
         )
         .await?;
@@ -202,7 +216,7 @@ pub async fn add_shop(
 pub async fn get_shop_by_id(shop_id: i32, client: &Client) -> Option<Shop> {
     let result = client
         .query_one(
-            "select shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, created_at from shops where deleted_at is null and shop_id = $1",
+            "select shop_id, name, description, cover_image, address, city, state, postal_code, country, phone, email, website_url, operating_hours, status, creator_id, level, created_at from shops where deleted_at is null and shop_id = $1",
             &[&shop_id],
         )
         .await;
@@ -224,6 +238,7 @@ pub async fn get_shop_by_id(shop_id: i32, client: &Client) -> Option<Shop> {
             operating_hours: row.get("operating_hours"),
             status: row.get("status"),
             creator_id: row.get("creator_id"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
@@ -235,15 +250,25 @@ pub async fn update_shop(
     old_cover_image: &str,
     data: &ShopRequest,
     role: &str,
+    old_level: i32,
     client: &Client,
 ) -> Result<(), Error> {
     let mut status = data.status.as_str();
     if role == "agent" {
         status = "Pending Approval";
     }
+    let level = if let Some(l) = data.level {
+        if role == "admin" {
+            l
+        } else {
+            old_level
+        }
+    } else {
+        old_level
+    };
     client
         .execute(
-            "update shops set name = $1, description = $2, cover_image = $3, address = $4, city = $5, state = $6, postal_code = $7, country = $8, phone = $9, email = $10, website_url = $11, operating_hours = $12, status = $13 where shop_id = $14",
+            "update shops set name = $1, description = $2, cover_image = $3, address = $4, city = $5, state = $6, postal_code = $7, country = $8, phone = $9, email = $10, website_url = $11, operating_hours = $12, status = $13, level = $14 where shop_id = $15",
             &[
                 &data.name,
                 &data.description,
@@ -258,6 +283,7 @@ pub async fn update_shop(
                 &data.website_url,
                 &data.operating_hours,
                 &status,
+                &level,
                 &shop_id,
             ],
         )

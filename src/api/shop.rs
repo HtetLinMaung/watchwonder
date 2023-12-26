@@ -381,7 +381,7 @@ pub async fn update_shop(
                     message: String::from("Your shop has been approved by the admin and can no longer be updated. If you need to make changes, please contact customer support!"),
                 });
             }
-            match shop::update_shop(shop_id, &s.cover_image, &body, role, &client).await {
+            match shop::update_shop(shop_id, &s.cover_image, &body, role, s.level, &client).await {
                 Ok(()) => {
                     tokio::spawn(async move {
                         let title = format!("Shop Approved");

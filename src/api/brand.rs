@@ -20,6 +20,7 @@ pub struct BrandRequest {
     pub name: String,
     pub description: String,
     pub logo_url: String,
+    pub level: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -175,11 +176,21 @@ pub async fn add_brand(
             message: String::from("Brand name cannot be empty!"),
         });
     }
+    let level = if let Some(l) = body.level {
+        if role == "admin" {
+            l
+        } else {
+            0
+        }
+    } else {
+        0
+    };
     match brand::add_brand(
         &body.name,
         &body.description,
         &body.logo_url,
         user_id,
+        level,
         &client,
     )
     .await
@@ -331,12 +342,22 @@ pub async fn update_brand(
     }
     match brand::get_brand_by_id(brand_id, &client).await {
         Some(b) => {
+            let level = if let Some(l) = body.level {
+                if role == "admin" {
+                    l
+                } else {
+                    b.level
+                }
+            } else {
+                b.level
+            };
             match brand::update_brand(
                 brand_id,
                 &body.name,
                 &body.description,
                 &body.logo_url,
                 &b.logo_url,
+                level,
                 &client,
             )
             .await

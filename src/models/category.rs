@@ -15,6 +15,7 @@ pub struct Category {
     pub name: String,
     pub description: String,
     pub cover_image: String,
+    pub level: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -30,7 +31,7 @@ pub async fn get_categories(
     //     "user" => "name asc, created_at desc",
     //     _ => "created_at desc",
     // };
-    let order_options = "name";
+    let order_options = "level desc, name";
 
     // if role == "agent" {
     //     params.push(Box::new(user_id));
@@ -45,7 +46,7 @@ pub async fn get_categories(
     // }
 
     let result = generate_pagination_query(PaginationOptions {
-        select_columns: "category_id, name, description, cover_image, created_at",
+        select_columns: "category_id, name, description, cover_image, level, created_at",
         base_query: &base_query,
         search_columns: vec!["name", "description"],
         search: search.as_deref(),
@@ -77,6 +78,7 @@ pub async fn get_categories(
             name: row.get("name"),
             description: row.get("description"),
             cover_image: row.get("cover_image"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         })
         .collect();
@@ -95,17 +97,28 @@ pub struct CategoryRequest {
     pub name: String,
     pub description: String,
     pub cover_image: String,
+    pub level: Option<i32>,
 }
 
 pub async fn add_category(
     data: &CategoryRequest,
     creator_id: i32,
+    role: &str,
     client: &Client,
 ) -> Result<(), Error> {
+    let level = if let Some(l) = data.level {
+        if role == "admin" {
+            l
+        } else {
+            0
+        }
+    } else {
+        0
+    };
     client
         .execute(
-            "insert into categories (name, description, cover_image, creator_id) values ($1, $2, $3, $4)",
-            &[&data.name, &data.description, &data.cover_image, &creator_id],
+            "insert into categories (name, description, cover_image, creator_id, level) values ($1, $2, $3, $4, $5)",
+            &[&data.name, &data.description, &data.cover_image, &creator_id, &level],
         )
         .await?;
     Ok(())
@@ -114,7 +127,7 @@ pub async fn add_category(
 pub async fn get_category_by_id(category_id: i32, client: &Client) -> Option<Category> {
     let result = client
         .query_one(
-            "select category_id, name, description, cover_image, created_at from categories where deleted_at is null and category_id = $1",
+            "select category_id, name, description, cover_image, level, created_at from categories where deleted_at is null and category_id = $1",
             &[&category_id],
         )
         .await;
@@ -125,6 +138,7 @@ pub async fn get_category_by_id(category_id: i32, client: &Client) -> Option<Cat
             name: row.get("name"),
             description: row.get("description"),
             cover_image: row.get("cover_image"),
+            level: row.get("level"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
@@ -135,15 +149,27 @@ pub async fn update_category(
     category_id: i32,
     old_cover_image: &str,
     data: &CategoryRequest,
+    old_level: i32,
+    role: &str,
     client: &Client,
 ) -> Result<(), Error> {
+    let level = if let Some(l) = data.level {
+        if role == "admin" {
+            l
+        } else {
+            old_level
+        }
+    } else {
+        old_level
+    };
     client
         .execute(
-            "update categories set name = $1, description = $2, cover_image = $3 where category_id = $4",
+            "update categories set name = $1, description = $2, cover_image = $3, level = $4 where category_id = $5",
             &[
                 &data.name,
                 &data.description,
                 &data.cover_image,
+                &level,
                 &category_id,
             ],
         )
