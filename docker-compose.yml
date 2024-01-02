@@ -19,10 +19,10 @@ services:
       - INSTANT_IO_URL=http://instantio:3000/instantio/emit
       - DEMO_PLATFORM=none
       - "VERSION_UPDATE_MESSAGE=New features and improvements await in the latest version of Watch Vault by Diggie! Update now for a better experience."
-      - IOS_VERSION=1.0.43
+      - IOS_VERSION=1.0.44
       - ANDROID_VERSION=1.0.44
       - REPORT_FORGE_URL=http://webwand:3000/webwand/site-to-pdf
-      - MIN_DEMO_VERSION=1.0.44
+      - MIN_DEMO_VERSION=1.0.45
     volumes:
       - ./images:/images
       - ./products:/products
