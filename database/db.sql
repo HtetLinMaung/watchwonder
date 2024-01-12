@@ -1336,3 +1336,14 @@ CREATE TABLE discount_rules
 );
 
 -- discount_for: all, product, brand, category
+
+CREATE TABLE advertisements
+(
+    advertisement_id SERIAL PRIMARY KEY,
+    media_type VARCHAR(50) CHECK (media_type IN ('image', 'video')),
+    media_url VARCHAR(255) NOT NULL,
+    level INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);

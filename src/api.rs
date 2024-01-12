@@ -1,4 +1,5 @@
 mod address;
+mod advertisement;
 mod auth;
 mod bank_account;
 mod brand;
@@ -173,4 +174,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(discount_rule::update_discount_rule);
     cfg.service(discount_rule::delete_discount_rule);
     cfg.service(discount_rule::get_discount_fors);
+    cfg.service(advertisement::add_advertisement);
+    cfg.service(advertisement::get_advertisements);
+    cfg.service(advertisement::get_advertisement_by_id);
+    cfg.service(advertisement::update_advertisement);
+    cfg.service(advertisement::delete_advertisement);
 }
