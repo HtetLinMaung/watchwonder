@@ -177,3 +177,5 @@ pub async fn delete_advertisement(
     };
     Ok(())
 }
+
+

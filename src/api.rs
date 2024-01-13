@@ -179,4 +179,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(advertisement::get_advertisement_by_id);
     cfg.service(advertisement::update_advertisement);
     cfg.service(advertisement::delete_advertisement);
+    cfg.service(advertisement::stream_video);
 }

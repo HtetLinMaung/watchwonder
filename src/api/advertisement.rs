@@ -1,7 +1,11 @@
-use std::sync::Arc;
-
+use actix_web::Error;
 use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::path::PathBuf;
+use std::{fs::File, sync::Arc};
 use tokio_postgres::Client;
 
 use crate::{
@@ -404,4 +408,66 @@ pub async fn delete_advertisement(
             message: String::from("Advertisement not found!"),
         }),
     }
+}
+
+#[get("/api/advertisements/{advertisement_id}/video")]
+async fn stream_video(
+    advertisement_id: web::Path<i32>,
+    req: HttpRequest,
+    client: web::Data<Arc<Client>>,
+) -> Result<HttpResponse, Error> {
+    let file_path = match advertisement::get_advertisement_by_id(*advertisement_id, &client).await {
+        Some(a) => a.media_url,
+        None => {
+            return Err(actix_web::error::ErrorNotFound(
+                "Advertisement not found in database!",
+            ))
+        }
+    };
+
+    let path: PathBuf = file_path.replace("/images", "./images").into();
+    if !path.exists() {
+        return Err(actix_web::error::ErrorNotFound("File not found"));
+    }
+
+    let mut file = File::open(&path).unwrap();
+
+    let file_size = file.metadata().unwrap().len();
+
+    if let Some(range) = req.headers().get("Range") {
+        let (start, end) = parse_range(&range.to_str().unwrap(), file_size).unwrap();
+        let mut file_chunk = vec![0; (end - start + 1) as usize];
+        file.seek(SeekFrom::Start(start)).unwrap();
+        file.read_exact(&mut file_chunk).unwrap();
+
+        Ok(HttpResponse::PartialContent()
+            .append_header((
+                "Content-Range",
+                format!("bytes {}-{}/{}", start, end, file_size),
+            ))
+            .append_header(("Content-Type", "video/mp4"))
+            .append_header(("Accept-Ranges", "bytes"))
+            .body(file_chunk))
+    } else {
+        let mut entire_file = Vec::with_capacity(file_size as usize);
+        file.read_to_end(&mut entire_file).unwrap();
+        Ok(HttpResponse::Ok()
+            .append_header(("Accept-Ranges", "bytes"))
+            .body(entire_file))
+    }
+}
+
+fn parse_range(range: &str, file_size: u64) -> Option<(u64, u64)> {
+    if !range.starts_with("bytes=") {
+        return None;
+    }
+
+    let ranges: Vec<&str> = range.trim_start_matches("bytes=").split('-').collect();
+    let start: u64 = ranges[0].parse().ok()?;
+    let end: u64 = ranges
+        .get(1)
+        .and_then(|&s| s.parse().ok())
+        .unwrap_or(file_size - 1);
+
+    Some((start, end))
 }
