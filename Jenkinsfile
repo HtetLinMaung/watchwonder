@@ -26,7 +26,7 @@ pipeline {
         stage('Deploy to VM') {
             steps {
                 sshagent(credentials: ['zcomvm-ssh-credential-id']) {
-                    sh 'ssh hlm@150.95.82.125 "cd watchwonder && docker-compose up -d"'
+                    sh 'ssh hlm@150.95.82.125 "cd watchwonder && docker pull htetlinmaung/watchwonder && docker-compose up -d"'
                 }
             }
         }
