@@ -1,5 +1,6 @@
 pub mod address;
 pub mod advertisement;
+pub mod auction;
 pub mod bank_account;
 pub mod brand;
 pub mod buyer_protection;

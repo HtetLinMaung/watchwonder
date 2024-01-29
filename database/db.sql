@@ -280,6 +280,7 @@ CREATE TABLE products
     discount_type VARCHAR(255) DEFAULT 'Discount by Specific Percentage',
     discount_updated_by VARCHAR(255) DEFAULT 'product',
     level INT DEFAULT 0,
+    is_auction_product BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT null
 );
@@ -1343,6 +1344,38 @@ CREATE TABLE advertisements
     media_type VARCHAR(50) CHECK (media_type IN ('image', 'video')),
     media_url VARCHAR(255) NOT NULL,
     level INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE auctions
+(
+    auction_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    start_bid DECIMAL(10, 2) DEFAULT 0.0,
+    current_bid DECIMAL(10, 2) DEFAULT 0.0,
+    reserve_price DECIMAL(10, 2) DEFAULT 0.0,
+    buy_it_now_available BOOLEAN DEFAULT FALSE,
+    status VARCHAR(50) DEFAULT 'active',
+    -- e.g., active, completed, canceled
+    winner_id INTEGER REFERENCES users(user_id),
+    sold_out_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE bids
+(
+    bid_id SERIAL PRIMARY KEY,
+    auction_id INTEGER REFERENCES auctions(auction_id),
+    bidder_id INTEGER REFERENCES users(user_id),
+    bid_amount DECIMAL(10, 2) NOT NULL,
+    bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_status VARCHAR(50) DEFAULT 'save',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL

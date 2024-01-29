@@ -1,5 +1,6 @@
 mod address;
 mod advertisement;
+mod auction;
 mod auth;
 mod bank_account;
 mod brand;
@@ -180,4 +181,9 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(advertisement::update_advertisement);
     cfg.service(advertisement::delete_advertisement);
     cfg.service(advertisement::stream_video);
+    cfg.service(auction::add_auction);
+    cfg.service(auction::get_auctions);
+    cfg.service(auction::get_auction_by_id);
+    cfg.service(auction::update_auction);
+    cfg.service(auction::delete_auction);
 }
