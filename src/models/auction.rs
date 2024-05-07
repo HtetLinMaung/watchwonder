@@ -23,6 +23,12 @@ pub async fn add_auction(data: &AuctionRequest, client: &Client) -> Result<i32, 
         .query_one(&query, &[&data.product_id, &data.buy_it_now_available])
         .await?;
     let auction_id = row.get("auction_id");
+    client
+        .execute(
+            "update products set is_auction_product = TRUE where product_id = $1",
+            &[&data.product_id],
+        )
+        .await?;
     Ok(auction_id)
 }
 
