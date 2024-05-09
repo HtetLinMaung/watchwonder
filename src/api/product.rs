@@ -37,6 +37,7 @@ pub struct GetProductsRequestBody {
 #[post("/api/get-products")]
 pub async fn get_products(
     req: HttpRequest,
+    query: web::Query<CouponQuery>,
     client: web::Data<Arc<Client>>,
     body: web::Json<GetProductsRequestBody>,
 ) -> impl Responder {
@@ -98,6 +99,7 @@ pub async fn get_products(
         body.to_price,
         body.is_top_model,
         &body.products,
+        &query.coupon_code,
         &body.view,
         &role,
         user_id,
@@ -159,9 +161,15 @@ pub async fn get_models(
     }
 }
 
+#[derive(Deserialize)]
+pub struct CouponQuery {
+    pub coupon_code: Option<String>,
+}
+
 #[post("/api/products")]
 pub async fn add_product(
     req: HttpRequest,
+    query: web::Query<CouponQuery>,
     body: web::Json<ProductRequest>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
@@ -334,7 +342,9 @@ pub async fn add_product(
     match product::add_product(&body, currency_id, creator_id, role, &client).await {
         Ok(product_id) => {
             tokio::spawn(async move {
-                if let Some(product) = product::get_product_for_html(product_id, &client).await {
+                if let Some(product) =
+                    product::get_product_for_html(product_id, &query.coupon_code, &client).await
+                {
                     match product::generate_product_html(&product) {
                         Ok(unique_id) => {
                             println!("{unique_id}.html generated successfully.");
@@ -363,6 +373,7 @@ pub async fn add_product(
 #[get("/api/products/{product_id}")]
 pub async fn get_product_by_id(
     req: HttpRequest,
+    query: web::Query<CouponQuery>,
     path: web::Path<i32>,
     client: web::Data<Arc<Client>>,
 ) -> HttpResponse {
@@ -395,7 +406,7 @@ pub async fn get_product_by_id(
         });
     }
 
-    match product::get_product_by_id(product_id, &client).await {
+    match product::get_product_by_id(product_id, &query.coupon_code, &client).await {
         Some(p) => HttpResponse::Ok().json(DataResponse {
             code: 200,
             message: String::from("Product fetched successfully."),
@@ -411,6 +422,7 @@ pub async fn get_product_by_id(
 #[put("/api/products/{product_id}")]
 pub async fn update_product(
     req: HttpRequest,
+    query: web::Query<CouponQuery>,
     path: web::Path<i32>,
     body: web::Json<ProductRequest>,
     client: web::Data<Arc<Client>>,
@@ -550,7 +562,7 @@ pub async fn update_product(
         });
     }
 
-    match product::get_product_by_id(product_id, &client).await {
+    match product::get_product_by_id(product_id, &query.coupon_code, &client).await {
         Some(p) => {
             // let old_creator_id = p.creator_id;
             // let creator_id = if role != "admin" {
@@ -564,7 +576,8 @@ pub async fn update_product(
                 Ok(()) => {
                     tokio::spawn(async move {
                         if let Some(product) =
-                            product::get_product_for_html(product_id, &client).await
+                            product::get_product_for_html(product_id, &query.coupon_code, &client)
+                                .await
                         {
                             match product::generate_product_html(&product) {
                                 Ok(unique_id) => {
@@ -653,7 +666,7 @@ pub async fn delete_product(
         });
     }
 
-    match product::get_product_by_id(product_id, &client).await {
+    match product::get_product_by_id(product_id, &None, &client).await {
         Some(p) => match product::delete_product(product_id, &p.product_images, &client).await {
             Ok(()) => {
                 tokio::spawn(async move {
@@ -773,8 +786,11 @@ pub async fn get_recommended_products_for_user(
 }
 
 #[get("/api/generate-product-htmls")]
-pub async fn generate_product_htmls(client: web::Data<Arc<Client>>) -> impl Responder {
-    match product::get_products_for_html(&client).await {
+pub async fn generate_product_htmls(
+    query: web::Query<CouponQuery>,
+    client: web::Data<Arc<Client>>,
+) -> impl Responder {
+    match product::get_products_for_html(&query.coupon_code, &client).await {
         Ok(products) => {
             for product in &products {
                 match product::generate_product_html(product) {

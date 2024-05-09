@@ -17,6 +17,7 @@ pub struct DiscountRule {
     pub discount_reason: String,
     pub discounted_price: f64,
     pub discount_type: String,
+    pub coupon_code: Option<String>,
     pub shop_id: i32,
     pub shop_name: String,
     pub created_at: NaiveDateTime,
@@ -50,7 +51,7 @@ pub async fn get_discount_rules(
 
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at",
+            "dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.coupon_code, dr.shop_id, s.name shop_name, dr.created_at",
         base_query: &base_query,
         search_columns: vec!["dr.rule_id::text", "dr.discount_for", "dr.discount_reason", "dr.discount_type", "s.name"],
         search: search.as_deref(),
@@ -93,6 +94,7 @@ pub async fn get_discount_rules(
                 discount_reason: row.get("discount_reason"),
                 discounted_price,
                 discount_type: row.get("discount_type"),
+                coupon_code: row.get("coupon_code"),
                 shop_id: row.get("shop_id"),
                 shop_name: row.get("shop_name"),
                 created_at: row.get("created_at"),
@@ -118,6 +120,7 @@ pub struct DiscountRuleRequest {
     pub discount_reason: String,
     pub discounted_price: f64,
     pub discount_type: String,
+    pub coupon_code: Option<String>,
     pub shop_id: i32,
 }
 
@@ -132,7 +135,7 @@ pub async fn add_discount_rule(
         "null".to_string()
     };
 
-    let query = format!("insert into discount_rules (discount_for, discount_for_id, discount_percent, discount_expiration, discount_reason, discounted_price, discount_type, creator_id, shop_id) values ($1, $2, {}, {}, $3, {}, $4, $5, $6)", data.discount_percent, discount_expiration, data.discounted_price);
+    let query = format!("insert into discount_rules (discount_for, discount_for_id, discount_percent, discount_expiration, discount_reason, discounted_price, discount_type, coupon_code, creator_id, shop_id) values ($1, $2, {}, {}, $3, {}, $4, $5, $6, $7)", data.discount_percent, discount_expiration, data.discounted_price);
     client
         .execute(
             &query,
@@ -141,6 +144,7 @@ pub async fn add_discount_rule(
                 &data.discount_for_id,
                 &data.discount_reason,
                 &data.discount_type,
+                &data.coupon_code,
                 &creator_id,
                 &data.shop_id,
             ],
@@ -154,7 +158,7 @@ pub async fn add_discount_rule(
 pub async fn get_discount_rule_by_id(rule_id: i32, client: &Client) -> Option<DiscountRule> {
     let result = client
         .query_one(
-            "select dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.shop_id, s.name shop_name, dr.created_at from discount_rules dr join shops s on dr.shop_id = s.shop_id where dr.deleted_at is null and dr.rule_id = $1",
+            "select dr.rule_id, dr.discount_for, dr.discount_for_id, dr.discount_percent::text, dr.discount_expiration, dr.discount_reason, dr.discounted_price::text, dr.discount_type, dr.coupon_code, dr.shop_id, s.name shop_name, dr.created_at from discount_rules dr join shops s on dr.shop_id = s.shop_id where dr.deleted_at is null and dr.rule_id = $1",
             &[&rule_id],
         )
         .await;
@@ -176,6 +180,7 @@ pub async fn get_discount_rule_by_id(rule_id: i32, client: &Client) -> Option<Di
                 discount_reason: row.get("discount_reason"),
                 discounted_price,
                 discount_type: row.get("discount_type"),
+                coupon_code: row.get("coupon_code"),
                 shop_id: row.get("shop_id"),
                 shop_name: row.get("shop_name"),
                 created_at: row.get("created_at"),
@@ -196,7 +201,7 @@ pub async fn update_discount_rule(
         "null".to_string()
     };
 
-    let query = format!("update discount_rules set discount_for = $1, discount_for_id = $2, discount_percent = {}, discount_expiration = {}, discount_reason = $3, discounted_price = {}, discount_type = $4, shop_id = $5 where rule_id = $6", data.discount_percent, discount_expiration, data.discounted_price);
+    let query = format!("update discount_rules set discount_for = $1, discount_for_id = $2, discount_percent = {}, discount_expiration = {}, discount_reason = $3, discounted_price = {}, discount_type = $4, coupon_code = $5, shop_id = $6 where rule_id = $7", data.discount_percent, discount_expiration, data.discounted_price);
     client
         .execute(
             &query,
@@ -205,6 +210,7 @@ pub async fn update_discount_rule(
                 &data.discount_for_id,
                 &data.discount_reason,
                 &data.discount_type,
+                &data.coupon_code,
                 &data.shop_id,
                 &rule_id,
             ],
@@ -223,6 +229,7 @@ async fn update_products_discount(
         Box::new(&data.discount_for),
         Box::new(&data.discount_reason),
         Box::new(&data.discount_type),
+        Box::new(&data.coupon_code),
         Box::new(data.shop_id),
     ];
     let discount_expiration = if let Some(de) = &data.discount_expiration {
@@ -230,7 +237,13 @@ async fn update_products_discount(
     } else {
         "null"
     };
-    let base_update_query = &format!("update products set discount_updated_by = $1, discount_percent = {}, discount_expiration = '{discount_expiration}', discount_reason = $2, discounted_price = {}, discount_type = $3 where deleted_at is null and shop_id = $4", data.discount_percent, data.discounted_price);
+    let dp = if &data.discount_type == "Discount by Specific Amount" {
+        format!("price - {}", data.discounted_price)
+    } else {
+        format!("{}", data.discounted_price)
+    };
+
+    let base_update_query = &format!("update products set discount_updated_by = $1, discount_percent = {}, discount_expiration = '{discount_expiration}', discount_reason = $2, discounted_price = {}, discount_type = $3, coupon_code = $4 where deleted_at is null and shop_id = $5", data.discount_percent, dp);
     let update_query = if data.discount_for == "brand" {
         params.push(Box::new(data.discount_for_id));
         format!(
@@ -264,7 +277,7 @@ pub async fn delete_discount_rule(
             &[&rule_id],
         )
         .await?;
-    let update_query = format!("update products set discount_percent = 0.0, discount_expiration = null, discount_reason = '', discounted_price = 0.0, discount_type = 'No Discount' where deleted_at is null and shop_id = {} and discount_updated_by = '{}'", old_discount_rule.shop_id, old_discount_rule.discount_for);
+    let update_query = format!("update products set discount_percent = 0.0, discount_expiration = null, discount_reason = '', discounted_price = 0.0, discount_type = 'No Discount', coupon_code = null where deleted_at is null and shop_id = {} and discount_updated_by = '{}'", old_discount_rule.shop_id, old_discount_rule.discount_for);
     client.execute(&update_query, &[]).await?;
     Ok(())
 }
