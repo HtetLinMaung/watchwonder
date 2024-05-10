@@ -3,7 +3,7 @@ version: "3.8"
 services:
   web:
     restart: always
-    image: htetlinmaung/watchwonder
+    image: htetlinmaung/watchwonder:0.0.1
     # build: .
     ports:
       - "8001:8080"
