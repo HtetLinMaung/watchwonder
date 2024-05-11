@@ -78,7 +78,6 @@ pub async fn get_products(
     to_price: Option<f64>,
     is_top_model: Option<bool>,
     products: &Option<Vec<i32>>,
-    coupon_code: &Option<String>,
     view: &Option<String>,
     role: &str,
     user_id: i32,
@@ -199,16 +198,10 @@ pub async fn get_products(
         "p.created_at desc".to_string()
     };
 
-    let cc: String = if let Some(cc) = coupon_code {
-        format!("'{}'", cc)
-    } else {
-        "null".to_string()
-    };
-
     let select_columns = format!("p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.discount_percent::text, CASE 
     WHEN p.discount_type = 'No Discount' THEN 
         p.price::text 
-    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code = {cc})) AND p.discount_type != 'No Discount' THEN
+    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code in (select coupon_code from used_coupons where user_id = {user_id} and deleted_at is null))) AND p.discount_type != 'No Discount' THEN
         CASE 
             WHEN p.discount_type = 'Discount by Specific Amount' AND (p.discount_expiration IS NULL OR now()::timestamp < p.discount_expiration) THEN 
                 p.discounted_price::text 
@@ -620,20 +613,11 @@ pub async fn add_product(
     Ok(product_id)
 }
 
-pub async fn get_product_by_id(
-    product_id: i32,
-    coupon_code: &Option<String>,
-    client: &Client,
-) -> Option<Product> {
-    let cc: String = if let Some(cc) = coupon_code {
-        format!("'{}'", cc)
-    } else {
-        "null".to_string()
-    };
+pub async fn get_product_by_id(product_id: i32, user_id: i32, client: &Client) -> Option<Product> {
     let statement = format!("select p.product_id, b.brand_id, b.name brand_name, p.model, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, p.price::text, p.discount_percent::text, CASE 
     WHEN p.discount_type = 'No Discount' THEN 
         p.price::text 
-    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code = {cc})) AND p.discount_type != 'No Discount' THEN
+    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code in (select coupon_code from used_coupons where user_id = {user_id} and deleted_at is null))) AND p.discount_type != 'No Discount' THEN
         CASE 
             WHEN p.discount_type = 'Discount by Specific Amount' AND (p.discount_expiration IS NULL OR now()::timestamp < p.discount_expiration) THEN 
                 p.discounted_price::text 
@@ -1209,18 +1193,13 @@ pub struct ProductForHtml {
 
 pub async fn get_product_for_html(
     product_id: i32,
-    coupon_code: &Option<String>,
+    user_id: i32,
     client: &Client,
 ) -> Option<ProductForHtml> {
-    let cc: String = if let Some(cc) = coupon_code {
-        format!("'{}'", cc)
-    } else {
-        "null".to_string()
-    };
     let statement = format!("select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, CASE 
     WHEN p.discount_type = 'No Discount' THEN 
         to_char(p.price, 'FM999,999,999.00') 
-    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code = {cc})) AND p.discount_type != 'No Discount' THEN
+    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code in (select coupon_code from used_coupons where user_id = {user_id} and deleted_at is null))) AND p.discount_type != 'No Discount' THEN
         CASE 
             WHEN p.discount_type = 'Discount by Specific Amount' AND (p.discount_expiration IS NULL OR now()::timestamp < p.discount_expiration) THEN 
                 to_char(p.discounted_price, 'FM999,999,999.00')
@@ -1309,18 +1288,13 @@ END AS discounted_price, cur.symbol, p.stock_quantity, p.condition, wt.descripti
 }
 
 pub async fn get_products_for_html(
-    coupon_code: &Option<String>,
+    user_id: i32,
     client: &Client,
 ) -> Result<Vec<ProductForHtml>, Error> {
-    let cc: String = if let Some(cc) = coupon_code {
-        format!("'{}'", cc)
-    } else {
-        "null".to_string()
-    };
     let statement = format!("select p.product_id, (b.name || ' ' || p.model) as product_name, p.description, p.color, p.strap_material, p.strap_color, p.case_material, p.dial_color, p.movement_type, p.water_resistance, p.warranty_period, p.dimensions, to_char(p.price, 'FM999,999,999.00') as price, p.discount_percent::text, CASE 
     WHEN p.discount_type = 'No Discount' THEN 
         to_char(p.price, 'FM999,999,999.00') 
-    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code = {cc})) AND p.discount_type != 'No Discount' THEN
+    WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code in (select coupon_code from used_coupons where user_id = {user_id} and deleted_at is null))) AND p.discount_type != 'No Discount' THEN
         CASE 
             WHEN p.discount_type = 'Discount by Specific Amount' AND (p.discount_expiration IS NULL OR now()::timestamp < p.discount_expiration) THEN 
                 to_char(p.discounted_price, 'FM999,999,999.00')
@@ -1484,7 +1458,7 @@ pub fn generate_product_html(
 }
 
 pub async fn delete_product_html(product_id: i32, client: &Client) -> Result<(), Error> {
-    if let Some(product) = get_product_for_html(product_id, &None, client).await {
+    if let Some(product) = get_product_for_html(product_id, 0, client).await {
         match fs::remove_file(&format!("./products/{}.html", product.unique_id)) {
             Ok(_) => println!("Product html deleted successfully!"),
             Err(e) => println!("Error deleting product html: {}", e),
