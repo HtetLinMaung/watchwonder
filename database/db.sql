@@ -1382,3 +1382,13 @@ CREATE TABLE bids
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL
 );
+
+CREATE TABLE used_coupons
+(
+    used_coupon_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    coupon_code VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL
+);

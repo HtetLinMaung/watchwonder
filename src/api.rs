@@ -186,4 +186,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(auction::get_auction_by_id);
     cfg.service(auction::update_auction);
     cfg.service(auction::delete_auction);
+    cfg.service(discount_rule::add_used_coupon);
+    cfg.service(discount_rule::delete_used_coupon);
+    cfg.service(discount_rule::get_used_coupons);
 }

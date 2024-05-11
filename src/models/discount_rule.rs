@@ -461,3 +461,118 @@ pub async fn delete_discount_rule(
 
 //     (price, String::new()) // default case if no rule matches
 // }
+
+pub async fn add_used_coupon(
+    coupon_code: &str,
+    user_id: i32,
+    client: &Client,
+) -> Result<(), Error> {
+    client
+        .execute(
+            "insert into used_coupons (user_id, coupon_code) values ($1, $2)",
+            &[&user_id, &coupon_code],
+        )
+        .await?;
+    Ok(())
+}
+
+pub async fn delete_used_coupon(used_coupon_id: i32, client: &Client) -> Result<(), Error> {
+    client
+        .execute(
+            "update used_coupons set deleted_at = CURRENT_TIMESTAMP where used_coupon_id = $1",
+            &[&used_coupon_id],
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[derive(Serialize)]
+pub struct UsedCoupon {
+    pub used_coupon_id: i32,
+    pub user_id: i32,
+    pub coupon_code: String,
+    pub created_at: NaiveDateTime,
+}
+
+pub async fn get_used_coupons(
+    search: &Option<String>,
+    page: Option<usize>,
+    per_page: Option<usize>,
+    user_id: i32,
+    role: &str,
+    client: &Client,
+) -> Result<PaginationResult<UsedCoupon>, Error> {
+    let mut base_query = "from used_coupons where deleted_at is null".to_string();
+    let mut params: Vec<Box<dyn ToSql + Sync>> = vec![];
+
+    let order_options = "created_at desc";
+
+    if role != "admin" {
+        params.push(Box::new(user_id));
+        base_query = format!("{base_query} and user_id = ${}", params.len());
+    }
+
+    let result = generate_pagination_query(PaginationOptions {
+        select_columns: "used_coupon_id, user_id, coupon_code, created_at",
+        base_query: &base_query,
+        search_columns: vec!["coupon_code"],
+        search: search.as_deref(),
+        order_options: Some(&order_options),
+        page,
+        per_page,
+    });
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = params.iter().map(AsRef::as_ref).collect();
+
+    let row = client.query_one(&result.count_query, &params_slice).await?;
+    let total: i64 = row.get("total");
+
+    let mut page_counts = 0;
+    let mut current_page = 0;
+    let mut limit = 0;
+    if page.is_some() && per_page.is_some() {
+        current_page = page.unwrap();
+        limit = per_page.unwrap();
+        page_counts = (total as f64 / limit as f64).ceil() as usize;
+    }
+
+    let used_coupons: Vec<UsedCoupon> = client
+        .query(&result.query, &params_slice)
+        .await?
+        .iter()
+        .map(|row| UsedCoupon {
+            used_coupon_id: row.get("used_coupon_id"),
+            user_id: row.get("user_id"),
+            coupon_code: row.get("coupon_code"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
+
+    Ok(PaginationResult {
+        data: used_coupons,
+        total,
+        page: current_page,
+        per_page: limit,
+        page_counts,
+    })
+}
+
+pub async fn get_used_coupon_by_id(used_coupon_id: i32, client: &Client) -> Option<UsedCoupon> {
+    let result = client
+        .query_one(
+            "select used_coupon_id, user_id, coupon_code, created_at where deleted_at is null and used_coupon_id = $1",
+            &[&used_coupon_id],
+        )
+        .await;
+
+    match result {
+        Ok(row) => Some(UsedCoupon {
+            used_coupon_id: row.get("used_coupon_id"),
+            user_id: row.get("user_id"),
+            coupon_code: row.get("coupon_code"),
+            created_at: row.get("created_at"),
+        }),
+        Err(_) => None,
+    }
+}

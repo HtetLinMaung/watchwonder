@@ -480,3 +480,249 @@ pub async fn get_discount_fors(req: HttpRequest) -> impl Responder {
         data: Some(discount_fors),
     })
 }
+
+#[derive(Deserialize)]
+pub struct UsedCouponRequest {
+    pub coupon_code: String,
+}
+
+#[post("/api/used-coupons")]
+pub async fn add_used_coupon(
+    req: HttpRequest,
+    body: web::Json<UsedCouponRequest>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let user_id = parsed_values[0].parse().unwrap();
+    // let role: &str = parsed_values[1];
+
+    // if role == "user" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
+
+    match discount_rule::add_used_coupon(&body.coupon_code, user_id, &client).await {
+        Ok(()) => HttpResponse::Created().json(BaseResponse {
+            code: 201,
+            message: String::from("Coupon code applied successfully"),
+        }),
+        Err(e) => {
+            eprintln!("Coupon code applying error: {}", e);
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error applying coupon code!"),
+            });
+        }
+    }
+}
+
+#[delete("/api/used-coupons/{used_coupon_id}")]
+pub async fn delete_used_coupon(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    client: web::Data<Arc<Client>>,
+) -> HttpResponse {
+    let used_coupon_id = path.into_inner();
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    // let role: &str = parsed_values[1];
+
+    // if role == "user" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
+
+    match discount_rule::get_used_coupon_by_id(used_coupon_id, &client).await {
+        Some(_) => match discount_rule::delete_used_coupon(used_coupon_id, &client).await {
+            Ok(()) => HttpResponse::Ok().json(BaseResponse {
+                code: 204,
+                message: String::from("Remove coupon successfully"),
+            }),
+            Err(e) => {
+                eprintln!("Coupon removing error: {}", e);
+                return HttpResponse::InternalServerError().json(BaseResponse {
+                    code: 500,
+                    message: String::from("Error removing coupon!"),
+                });
+            }
+        },
+        None => HttpResponse::NotFound().json(BaseResponse {
+            code: 404,
+            message: String::from("Coupon not found!"),
+        }),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct GetUsedCouponsQuery {
+    pub search: Option<String>,
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
+}
+
+#[get("/api/used-coupons")]
+pub async fn get_used_coupons(
+    req: HttpRequest,
+    client: web::Data<Arc<Client>>,
+    query: web::Query<GetUsedCouponsQuery>,
+) -> impl Responder {
+    // Extract the token from the Authorization header
+    let token = match req.headers().get("Authorization") {
+        Some(value) => {
+            let parts: Vec<&str> = value.to_str().unwrap_or("").split_whitespace().collect();
+            if parts.len() == 2 && parts[0] == "Bearer" {
+                parts[1]
+            } else {
+                return HttpResponse::BadRequest().json(BaseResponse {
+                    code: 400,
+                    message: String::from("Invalid Authorization header format"),
+                });
+            }
+        }
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Authorization header missing"),
+            })
+        }
+    };
+
+    let sub = match verify_token_and_get_sub(token) {
+        Some(s) => s,
+        None => {
+            return HttpResponse::Unauthorized().json(BaseResponse {
+                code: 401,
+                message: String::from("Invalid token"),
+            })
+        }
+    };
+
+    // Parse the `sub` value
+    let parsed_values: Vec<&str> = sub.split(',').collect();
+    if parsed_values.len() != 2 {
+        return HttpResponse::InternalServerError().json(BaseResponse {
+            code: 500,
+            message: String::from("Invalid sub format in token"),
+        });
+    }
+
+    let user_id = parsed_values[0].parse().unwrap();
+    let role: &str = parsed_values[1];
+
+    // if role == "user" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
+
+    match discount_rule::get_used_coupons(
+        &query.search,
+        query.page,
+        query.per_page,
+        user_id,
+        role,
+        &client,
+    )
+    .await
+    {
+        Ok(item_result) => HttpResponse::Ok().json(PaginationResponse {
+            code: 200,
+            message: String::from("Successful."),
+            data: item_result.data,
+            total: item_result.total,
+            page: item_result.page,
+            per_page: item_result.per_page,
+            page_counts: item_result.page_counts,
+        }),
+        Err(err) => {
+            // Log the error message here
+            println!("Error retrieving coupons: {:?}", err);
+            HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Error trying to read all coupons from database"),
+            })
+        }
+    }
+}
