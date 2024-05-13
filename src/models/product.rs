@@ -60,6 +60,7 @@ pub struct Product {
     pub discount_reason: String,
     pub discount_type: String,
     pub discount_updated_by: String,
+    pub coupon_code: Option<String>,
     pub level: i32,
     pub is_auction_product: bool,
     pub created_at: NaiveDateTime,
@@ -214,7 +215,7 @@ pub async fn get_products(
         END 
     ELSE 
         p.price::text
-END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.discount_expiration, p.discount_reason, p.discount_type, p.discount_updated_by, p.level, p.is_auction_product, p.created_at");
+END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.discount_expiration, p.discount_reason, p.discount_type, p.discount_updated_by, p.coupon_code, p.level, p.is_auction_product, p.created_at");
     let result = generate_pagination_query(PaginationOptions {
         select_columns: &select_columns,
         base_query: &base_query,
@@ -335,6 +336,7 @@ END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_q
             discount_reason: row.get("discount_reason"),
             discount_type: row.get("discount_type"),
             discount_updated_by: row.get("discount_updated_by"),
+            coupon_code: row.get("coupon_code"),
             level: row.get("level"),
             is_auction_product: row.get("is_auction_product"),
             created_at: row.get("created_at"),
@@ -630,7 +632,7 @@ pub async fn get_product_by_id(product_id: i32, user_id: i32, client: &Client) -
         END 
     ELSE 
         p.price::text
-END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.discount_expiration, p.discount_reason, p.discount_type, p.discount_updated_by, p.level, p.is_auction_product, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1");
+END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_quantity, p.is_top_model, c.category_id, c.name category_name, s.shop_id, s.name shop_name, p.condition, p.warranty_type_id, wt.description warranty_type_description, p.dial_glass_type_id, dgt.description dial_glass_type_description, p.other_accessories_type_id, oat.description other_accessories_type_description, p.gender_id, g.description gender_description, p.waiting_time, p.case_diameter, p.case_depth, p.case_width, p.movement_caliber, p.movement_country, p.is_preorder, coalesce(p.creator_id, 0) as creator_id, p.discount_expiration, p.discount_reason, p.discount_type, p.discount_updated_by, p.coupon_code, p.level, p.is_auction_product, p.created_at from products p inner join brands b on b.brand_id = p.brand_id inner join categories c on p.category_id = c.category_id inner join shops s on s.shop_id = p.shop_id inner join currencies cur on cur.currency_id = p.currency_id inner join warranty_types wt on wt.warranty_type_id = p.warranty_type_id inner join dial_glass_types dgt on dgt.dial_glass_type_id = p.dial_glass_type_id inner join other_accessories_types oat on oat.other_accessories_type_id = p.other_accessories_type_id inner join genders g on g.gender_id = p.gender_id where p.deleted_at is null and b.deleted_at is null and c.deleted_at is null and s.deleted_at is null and cur.deleted_at is null and wt.deleted_at is null and dgt.deleted_at is null and oat.deleted_at is null and g.deleted_at is null and p.product_id = $1");
     let result = client.query_one(&statement, &[&product_id]).await;
 
     let product_images: Vec<String> = match client
@@ -703,6 +705,7 @@ END AS discounted_price, p.currency_id, cur.currency_code, cur.symbol, p.stock_q
                 discount_reason: row.get("discount_reason"),
                 discount_type: row.get("discount_type"),
                 discount_updated_by: row.get("discount_updated_by"),
+                coupon_code: row.get("coupon_code"),
                 level: row.get("level"),
                 is_auction_product: row.get("is_auction_product"),
                 created_at: row.get("created_at"),
