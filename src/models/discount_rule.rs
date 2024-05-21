@@ -462,6 +462,20 @@ pub async fn delete_discount_rule(
 //     (price, String::new()) // default case if no rule matches
 // }
 
+pub async fn is_coupon_code_available(coupon_code: &str, client: &Client) -> bool {
+    let result = client
+        .query(
+            "SELECT coupon_code FROM discount_rules WHERE coupon_code = $1 AND discount_type != 'No Discount' AND (discount_expiration IS NULL OR discount_expiration > CURRENT_TIMESTAMP) and deleted_at is null",
+            &[&coupon_code],
+        )
+        .await;
+
+    match result {
+        Ok(rows) => !rows.is_empty(),
+        Err(_) => false,
+    }
+}
+
 pub async fn add_used_coupon(
     coupon_code: &str,
     user_id: i32,

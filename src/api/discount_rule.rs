@@ -542,6 +542,13 @@ pub async fn add_used_coupon(
     //     });
     // }
 
+    if !discount_rule::is_coupon_code_available(&body.coupon_code, &client).await {
+        return HttpResponse::BadRequest().json(BaseResponse {
+            code: 400,
+            message: String::from("Invalid coupon!"),
+        });
+    }
+
     match discount_rule::add_used_coupon(&body.coupon_code, user_id, &client).await {
         Ok(()) => HttpResponse::Created().json(BaseResponse {
             code: 201,
