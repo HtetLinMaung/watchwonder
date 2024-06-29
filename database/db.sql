@@ -531,6 +531,7 @@ CREATE TABLE bank_accounts
     account_holder_name VARCHAR(255) NOT NULL,
     account_number VARCHAR(50) NOT NULL,
     bank_logo VARCHAR(255) NOT NULL,
+    shop_id INT REFERENCES shops(shop_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL

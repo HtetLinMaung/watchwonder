@@ -16,6 +16,7 @@ pub struct BankAccount {
     pub account_holder_name: String,
     pub account_number: String,
     pub bank_logo: String,
+    pub shop_id: i32,
     pub created_at: NaiveDateTime,
 }
 
@@ -24,6 +25,9 @@ pub async fn get_bank_accounts(
     page: Option<usize>,
     per_page: Option<usize>,
     account_type: &Option<String>,
+    shop_id: Option<i32>,
+    role: &str,
+    user_id: i32,
     client: &Client,
 ) -> Result<PaginationResult<BankAccount>, Error> {
     let mut base_query = "from bank_accounts where deleted_at is null".to_string();
@@ -36,9 +40,22 @@ pub async fn get_bank_accounts(
         base_query = format!("{base_query} and account_type = ${}", params.len());
     }
 
+    if let Some(sid) = shop_id {
+        params.push(Box::new(sid));
+        base_query = format!("{base_query} and shop_id = ${}", params.len());
+    }
+
+    if role == "agent" {
+        params.push(Box::new(user_id));
+        base_query = format!(
+            "{base_query} and shop_id in (select shop_id from shops where creator_id = ${})",
+            params.len()
+        );
+    }
+
     let result = generate_pagination_query(PaginationOptions {
         select_columns:
-            "account_id, account_type, account_holder_name, account_number, bank_logo, created_at",
+            "account_id, account_type, account_holder_name, account_number, bank_logo, created_at, shop_id",
         base_query: &base_query,
         search_columns: vec!["account_type", "account_holder_name", "account_number"],
         search: search.as_deref(),
@@ -71,6 +88,7 @@ pub async fn get_bank_accounts(
             account_holder_name: row.get("account_holder_name"),
             account_number: row.get("account_number"),
             bank_logo: row.get("bank_logo"),
+            shop_id: row.get("shop_id"),
             created_at: row.get("created_at"),
         })
         .collect();
@@ -90,13 +108,14 @@ pub struct BankAccountRequest {
     pub account_holder_name: String,
     pub account_number: String,
     pub bank_logo: String,
+    pub shop_id: Option<i32>,
 }
 
 pub async fn add_bank_account(data: &BankAccountRequest, client: &Client) -> Result<(), Error> {
     client
         .execute(
-            "insert into bank_accounts (account_type, account_holder_name, account_number, bank_logo) values ($1, $2, $3, $4)",
-            &[&data.account_type, &data.account_holder_name, &data.account_number, &data.bank_logo],
+            "insert into bank_accounts (account_type, account_holder_name, account_number, bank_logo, shop_id) values ($1, $2, $3, $4, $5)",
+            &[&data.account_type, &data.account_holder_name, &data.account_number, &data.bank_logo, &data.shop_id],
         )
         .await?;
     Ok(())
@@ -105,7 +124,7 @@ pub async fn add_bank_account(data: &BankAccountRequest, client: &Client) -> Res
 pub async fn get_bank_account_by_id(account_id: i32, client: &Client) -> Option<BankAccount> {
     let result = client
         .query_one(
-            "select account_id, account_type, account_holder_name, account_number, bank_logo, created_at from bank_accounts where deleted_at is null and account_id = $1",
+            "select account_id, account_type, account_holder_name, account_number, bank_logo, created_at, shop_id from bank_accounts where deleted_at is null and account_id = $1",
             &[&account_id],
         )
         .await;
@@ -117,6 +136,7 @@ pub async fn get_bank_account_by_id(account_id: i32, client: &Client) -> Option<
             account_holder_name: row.get("account_holder_name"),
             account_number: row.get("account_number"),
             bank_logo: row.get("bank_logo"),
+            shop_id: row.get("shop_id"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
@@ -131,12 +151,13 @@ pub async fn update_bank_account(
 ) -> Result<(), Error> {
     client
         .execute(
-            "update bank_accounts set account_type = $1, account_holder_name = $2, account_number = $3, bank_logo = $4 where account_id = $5",
+            "update bank_accounts set account_type = $1, account_holder_name = $2, account_number = $3, bank_logo = $4, shop_id = $5 where account_id = $6",
             &[
                 &data.account_type,
                 &data.account_holder_name,
                 &data.account_number,
                 &data.bank_logo,
+                &data.shop_id,
                 &account_id,
             ],
         )

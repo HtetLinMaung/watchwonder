@@ -18,6 +18,7 @@ pub struct GetBanksQuery {
     pub page: Option<usize>,
     pub per_page: Option<usize>,
     pub account_type: Option<String>,
+    pub shop_id: Option<i32>,
 }
 
 #[get("/api/bank-accounts")]
@@ -39,19 +40,39 @@ pub async fn get_bank_accounts(
         None => "".to_string(),
     };
 
+    let mut role = "user".to_string();
+    let mut user_id: i32 = 0;
     if !token.is_empty() {
-        if verify_token_and_get_sub(&token).is_none() {
-            return HttpResponse::Unauthorized().json(BaseResponse {
-                code: 401,
-                message: String::from("Invalid token"),
+        let sub = match verify_token_and_get_sub(&token) {
+            Some(s) => s,
+            None => {
+                return HttpResponse::Unauthorized().json(BaseResponse {
+                    code: 401,
+                    message: String::from("Invalid token"),
+                })
+            }
+        };
+
+        // Parse the `sub` value
+        let parsed_values: Vec<String> = sub.split(',').map(|s| s.to_string()).collect();
+        if parsed_values.len() != 2 {
+            return HttpResponse::InternalServerError().json(BaseResponse {
+                code: 500,
+                message: String::from("Invalid sub format in token"),
             });
         }
+
+        user_id = parsed_values[0].parse().unwrap();
+        role = parsed_values[1].clone();
     }
     match bank_account::get_bank_accounts(
         &query.search,
         query.page,
         query.per_page,
         &query.account_type,
+        query.shop_id,
+        &role,
+        user_id,
         &client,
     )
     .await
