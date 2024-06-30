@@ -17,6 +17,7 @@ pub struct BankAccount {
     pub account_number: String,
     pub bank_logo: String,
     pub shop_id: Option<i32>,
+    pub shop_name: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -89,6 +90,7 @@ pub async fn get_bank_accounts(
             account_number: row.get("account_number"),
             bank_logo: row.get("bank_logo"),
             shop_id: row.get("shop_id"),
+            shop_name: None,
             created_at: row.get("created_at"),
         })
         .collect();
@@ -124,7 +126,7 @@ pub async fn add_bank_account(data: &BankAccountRequest, client: &Client) -> Res
 pub async fn get_bank_account_by_id(account_id: i32, client: &Client) -> Option<BankAccount> {
     let result = client
         .query_one(
-            "select account_id, account_type, account_holder_name, account_number, bank_logo, created_at, shop_id from bank_accounts where deleted_at is null and account_id = $1",
+            "select b.account_id, b.account_type, b.account_holder_name, b.account_number, b.bank_logo, b.created_at, b.shop_id, s.name shop_name from bank_accounts b left join shops s on s.shop_id = b.shop_id where b.deleted_at is null and b.account_id = $1",
             &[&account_id],
         )
         .await;
@@ -137,6 +139,7 @@ pub async fn get_bank_account_by_id(account_id: i32, client: &Client) -> Option<
             account_number: row.get("account_number"),
             bank_logo: row.get("bank_logo"),
             shop_id: row.get("shop_id"),
+            shop_name: row.get("shop_name"),
             created_at: row.get("created_at"),
         }),
         Err(_) => None,
