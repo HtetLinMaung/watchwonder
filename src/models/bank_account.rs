@@ -16,7 +16,7 @@ pub struct BankAccount {
     pub account_holder_name: String,
     pub account_number: String,
     pub bank_logo: String,
-    pub shop_id: i32,
+    pub shop_id: Option<i32>,
     pub created_at: NaiveDateTime,
 }
 
