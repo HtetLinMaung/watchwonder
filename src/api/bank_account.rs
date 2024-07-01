@@ -236,14 +236,14 @@ pub async fn get_bank_account_by_id(
         });
     }
 
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
 
-    if role != "admin" {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Unauthorized!"),
-        });
-    }
+    // if role != "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
 
     match bank_account::get_bank_account_by_id(account_id, &client).await {
         Some(c) => HttpResponse::Ok().json(DataResponse {
@@ -407,14 +407,14 @@ pub async fn delete_bank_account(
         });
     }
 
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
 
-    if role != "admin" {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Unauthorized!"),
-        });
-    }
+    // if role != "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
 
     match bank_account::get_bank_account_by_id(account_id, &client).await {
         Some(ba) => {
