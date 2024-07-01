@@ -144,14 +144,14 @@ pub async fn add_bank_account(
     }
 
     // let user_id = parsed_values[0].parse().unwrap();
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
 
-    if role != "admin" {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Unauthorized!"),
-        });
-    }
+    // if role == "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
 
     if body.account_holder_name.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
@@ -306,14 +306,14 @@ pub async fn update_bank_account(
         });
     }
 
-    let role: &str = parsed_values[1];
+    // let role: &str = parsed_values[1];
 
-    if role != "admin" {
-        return HttpResponse::Unauthorized().json(BaseResponse {
-            code: 401,
-            message: String::from("Unauthorized!"),
-        });
-    }
+    // if role != "admin" {
+    //     return HttpResponse::Unauthorized().json(BaseResponse {
+    //         code: 401,
+    //         message: String::from("Unauthorized!"),
+    //     });
+    // }
 
     if body.account_holder_name.is_empty() {
         return HttpResponse::BadRequest().json(BaseResponse {
