@@ -99,7 +99,33 @@ pub async fn add_order(
     let order_id: i32 = order_row.get("order_id");
 
     for item in &order.order_items {
-        let query = format!("insert into order_items (order_id, product_id, quantity, price, currency_id) values ($1, $2, $3, (select coalesce(case when discount_expiration is null then (price - (price * discount_percent / 100)) when now() >= discount_expiration then price else (price - (price * discount_percent / 100)) end, 0.0) from products where product_id = $4 and deleted_at is null), $5)");
+        // let query = format!("insert into order_items (order_id, product_id, quantity, price, currency_id) values ($1, $2, $3, (select coalesce(case when discount_expiration is null then (price - (price * discount_percent / 100)) when now() >= discount_expiration then price else (price - (price * discount_percent / 100)) end, 0.0) from products where product_id = $4 and deleted_at is null), $5)");
+        let query = format!("INSERT INTO order_items (order_id, product_id, quantity, price, currency_id) 
+VALUES (
+    $1, 
+    $2, 
+    $3, 
+    (SELECT COALESCE(
+        CASE 
+            WHEN p.discount_type = 'No Discount' THEN 
+                p.price 
+            WHEN (p.coupon_code IS NULL OR (p.coupon_code IS NOT NULL AND p.coupon_code IN (SELECT coupon_code FROM used_coupons WHERE user_id = {user_id} AND deleted_at IS NULL))) AND p.discount_type != 'No Discount' THEN
+                CASE 
+                    WHEN p.discount_type = 'Discount by Specific Amount' AND (p.discount_expiration IS NULL OR now()::timestamp < p.discount_expiration) THEN 
+                        p.discounted_price 
+                    WHEN p.discount_expiration IS NULL THEN 
+                        (p.price - (p.price * p.discount_percent / 100)) 
+                    WHEN now()::timestamp >= p.discount_expiration THEN 
+                        p.price 
+                    ELSE 
+                        (p.price - (p.price * p.discount_percent / 100)) 
+                END 
+            ELSE 
+                p.price 
+        END, 0.0) 
+    FROM products p WHERE p.product_id = $4 AND p.deleted_at IS NULL), 
+    $5
+)");
         client
             .execute(
                 &query,
